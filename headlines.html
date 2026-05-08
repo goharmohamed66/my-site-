@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Headlines Generator</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Almarai:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html,body{min-height:100vh;background:#F1F1F1;font-family:'Inter','Almarai',system-ui,sans-serif;color:#1A1A1A;font-size:14px;}
+  .app-shell{display:flex;min-height:100vh;}
+  .app-sidebar{width:240px;min-width:240px;background:#EBEBEB;border-right:1px solid #DCDCDC;display:flex;flex-direction:column;height:calc(100vh - 48px);position:sticky;top:48px;font-family:'Inter',system-ui,sans-serif;}
+  .app-sidebar-items{padding:10px 8px;flex:1;display:flex;flex-direction:column;gap:2px;overflow-y:auto;}
+  .app-sidebar-item{padding:7px 12px;border-radius:8px;font-size:13px;color:#303030;display:flex;align-items:center;gap:10px;cursor:pointer;text-decoration:none;font-weight:800;background:transparent;}
+  .app-sidebar-item:hover{background:#E2E2E2;}
+  .app-sidebar-item.active{background:#FFFFFF;font-weight:600;box-shadow:0 0 0 0.5px rgba(0,0,0,0.1),0 1px 1px rgba(0,0,0,0.05);}
+  .app-sidebar-footer{padding:10px 8px;border-top:1px solid #DCDCDC;}
+  .app-sidebar-divider{height:1px;background:#DCDCDC;margin:8px 4px;}
+  .app-sidebar-group-header{padding:7px 12px;border-radius:8px;font-size:12px;color:#6D7175;font-weight:800;display:flex;align-items:center;gap:10px;user-select:none;background:transparent;text-transform:uppercase;letter-spacing:0.4px;}
+  .app-sidebar-group-items{display:flex;flex-direction:column;gap:2px;padding:2px 0;}
+  .app-main{flex:1;min-width:0;display:flex;flex-direction:column;}
+  .page{padding:24px 32px;max-width:none;width:100%;}
+  .page-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:24px;align-items:start;}
+  .page-col-left{position:sticky;top:72px;}
+  @media (max-width: 1100px){
+    .page-grid{grid-template-columns:1fr;}
+    .page-col-left{position:static;}
+  }
+  .page h1{font-size:22px;font-weight:700;letter-spacing:-0.3px;margin-bottom:18px;}
+  .panel{background:#FFFFFF;border:1px solid #E1E3E5;border-radius:12px;padding:20px;margin-bottom:16px;box-shadow:0 1px 0 rgba(0,0,0,0.05);}
+  .field{margin-bottom:14px;}
+  .field-label{display:flex;align-items:center;justify-content:space-between;font-size:13px;color:#1A1A1A;font-weight:500;margin-bottom:6px;}
+  .field-hint{font-size:11px;color:#8A8A8A;font-weight:400;}
+  .field-input,.field-textarea{width:100%;padding:10px 12px;border:1px solid #DCDCDC;border-radius:8px;font-size:13px;font-family:inherit;color:#1A1A1A;background:#FFFFFF;line-height:1.55;}
+  .field-input:focus,.field-textarea:focus{outline:none;border-color:#1A1A1A;box-shadow:0 0 0 1px #1A1A1A;}
+  .field-textarea{min-height:110px;resize:vertical;direction:rtl;text-align:right;font-family:'Almarai','Inter',system-ui,sans-serif;}
+  .btn{display:inline-flex;align-items:center;gap:8px;padding:0 18px;height:38px;border-radius:8px;border:1px solid #1A1A1A;background:#1A1A1A;color:#FFFFFF;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;}
+  .btn:hover:not(:disabled){background:#303030;}
+  .btn:disabled{opacity:0.55;cursor:not-allowed;}
+  .btn-ghost{background:#FFFFFF;color:#1A1A1A;border-color:#DCDCDC;}
+  .btn-ghost:hover:not(:disabled){background:#F5F5F5;}
+  .out-card{background:#FFFFFF;border:1px solid #E1E3E5;border-radius:12px;padding:24px;box-shadow:0 1px 0 rgba(0,0,0,0.05);min-height:220px;}
+  .out-empty{text-align:center;padding:40px 20px;color:#8A8A8A;font-size:13px;}
+  .out-empty .ic{width:56px;height:56px;border-radius:14px;background:#F1F1F1;display:inline-flex;align-items:center;justify-content:center;margin-bottom:14px;color:#6D7175;}
+  .out-text{white-space:pre-wrap;line-height:1.85;font-size:15px;color:#1A1A1A;direction:rtl;text-align:right;font-family:'Almarai','Inter',system-ui,sans-serif;}
+  .headlines-list{display:flex;flex-direction:column;gap:10px;direction:rtl;text-align:right;font-family:'Almarai','Inter',system-ui,sans-serif;}
+  .headline-row{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:start;padding:14px 16px;border:1px solid #E1E3E5;border-radius:10px;background:#FAFAFA;transition:background .12s, border-color .12s;}
+  .headline-row:hover{background:#FFFFFF;border-color:#C9CCCF;}
+  .headline-row .num{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:#1A1A1A;color:#FFFFFF;font-size:11px;font-weight:700;margin-left:8px;flex-shrink:0;font-variant-numeric:tabular-nums;font-family:'Inter',system-ui,sans-serif;}
+  .headline-row .text{font-size:15px;line-height:1.65;color:#1A1A1A;}
+  .headline-row .copy-one{flex-shrink:0;direction:ltr;height:32px;padding:0 12px;font-size:12px;font-weight:500;border-radius:6px;border:1px solid #DCDCDC;background:#FFFFFF;color:#1A1A1A;cursor:pointer;display:inline-flex;align-items:center;gap:5px;font-family:'Inter',system-ui,sans-serif;}
+  .headline-row .copy-one:hover{background:#F5F5F5;border-color:#1A1A1A;}
+  .headline-row .copy-one.copied{background:#0E8345;color:#FFFFFF;border-color:#0E8345;}
+  .out-toolbar{display:flex;justify-content:flex-end;gap:8px;margin-bottom:14px;}
+  .err{background:#FEF2F2;border:1px solid #FECACA;color:#991B1B;border-radius:8px;padding:10px 12px;font-size:13px;margin-top:10px;}
+  .spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1A1A1A;color:#FFFFFF;padding:10px 18px;border-radius:8px;font-size:13px;z-index:300;opacity:0;transition:opacity .2s;pointer-events:none;}
+  .toast.show{opacity:1;}
+  .toast.error{background:#D72C0D;}
+  .key-row{display:flex;align-items:center;gap:8px;}
+  .key-row input{flex:1;}
+</style>
+<script src="topbar.js?v=1777784143"></script>
+<script src="sidebar-tools.js?v=1777784143"></script>
+<script src="https://cdn.jsdelivr.net/npm/mammoth@1.6.0/mammoth.browser.min.js"></script>
+<script src="ai-keys.js?v=1777784143"></script>
+<script src="google-picker.js?v=1777784143"></script>
+</head>
+<body>
+<div class="app-shell">
+  <aside class="app-sidebar">
+    <nav class="app-sidebar-items">
+      <a href="index.html" class="app-sidebar-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg><span>Orders</span>
+      </a>
+      <a href="shipping.html" class="app-sidebar-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg><span>Shipping Analytics</span>
+      </a>
+      <a href="ads.html" class="app-sidebar-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg><span>Ads Analysis</span>
+      </a>
+      <div class="app-sidebar-divider"></div>
+      <div class="app-sidebar-group">
+        <div class="app-sidebar-group-header">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor" aria-hidden="true"><path d="M11.452 0h1.698c.47 0 .85.38.85.85v1.699c0 .469-.38.85-.85.85h-1.699a.85.85 0 0 1-.849-.85v-1.7c0-.469.38-.849.85-.849M13.15 5.301h-1.699a.85.85 0 0 0-.849.85V7.85c0 .469.38.849.85.849h1.698c.47 0 .85-.38.85-.85V6.15a.85.85 0 0 0-.85-.849M.85 10.602h1.699c.469 0 .85.38.85.85v1.698c0 .47-.381.85-.85.85h-1.7A.85.85 0 0 1 0 13.15v-1.699c0-.469.38-.85.85-.85M7.85 10.602h-1.7a.85.85 0 0 0-.85.85v1.698c.001.47.381.85.85.85h1.7c.469 0 .849-.38.849-.85v-1.699a.85.85 0 0 0-.85-.85M13.15 10.602h-1.699a.85.85 0 0 0-.849.85v1.698c0 .47.38.85.85.85h1.698c.47 0 .85-.38.85-.85v-1.699a.85.85 0 0 0-.85-.85M6.15 5.301h1.7c.469 0 .849.38.849.85V7.85c0 .469-.38.849-.85.849H6.15a.85.85 0 0 1-.85-.85V6.15c.001-.469.381-.849.85-.849M2.549 5.301h-1.7a.85.85 0 0 0-.849.85V7.85c0 .469.38.849.85.849h1.699c.469 0 .85-.38.85-.85V6.15a.85.85 0 0 0-.85-.849M7.85 0h-1.7a.85.85 0 0 0-.85.85v1.699c.001.469.381.85.85.85h1.7c.469 0 .849-.381.849-.85v-1.7A.85.85 0 0 0 7.849 0M.85 0h1.699c.469 0 .85.38.85.85v1.699c0 .469-.381.85-.85.85h-1.7A.85.85 0 0 1 0 2.548v-1.7C0 .38.38 0 .85 0"/></svg>
+          <span>All tools</span>
+        </div>
+        <div class="app-sidebar-group-items">
+          <a href="copywriting.html" class="app-sidebar-item">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg><span>Copywriting</span>
+          </a>
+          <a href="landing-page.html" class="app-sidebar-item">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg><span>Landing page content</span>
+          </a>
+          <a href="headlines.html" class="app-sidebar-item active">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4v16"/><path d="M18 4v16"/><path d="M6 12h12"/></svg><span>Headlines Generator</span>
+          </a>
+        </div>
+      </div>
+      <div class="app-sidebar-divider"></div>
+      <div class="app-sidebar-group">
+        <div class="app-sidebar-group-header">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4"/><path d="M12 18v4"/><path d="m4.93 4.93 2.83 2.83"/><path d="m16.24 16.24 2.83 2.83"/><path d="M2 12h4"/><path d="M18 12h4"/><path d="m4.93 19.07 2.83-2.83"/><path d="m16.24 7.76 2.83-2.83"/></svg>
+          <span>Automation Tools</span>
+        </div>
+        <div class="app-sidebar-group-items">
+          <a href="landing-auto.html" class="app-sidebar-item">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg><span>Landing Page Auto</span>
+          </a>
+        </div>
+      </div>
+    </nav>
+    <div class="app-sidebar-footer">
+      <a href="settings.html" class="app-sidebar-item" style="text-decoration:none;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        <span>Settings</span>
+      </a>
+    </div>
+  </aside>
+  <div class="app-main">
+    <div class="page">
+      <h1 style="margin-bottom:18px;">Headlines Generator</h1>
+      <div class="page-grid">
+       <div class="page-col-left">
+      <div class="panel">
+        <div class="field">
+          <div class="field-label" style="justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;">
+            <span>Product details &amp; customer reviews <span style="color:#D72C0D;">*</span></span>
+            <span style="display:inline-flex;gap:6px;flex-wrap:wrap;">
+              <label for="folderInput" style="display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border:1px solid #DCDCDC;border-radius:6px;background:#FFFFFF;cursor:pointer;font-size:11px;font-weight:600;color:#1A1A1A;">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                Upload from device
+              </label>
+              <input id="folderInput" type="file" webkitdirectory directory multiple style="display:none;">
+              <button type="button" id="driveFolderBtn" style="display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border:1px solid #DCDCDC;border-radius:6px;background:#FFFFFF;cursor:pointer;font-size:11px;font-weight:600;color:#1A1A1A;font-family:inherit;">
+                <img src="logos/google-drive.svg" width="14" height="14" alt="" style="display:block;">
+                Upload from Drive
+              </button>
+            </span>
+          </div>
+          <textarea class="field-textarea" id="productInput" placeholder="Example: Educational game for kids ages 5-12. Develops thinking, memory, and problem-solving. Reviews: 'my son plays it every day', 'better than any tablet game', 'his teacher noticed the difference'..."></textarea>
+          <div id="folderSummary" style="display:none;margin-top:8px;padding:8px 12px;background:#F0FDF4;border:1px solid #BBF7D0;border-radius:6px;font-size:11px;color:#0F5132;line-height:1.5;"></div>
+        </div>
+
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <label for="modelSelect" style="font-size:13px;color:#1A1A1A;font-weight:500;">Model:</label>
+            <select class="field-input" id="modelSelect" style="width:auto;min-width:200px;padding:8px 12px;">
+              <option value="agent">Ai agent</option>
+              <option value="claude">Claude (Anthropic)</option>
+              <option value="chatgpt">ChatGPT (OpenAI)</option>
+              <option value="demo">Demo (preview, no API)</option>
+            </select>
+          </div>
+          <button class="btn" id="generateBtn" type="button">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+            <span id="generateLabel">Generate headlines</span>
+          </button>
+        </div>
+        <div class="err" id="errBox" style="display:none;"></div>
+      </div>
+       </div>
+       <div class="page-col-right">
+      <div class="out-toolbar" id="outToolbar" style="display:none;">
+        <button class="btn btn-ghost" id="copyBtn" type="button">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          <span>Copy all</span>
+        </button>
+        <button class="btn btn-ghost" id="regenBtn" type="button">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+          <span>Regenerate</span>
+        </button>
+      </div>
+
+      <div class="out-card" id="outCard">
+        <div class="out-empty" id="outEmpty">
+          <div class="ic">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4v16"/><path d="M18 4v16"/><path d="M6 12h12"/></svg>
+          </div>
+          <div>The 6 headlines will appear here after you click Generate.</div>
+        </div>
+        <div class="headlines-list" id="headlinesList" style="display:none;"></div>
+        <div class="out-text" id="outText" style="display:none;"></div>
+      </div>
+       </div>
+      </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+  </div>
+</div>
+
+<script>
+// ── FOLDER UPLOAD (device or Drive) → fills Product Details textarea ────
+const $ = id => document.getElementById(id);
+async function _extractText(file) {
+  const ext = (file.name.split('.').pop() || '').toLowerCase();
+  if (ext === 'txt' || ext === 'md' || ext === 'csv') return await file.text();
+  if (ext === 'docx' && window.mammoth) {
+    const buf = await file.arrayBuffer();
+    const res = await window.mammoth.extractRawText({ arrayBuffer: buf });
+    return res.value || '';
+  }
+  return '';
+}
+async function ingestFolderFiles(fileList) {
+  const files = Array.from(fileList || []);
+  if (!files.length) return;
+  const folderName = (files[0].webkitRelativePath || files[0].name).split('/')[0] || '';
+  const textFiles = files
+    .filter(f => /\.(txt|md|csv|docx)$/i.test(f.name))
+    .sort((a, b) => {
+      const aRev = /reviews.*details/i.test(a.name) ? -1 : 0;
+      const bRev = /reviews.*details/i.test(b.name) ? -1 : 0;
+      return aRev - bRev;
+    });
+  if (!textFiles.length) { alert('No readable text/Word/Sheet file found in the folder.'); return; }
+  let combined = ''; let totalChars = 0; const usedFiles = [];
+  for (const f of textFiles) {
+    try {
+      const t = await _extractText(f);
+      if (t && t.trim()) {
+        combined += '## ' + f.name + '\n\n' + t.trim() + '\n\n---\n\n';
+        totalChars += t.length;
+        usedFiles.push(f.name);
+      }
+    } catch (e) { console.warn('skip', f.name, e.message); }
+  }
+  if (!combined) { alert('Could not extract text from any file.'); return; }
+  const ta = document.getElementById('productInput');
+  if (!ta.value.trim()) ta.value = combined.trim();
+  const sum = document.getElementById('folderSummary');
+  sum.style.display = 'block';
+  sum.textContent = '? ' + folderName + ' - ' + totalChars.toLocaleString() + ' chars from ' + usedFiles.length + ' file(s): ' + usedFiles.slice(0, 3).join(', ') + (usedFiles.length > 3 ? '...' : '');
+}
+$('folderInput').addEventListener('change', (e) => ingestFolderFiles(e.target.files));
+$('driveFolderBtn').addEventListener('click', () => {
+  const btn = $('driveFolderBtn');
+  const orig = btn.innerHTML;
+  btn.disabled = true; btn.innerHTML = 'Loading…';
+  pickGoogleDriveFolder(
+    (files) => { btn.disabled = false; btn.innerHTML = orig; ingestFolderFiles(files); },
+    {
+      onProgress: (p) => {
+        if (p.phase === 'listing') btn.innerHTML = 'Listing folder…';
+        else if (p.phase === 'downloading') btn.innerHTML = 'Downloading ' + p.current + '/' + p.total;
+      },
+      onError: (e) => { btn.disabled = false; btn.innerHTML = orig; alert('Drive: ' + e.message); }
+    }
+  );
+});
+
+// ── SKILLS LOADER (Settings → Brain → Skills) ──────────────────────────
+const __SKILLS_API   = 'https://indigo-dog-836598.hostingersite.com/api/skills.php';
+const __SKILLS_TOKEN = 'tk_4d2b9f7a8c6e1530a4f2d9b7e8c6a1f5';
+const __skillCache = {};
+async function loadSkill(slug) {
+  // cache disabled — always fetch fresh so updated skills apply immediately
+  try {
+    const r = await fetch(__SKILLS_API + '?slug=' + encodeURIComponent(slug) + '&_t=' + Date.now(), {
+      headers: { 'Authorization': 'Bearer ' + __SKILLS_TOKEN }
+    });
+    if (!r.ok) { __skillCache[slug] = null; return null; }
+    const d = await r.json();
+    __skillCache[slug] = d.instructions || null;
+    return __skillCache[slug];
+  } catch (e) { __skillCache[slug] = null; return null; }
+}
+async function buildSkillBlock(slugs) {
+  const parts = await Promise.all(slugs.map(slug => loadSkill(slug).then(text => ({ slug, text }))));
+  const out = [];
+  for (const p of parts) {
+    if (!p.text) continue;
+    if (p.slug === 'egyptian-writing-voice') {
+      // Voice skill = STYLE EXAMPLES, not instructions. Frame it that way so
+      // the model imitates the rhythm/wording instead of just listing rules.
+      out.push(
+        '## STYLE REFERENCE — How to write (Egyptian voice)\n' +
+        'Below are real examples of the exact tone, rhythm, word choice, sentence length and emotional pull the user wants. Study them carefully. When you write, match this voice as closely as a human copywriter would imitate a mentor — same rhythm, same colloquialisms, same punch. Do NOT copy any line verbatim; mirror the STYLE.\n\n' +
+        '──────── EXAMPLES START ────────\n' +
+        p.text + '\n' +
+        '──────── EXAMPLES END ────────'
+      );
+    } else if (p.slug === 'about-gohar') {
+      out.push('## USER PROFILE — Who you are writing for\n' + p.text);
+    } else {
+      // Per-task skill (copywriter / landing / headlines): treat as instructions
+      out.push('## TASK INSTRUCTIONS\n' + p.text);
+    }
+  }
+  return out.join('\n\n---\n\n');
+}
+
+let __allSkillsCache = null;
+async function loadAllSkills() {
+  if (__allSkillsCache) return __allSkillsCache;
+  try {
+    const r = await fetch(__SKILLS_API, { headers: { 'Authorization': 'Bearer ' + __SKILLS_TOKEN } });
+    if (!r.ok) { __allSkillsCache = []; return []; }
+    const d = await r.json();
+    const rows = (d.rows || []).filter(s => s.instructions && s.instructions.trim());
+    rows.sort((a, b) => {
+      const aBase = /voice|tone|base/i.test(a.slug) ? -1 : 0;
+      const bBase = /voice|tone|base/i.test(b.slug) ? -1 : 0;
+      return aBase - bBase;
+    });
+    __allSkillsCache = rows;
+    return rows;
+  } catch (e) { __allSkillsCache = []; return []; }
+}
+async function buildAllSkillsBlock() {
+  const rows = await loadAllSkills();
+  if (!rows.length) return '';
+  return rows.map(s =>
+    '## Skill: ' + (s.name || s.slug) + ' (/' + s.slug + ')\n' +
+    (s.description ? s.description + '\n\n' : '') +
+    s.instructions
+  ).join('\n\n---\n\n');
+}
+
+// ── TECH OP AGENT (Media Buyer Persona) ──────────────────────────────
+const AGENT_PERSONA = `أنت "Tech Op Agent" — ميديا باير محترف في السوق المصري وكوبي رايتر مباشر-الاستجابة، خبرتك أكثر من 8 سنين في الـ DTC على فيسبوك وإنستجرام وتيك توك.
+
+## شخصيتك:
+- شُفت آلاف الكامبينز وعارف الهيدلاينز اللي بتوقف السكرول والـ CTR العالي.
+- بتفكر دايماً كـ Hook → Pain → Promise → Proof → CTA.
+- بتعرف نفسية المستهلك المصري: اللغة، التريبت، الـ trust signals.
+- مهووس بكل كلمة وعلاقتها بالـ ROI.
+
+## قواعد العمل:
+1. التزم بكل الـ Skills المحفوظة فوق — هي صوت المستخدم.
+2. اكتب بالعامية المصرية الطبيعية، بلاش فصحى، بلاش كلام AI نمطي.
+3. كل هيدلاين لازم: hook قوي / pain حقيقي / فضول / فايدة ملموسة / CTA ضمني.
+4. أرقام محددة (بدل "كتير" قول "5 آلاف").
+5. ابعد عن الكلمات المُستهلكة (رائع، مذهل، الأفضل).
+6. لو الناتج طلع متوسط، اعمله re-write أقوى قبل ما ترجعه.
+
+أنت مش chatbot. أنت بتشتغل لحساب صاحب البزنس.`;
+
+function pickAgentProvider() {
+  if (localStorage.getItem(ANTHROPIC_KEY_LS))  return 'claude';
+  if (localStorage.getItem(OPENAI_KEY_LS))     return 'chatgpt';
+  if (localStorage.getItem(OPENROUTER_KEY_LS)) return 'openrouter';
+  return null;
+}
+
+async function __agentSinglePass(sub, system, userMessage, maxTokens) {
+  if (sub === 'chatgpt')    return callChatGPT(system, userMessage, maxTokens);
+  if (sub === 'openrouter') return callOpenRouter(system, userMessage, maxTokens);
+  return callClaude(system, userMessage, maxTokens);
+}
+
+const AGENT_REFINE_PROMPT = `أنت دلوقتي بتراجع 6 هيدلاينز بعقلية ميديا باير ناقد. اعمل التالي:
+
+1. اقرأ كل هيدلاين كأنك مستهلك مصري بيعدّي على فيسبوك. هل هتقف؟
+2. شطب أي:
+   - كلمات مُستهلكة (رائع، مذهل، الأفضل).
+   - جمل عامة بدون أرقام أو تفاصيل.
+   - صياغة بتحس إنها AI.
+3. كل هيدلاين لازم: hook في أول 6 كلمات + فضول أو وعد محدد.
+4. أرقام محددة (5 آلاف، في 7 أيام، خصم 50%).
+5. لو فيه تكرار في الـ angles بين هيدلاينز، نوّع.
+
+ارجع 6 هيدلاينز فقط، كل واحد في سطر، من غير ترقيم، من غير تعليقات.`;
+
+async function callAgent(systemPrompt, userMessage, maxTokens) {
+  if (window.aiKeysReady) { try { await window.aiKeysReady; } catch (e) {} }
+  const hasClaude  = !!localStorage.getItem(ANTHROPIC_KEY_LS);
+  const hasGPT     = !!localStorage.getItem(OPENAI_KEY_LS);
+  const hasOR      = !!localStorage.getItem(OPENROUTER_KEY_LS);
+  if (!hasClaude && !hasGPT && !hasOR) {
+    throw new Error('Agent needs at least one AI key (Settings → Connectors → Claude / ChatGPT / OpenRouter).');
+  }
+  const label = $('generateLabel');
+  const setLabel = (txt) => { if (label) label.innerHTML = '<span class="spinner"></span> ' + txt; };
+  const agentPrompt = AGENT_PERSONA + '\n\n---\n\n' + systemPrompt;
+  if (!(hasClaude && hasGPT)) {
+    const sub = hasClaude ? 'claude' : (hasGPT ? 'chatgpt' : 'openrouter');
+    setLabel('Drafting…');
+    const draft = await __agentSinglePass(sub, agentPrompt, userMessage, maxTokens);
+    setLabel('Refining…');
+    const refined = await __agentSinglePass(
+      sub,
+      AGENT_PERSONA + '\n\n---\n\n' + AGENT_REFINE_PROMPT,
+      'الطلب الأصلي:\n' + userMessage + '\n\n---\n\nالمسودة المطلوب تحسينها:\n' + draft,
+      maxTokens
+    );
+    return refined || draft;
+  }
+  setLabel('Drafting (Claude + ChatGPT in parallel)…');
+  const [draftClaude, draftGPT] = await Promise.all([
+    callClaude(agentPrompt, userMessage, maxTokens).catch(e => '[Claude draft failed: ' + e.message + ']'),
+    callChatGPT(agentPrompt, userMessage, maxTokens).catch(e => '[ChatGPT draft failed: ' + e.message + ']'),
+  ]);
+  setLabel('Cross-reviewing…');
+  const crossPrompt = (lbl) =>
+    'إنت بتراجع مسودة كتبها موديل تاني (' + lbl + '). شغلتك:\n' +
+    '1. اقرأها بعقلية مستهلك مصري حقيقي بيعدّي على فيسبوك.\n' +
+    '2. قارنها بالـ STYLE REFERENCE فوق — هل الـ rhythm صح؟ الكلام طبيعي؟ بيـ match الأمثلة؟\n' +
+    '3. شطب أي كلام مُستهلك أو AI-sounding أو حشو.\n' +
+    '4. لو الموديل التاني فاته شيء من المطلوب — كمّله.\n' +
+    '5. ارجع النسخة المُحسّنة فقط، من غير شرح ولا "النسخة المحسنة:".';
+  const [refinedByGPT, refinedByClaude] = await Promise.all([
+    callChatGPT(
+      AGENT_PERSONA + '\n\n---\n\n' + crossPrompt('Claude'),
+      'الطلب الأصلي:\n' + userMessage + '\n\n---\n\nمسودة Claude:\n' + draftClaude,
+      maxTokens
+    ).catch(() => draftClaude),
+    callClaude(
+      AGENT_PERSONA + '\n\n---\n\n' + crossPrompt('ChatGPT'),
+      'الطلب الأصلي:\n' + userMessage + '\n\n---\n\nمسودة ChatGPT:\n' + draftGPT,
+      maxTokens
+    ).catch(() => draftGPT),
+  ]);
+  setLabel('Final synthesis…');
+  const synthPrompt = AGENT_PERSONA + '\n\n---\n\n' +
+    'بين إيدك نسختين كتبهم Claude و ChatGPT بعد ما راجع كل واحد فيهم على التاني. ' +
+    'مهمتك: تطلع نسخة واحدة نهائية تكون أحسن من الاتنين. اشتغل بالخطوات دي:\n\n' +
+    '1. قارن النسختين سطر سطر. اختار أقوى hook، أصدق pain، أوضح benefit، أحسن CTA.\n' +
+    '2. تأكد إن الـ TONE والـ rhythm matching الـ STYLE REFERENCE اللي فوق.\n' +
+    '3. تأكد عدد الكلمات قريب من الأمثلة (مش أطول، مش أقصر بشكل ملحوظ).\n' +
+    '4. شيل أي تكرار بين المصدرين، اخلطهم بذكاء.\n' +
+    '5. ارجع النسخة النهائية فقط — نص نضيف، من غير "النسخة النهائية:" ولا أي كلام مقدمة.';
+  try {
+    const final = await callClaude(
+      synthPrompt,
+      'الطلب الأصلي:\n' + userMessage + '\n\n---\n\nنسخة 1 (Claude refined by GPT):\n' + refinedByGPT +
+      '\n\n---\n\nنسخة 2 (GPT refined by Claude):\n' + refinedByClaude,
+      maxTokens
+    );
+    return final || refinedByClaude || refinedByGPT;
+  } catch (e) {
+    return refinedByClaude || refinedByGPT;
+  }
+}
+
+const SYSTEM_PROMPT = `حلل الريفيوز وتفاصيل المنتج واستخرج أقوى مشاعر ودوافع الشراء، وبناءً عليها اكتب 6 headlines بنفس أسلوب الأمثلة ونفس عدد الكلمات وكل حاجة (عاطفية، مباشرة، توقف السكرول).
+خليها عامية مصرية، طبيعية جداً، وكل headline في سطر لوحده بدون أي كلام إضافي.
+
+الأمثلة
+
+1-  نفسك تقرب من ربنا أكتر وتنتظر الصلاة بفارغ الصبر وتصلي بخشوع؟ الحل هنا
+2-دلوقتي تقدر تفهم القرآن زي ما فهمه الصحابة وقلبك يتعلق بيه لأنه الحبل الوحيد المتصل بالسماء وأصدق كلام على الأرض
+3 كتب حطوا قواعد لحياتك لازم تمشي عليها لأنها مستخلصة من أصدق كلام على وجه الأرض
+4-عايز نفسية أقوى من الصدمات؟ ابدأ من علاقتك مع ربنا
+5-نحن نقص عليك أحسن القصص وبالحق أنزلناه هم الأفضل للمبتدئين في القراءة
+6-إلى المنكسرة قلوبهم من دنيا الناس جاء الوقت ليطمئن قلبك`;
+
+const PROVIDER_LS = 'app.aiProvider';
+const ANTHROPIC_KEY_LS = 'app.anthropicApiKey';
+const OPENAI_KEY_LS = 'app.openaiApiKey';
+const OPENROUTER_KEY_LS = 'app.openrouterApiKey';
+
+const savedProvider = localStorage.getItem(PROVIDER_LS);
+if (savedProvider) $('modelSelect').value = savedProvider;
+$('modelSelect').addEventListener('change', () => {
+  localStorage.setItem(PROVIDER_LS, $('modelSelect').value);
+});
+
+function showToast(msg, isError) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (isError ? ' error' : '');
+  setTimeout(() => t.className = 'toast' + (isError ? ' error' : ''), 2400);
+}
+function showError(msg) {
+  const e = $('errBox');
+  if (msg) { e.textContent = msg; e.style.display = 'block'; }
+  else { e.style.display = 'none'; e.textContent = ''; }
+}
+
+async function callClaude(systemPrompt, userMessage, maxTokens) {
+  if (window.aiKeysReady) { try { await window.aiKeysReady; } catch (e) {} }
+  const apiKey = localStorage.getItem(ANTHROPIC_KEY_LS) || '';
+  if (!apiKey) throw new Error('No Claude API key. Settings → Connect AI Tools → Claude.');
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true'
+    },
+    body: JSON.stringify({
+      model: 'claude-opus-4-7',
+      max_tokens: maxTokens || 1500,
+      system: systemPrompt,
+      messages: [{ role: 'user', content: userMessage }]
+    })
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error((data && data.error && data.error.message) || ('HTTP ' + res.status));
+  const text = (data.content || []).map(b => b.text || '').join('').trim();
+  if (!text) throw new Error('Empty response');
+  return text;
+}
+
+async function callChatGPT(systemPrompt, userMessage, maxTokens) {
+  if (window.aiKeysReady) { try { await window.aiKeysReady; } catch (e) {} }
+  const apiKey = localStorage.getItem(OPENAI_KEY_LS) || '';
+  if (!apiKey) throw new Error('No ChatGPT API key. Settings → Connect AI Tools → ChatGPT.');
+  const res = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + apiKey
+    },
+    body: JSON.stringify({
+      model: 'gpt-5',
+      max_completion_tokens: maxTokens || 1500,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userMessage }
+      ]
+    })
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error((data && data.error && data.error.message) || ('HTTP ' + res.status));
+  const text = ((data.choices || [])[0] || {}).message?.content?.trim() || '';
+  if (!text) throw new Error('Empty response');
+  return text;
+}
+
+// Demo mode — returns a hard-coded sample so the UI can be previewed without an API key.
+async function callDemo() {
+  await new Promise(r => setTimeout(r, 500));
+  return `1- نفسك تحب القرآن وتعيش قصصه وتربط كل آية بحياتك اليومية؟ الحل في كتاب واحد
+
+2- دلوقتي تقدر تفهم قصص القرآن زي ما عاشها الصحابة وتطلع منها بقواعد حقيقية تمشي بيها كل يوم
+
+3- كتاب واحد هيخلوك من واحد بيعدّي على الآيات لشخص بيعيش كل قصة ويتعلق بكلام ربنا
+
+4- عايز تخش العبر والحكمة من قصص القرآن؟ ابدأ بأحسن كتاب جمعهم في مكان واحد
+
+5- نحن نقص عليك أحسن القصص — كتاب أدهم الشرقاوي هو الأفضل للمبتدئين في القراءة
+
+6- إلى المنكسرة قلوبهم من زحمة الدنيا جاء وقت التعلق بالقرآن وقصصه`;
+}
+
+async function callOpenRouter(systemPrompt, userMessage, maxTokens) {
+  const apiKey = localStorage.getItem(OPENROUTER_KEY_LS) || '';
+  if (!apiKey) throw new Error('No OpenRouter API key. Settings → Connect AI Tools → OpenRouter.');
+  const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + apiKey,
+      'HTTP-Referer': window.location.origin,
+      'X-Title': 'Sila Gallery'
+    },
+    body: JSON.stringify({
+      model: 'anthropic/claude-opus-4.7',
+      max_tokens: maxTokens || 1500,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userMessage }
+      ]
+    })
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error((data && data.error && data.error.message) || ('HTTP ' + res.status));
+  const text = ((data.choices || [])[0] || {}).message?.content?.trim() || '';
+  if (!text) throw new Error('Empty response');
+  return text;
+}
+
+async function generate() {
+  showError('');
+  const input = $('productInput').value.trim();
+  const provider = $('modelSelect').value;
+
+  if (!input) { showToast('Enter product details first', true); return; }
+
+  const userMessage = `INPUT DATA
+${input}
+
+اكتب الـ 6 headlines دلوقتي بنفس أسلوب الأمثلة، كل واحد في سطر لوحده، بدون أي شرح.`;
+
+  const btn = $('generateBtn');
+  const label = $('generateLabel');
+  btn.disabled = true;
+  label.innerHTML = '<span class="spinner"></span> Generating…';
+
+  try {
+    const skillBlock = await buildSkillBlock(['about-gohar', 'egyptian-writing-voice', 'generate-headlines']);
+    const sysPrompt  = (skillBlock ? skillBlock + '\n\n---\n\n' : '') + SYSTEM_PROMPT;
+    const text = provider === 'demo'       ? await callDemo()
+              : provider === 'agent'      ? await callAgent(sysPrompt, userMessage, 1500)
+              : provider === 'chatgpt'    ? await callChatGPT(sysPrompt, userMessage, 1500)
+              : provider === 'openrouter' ? await callOpenRouter(sysPrompt, userMessage, 1500)
+              : await callClaude(sysPrompt, userMessage, 1500);
+
+    $('outEmpty').style.display = 'none';
+    // Keep raw text for "Copy all"
+    $('outText').textContent = text;
+    // Parse into individual headlines and render with per-row copy buttons
+    renderHeadlines(text);
+    $('outToolbar').style.display = 'flex';
+  } catch (err) {
+    showError('Failed: ' + err.message);
+  } finally {
+    btn.disabled = false;
+    label.textContent = 'Generate headlines';
+  }
+}
+
+// Parse the raw output into individual headlines (one per non-empty line),
+// strip leading numbering like "1- " / "1. " / "1) " so each card just shows
+// the headline text, then render each with its own Copy button.
+function parseHeadlines(text) {
+  return (text || '')
+    .split(/\r?\n/)
+    .map(l => l.trim())
+    .filter(l => l && !/^[-=━]+$/.test(l))   // drop separators
+    .map(l => l.replace(/^\s*\d+\s*[-.)]\s*/, '').trim())
+    .filter(Boolean);
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+
+function renderHeadlines(text) {
+  const list = $('headlinesList');
+  const headlines = parseHeadlines(text);
+  if (!headlines.length) {
+    list.style.display = 'none';
+    $('outText').style.display = 'block';
+    return;
+  }
+  list.style.display = 'flex';
+  $('outText').style.display = 'none';
+  list.innerHTML = headlines.map((h, i) => `
+    <div class="headline-row">
+      <div><span class="num">${i + 1}</span><span class="text">${escapeHtml(h)}</span></div>
+      <button class="copy-one" data-idx="${i}" type="button">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        Copy
+      </button>
+    </div>
+  `).join('');
+
+  // Wire copy buttons
+  list.querySelectorAll('.copy-one').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const idx = +btn.dataset.idx;
+      const t = headlines[idx];
+      try {
+        await navigator.clipboard.writeText(t);
+      } catch (e) {
+        const ta = document.createElement('textarea');
+        ta.value = t; document.body.appendChild(ta); ta.select();
+        document.execCommand('copy'); document.body.removeChild(ta);
+      }
+      const originalHTML = btn.innerHTML;
+      btn.classList.add('copied');
+      btn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Copied';
+      setTimeout(() => { btn.classList.remove('copied'); btn.innerHTML = originalHTML; }, 1400);
+    });
+  });
+}
+
+$('generateBtn').addEventListener('click', generate);
+$('regenBtn').addEventListener('click', generate);
+
+$('copyBtn').addEventListener('click', async () => {
+  const txt = $('outText').textContent;
+  try {
+    await navigator.clipboard.writeText(txt);
+    showToast('Copied');
+  } catch (e) {
+    const ta = document.createElement('textarea');
+    ta.value = txt; document.body.appendChild(ta); ta.select();
+    document.execCommand('copy'); document.body.removeChild(ta);
+    showToast('Copied');
+  }
+});
+</script>
+</body>
+</html>

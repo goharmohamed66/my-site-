@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Client</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html,body{min-height:100vh;background:#F1F1F1;font-family:'Inter',system-ui,sans-serif;color:#1A1A1A;font-size:14px;}
+  .app-shell{display:flex;min-height:100vh;}
+  .app-sidebar{width:240px;min-width:240px;background:#EBEBEB;border-right:1px solid #DCDCDC;display:flex;flex-direction:column;height:calc(100vh - 48px);position:sticky;top:48px;}
+  .app-sidebar-items{padding:10px 8px;flex:1;display:flex;flex-direction:column;gap:2px;overflow-y:auto;}
+  .app-sidebar-item{padding:7px 12px;border-radius:8px;font-size:13px;color:#303030;display:flex;align-items:center;gap:10px;cursor:pointer;text-decoration:none;font-weight:800;}
+  .app-sidebar-item:hover{background:#E2E2E2;}
+  .app-sidebar-divider{height:1px;background:#DCDCDC;margin:8px 4px;}
+  .app-main{flex:1;min-width:0;}
+  .page{padding:24px 32px;width:100%;}
+  .page-bread{font-size:12px;color:#6D7175;margin-bottom:6px;}
+  .page-bread a{color:#6D7175;text-decoration:none;}
+  .page-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;gap:12px;flex-wrap:wrap;}
+  .page h1{font-size:22px;font-weight:700;}
+  .btn{display:inline-flex;align-items:center;gap:8px;padding:0 16px;height:36px;border-radius:8px;border:1px solid #1A1A1A;background:#1A1A1A;color:#FFFFFF;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;}
+  .btn-ghost{background:#FFFFFF;color:#1A1A1A;border-color:#DCDCDC;}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px;}
+  .card{background:#FFFFFF;border:1px solid #E1E3E5;border-radius:12px;padding:18px 20px;cursor:pointer;transition:border-color .12s,box-shadow .12s;}
+  .card:hover{border-color:#1A1A1A;box-shadow:0 2px 6px rgba(0,0,0,0.06);}
+  .card .name{font-size:15px;font-weight:700;margin-bottom:6px;}
+  .card .stats{font-size:12px;color:#6D7175;}
+  .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:center;justify-content:center;}
+  .modal{background:#FFFFFF;border-radius:12px;width:420px;max-width:92vw;padding:22px 24px;}
+  .modal h3{font-size:16px;font-weight:700;margin-bottom:14px;}
+  .modal input{width:100%;padding:10px 12px;border:1px solid #DCDCDC;border-radius:8px;font-size:13px;font-family:inherit;margin-bottom:14px;}
+  .modal-foot{display:flex;justify-content:flex-end;gap:8px;}
+  .err{background:#FEF2F2;border:1px solid #FECACA;color:#991B1B;border-radius:8px;padding:10px 12px;font-size:13px;margin-bottom:14px;}
+  .spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(0,0,0,0.15);border-top-color:#1A1A1A;border-radius:50%;animation:spin .7s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+</style>
+<link rel="stylesheet" href="app-shared.css?v=1777854724">
+<script src="topbar.js?v=1777854724"></script>
+<script src="sidebar-tools.js?v=1777854724"></script>
+</head>
+<body>
+<div class="app-shell">
+  <aside class="app-sidebar">
+    <nav class="app-sidebar-items">
+      <a href="index.html" class="app-sidebar-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/></svg><span>Orders</span></a>
+      <a href="shipping.html" class="app-sidebar-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg><span>Shipping Analytics</span></a>
+      <a href="ads.html" class="app-sidebar-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg><span>Ads Analysis</span></a>
+    </nav>
+  </aside>
+  <div class="app-main">
+    <div class="page">
+      <div class="page-bread"><a href="clients.html">Clients</a> › <span id="bcName">…</span></div>
+      <div class="page-head">
+        <h1 id="title">Client</h1>
+        <button class="btn" id="newBtn">+ New Brand</button>
+      </div>
+      <div id="errBox"></div>
+      <div id="grid" class="grid"><div class="empty"><span class="spinner"></span> Loading…</div></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const API_BASE  = 'https://indigo-dog-836598.hostingersite.com/api';
+const API_TOKEN = 'tk_4d2b9f7a8c6e1530a4f2d9b7e8c6a1f5';
+const clientId = parseInt(new URLSearchParams(location.search).get('id') || '0', 10);
+async function api(path, opts = {}) {
+  const headers = Object.assign({ 'Authorization': 'Bearer ' + API_TOKEN }, opts.headers || {});
+  if (opts.body && !headers['Content-Type']) headers['Content-Type'] = 'application/json';
+  const r = await fetch(API_BASE + path, { ...opts, headers });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(d.error || ('HTTP ' + r.status));
+  return d;
+}
+function escapeHtml(s){return String(s ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
+function showErr(msg){ $('errBox').innerHTML = msg ? '<div class="err">⚠ ' + escapeHtml(msg) + '</div>' : ''; }
+
+async function load() {
+  if (!clientId) { showErr('Missing client id'); return; }
+  try {
+    const c = await api('/clients.php?id=' + clientId);
+    $('title').textContent = c.name;
+    $('bcName').textContent = c.name;
+    document.title = c.name;
+    const d = await api('/brands.php?client_id=' + clientId);
+    const rows = d.rows || [];
+    if (!rows.length) { $('grid').innerHTML = '<div class="empty">No brands yet — click "+ New Brand".</div>'; return; }
+    $('grid').innerHTML = rows.map(b => `
+      <div class="card" data-id="${b.id}">
+        <div class="name">${escapeHtml(b.name)}</div>
+        <div class="stats">${b.product_count} product${b.product_count == 1 ? '' : 's'}</div>
+      </div>`).join('');
+    $('grid').querySelectorAll('.card').forEach(card => {
+      card.addEventListener('click', () => { window.location.href = '/brand.html?id=' + card.dataset.id; });
+    });
+  } catch (e) { showErr(e.message); $('grid').innerHTML = ''; }
+}
+
+function openNewModal() {
+  document.body.insertAdjacentHTML('beforeend', `
+    <div class="modal-bg" id="newModal">
+      <div class="modal">
+        <h3>New Brand</h3>
+        <div id="modalErr"></div>
+        <input type="text" id="newName" placeholder="Brand name (e.g. Atfaly, SUPER WINNER)" autofocus>
+        <div class="modal-foot">
+          <button class="btn btn-ghost" id="modalCancel">Cancel</button>
+          <button class="btn" id="modalSave">Create</button>
+        </div>
+      </div>
+    </div>`);
+  $('modalCancel').addEventListener('click', () => $('newModal').remove());
+  $('modalSave').addEventListener('click', async () => {
+    const name = $('newName').value.trim();
+    if (!name) { $('modalErr').innerHTML = '<div class="err">Name is required.</div>'; return; }
+    $('modalSave').disabled = true; $('modalSave').innerHTML = '<span class="spinner"></span> Creating sheets…';
+    try {
+      await api('/brands.php', { method: 'POST', body: JSON.stringify({ client_id: clientId, name }) });
+      $('newModal').remove();
+      load();
+    } catch (e) { $('modalErr').innerHTML = '<div class="err">⚠ ' + escapeHtml(e.message) + '</div>'; $('modalSave').disabled = false; $('modalSave').innerHTML = 'Create'; }
+  });
+}
+$('newBtn').addEventListener('click', openNewModal);
+load();
+
+// Switching brand from topbar → if the new brand belongs to a different
+// client, navigate to that client. "All brands" → the clients list.
+window.addEventListener('app:brandChanged', async (e) => {
+  const newId = (e.detail && e.detail.brandId) || 0;
+  if (!newId) { window.location.href = 'clients.html'; return; }
+  try {
+    const b = await api('/brands.php?id=' + newId);
+    if (b && b.client_id && b.client_id !== clientId) {
+      window.location.href = 'client.html?id=' + b.client_id;
+    } else {
+      load(); // same client, just refresh the brand grid
+    }
+  } catch (err) { /* silent — keep current page */ }
+});
+</script>
+</body>
+</html>

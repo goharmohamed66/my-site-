@@ -1,0 +1,17 @@
+/* app-shared.css — Single source of truth for components reused across pages.
+   Edit ONCE here and every page picks it up. Don't redeclare these in
+   per-page <style> blocks; only override per-page if a page genuinely needs
+   a different look (and prefer adding a modifier class instead). */
+
+/* Empty-state placeholder (e.g. "No sheets linked yet…").
+   Transparent background — sits flat on the page #F1F1F1, no card. */
+.empty{
+  padding:50px 20px;
+  text-align:center;
+  color:#6D7175;
+  font-size:13px;
+  background:transparent;
+  border:none;
+  border-radius:0;
+  grid-column:1/-1; /* harmless outside grid; lets it span full width inside one */
+}

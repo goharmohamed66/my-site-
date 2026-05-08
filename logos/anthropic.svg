@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 32" width="120" height="32">
+  <g fill="#181818">
+    <path d="M11.84 7.86L4.32 27h3.93l1.54-4.21h7.57L18.9 27h3.93l-7.52-19.14h-3.47zm-1.04 11.62l2.78-7.62 2.79 7.62h-5.57z"/>
+    <text x="28" y="22" font-family="Inter, system-ui, sans-serif" font-size="14" font-weight="700" letter-spacing="0.3">Anthropic</text>
+  </g>
+</svg>

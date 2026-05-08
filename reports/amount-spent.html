@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Amount Spent — Reports</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html,body{min-height:100vh;background:#F1F1F1;font-family:'Inter',system-ui,sans-serif;color:#1A1A1A;font-size:14px;}
+  .app-shell{display:flex;min-height:100vh;}
+  .app-sidebar{width:240px;min-width:240px;background:#EBEBEB;border-right:1px solid #DCDCDC;display:flex;flex-direction:column;height:calc(100vh - 48px);position:sticky;top:48px;font-family:'Inter',system-ui,sans-serif;}
+  .app-sidebar-items{padding:10px 8px;flex:1;display:flex;flex-direction:column;gap:2px;overflow-y:auto;}
+  .app-sidebar-item{padding:7px 12px;border-radius:8px;font-size:13px;color:#303030;display:flex;align-items:center;gap:10px;cursor:pointer;text-decoration:none;font-weight:800;background:transparent;}
+  .app-sidebar-item:hover{background:#E2E2E2;}
+  .app-sidebar-item.active{background:#FFFFFF;font-weight:600;box-shadow:0 0 0 0.5px rgba(0,0,0,0.1),0 1px 1px rgba(0,0,0,0.05);}
+  .app-sidebar-footer{padding:10px 8px;border-top:1px solid #DCDCDC;}
+  .app-sidebar-divider{height:1px;background:#DCDCDC;margin:8px 4px;}
+  .app-sidebar-group-header{padding:7px 12px;border-radius:8px;font-size:13px;color:#1A1A1A;font-weight:800;display:flex;align-items:center;gap:10px;user-select:none;background:transparent;}
+  .app-sidebar-group-items{display:flex;flex-direction:column;gap:2px;padding:2px 0;}
+  .app-main{flex:1;min-width:0;display:flex;flex-direction:column;}
+  .page{padding:24px 32px;width:100%;max-width:none;}
+  .page-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;gap:12px;flex-wrap:wrap;}
+  .page h1{font-size:22px;font-weight:700;letter-spacing:-0.3px;}
+  .page-bread{font-size:12px;color:#6D7175;margin-bottom:6px;}
+  .page-bread a{color:#6D7175;text-decoration:none;}
+  .panel{background:#FFFFFF;border:1px solid #E1E3E5;border-radius:12px;box-shadow:0 1px 0 rgba(0,0,0,0.05);overflow:hidden;margin-bottom:14px;}
+  .panel-pad{padding:14px 18px;}
+  .filter-bar{display:flex;gap:10px;flex-wrap:wrap;align-items:end;}
+  .field-label{display:block;font-size:11px;font-weight:700;color:#6D7175;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;}
+  .field-input{padding:9px 12px;border:1px solid #DCDCDC;border-radius:8px;font-size:13px;font-family:inherit;color:#1A1A1A;background:#FFFFFF;}
+  .field-input:focus{outline:none;border-color:#1A1A1A;box-shadow:0 0 0 1px #1A1A1A;}
+  .btn{display:inline-flex;align-items:center;gap:8px;padding:0 16px;height:36px;border-radius:8px;border:1px solid #1A1A1A;background:#1A1A1A;color:#FFFFFF;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;}
+  .btn:disabled{opacity:0.55;cursor:not-allowed;}
+  .btn-ghost{background:#FFFFFF;color:#1A1A1A;border-color:#DCDCDC;}
+  /* Multi-select dropdown — sized + colored to match Ads Analysis exactly */
+  .ms-wrap{position:relative;width:100%;}
+  .ms-trigger{width:100%;height:38px;border:1px solid #C9CCCF;border-radius:8px;padding:0 14px;background:#FFFFFF;font-family:inherit;font-size:13px;color:#1A1A1A;font-weight:500;cursor:pointer;display:flex;align-items:center;gap:8px;text-align:left;outline:none;box-shadow:0 1px 2px rgba(0,0,0,0.05);}
+  .ms-trigger:hover{border-color:#8C9196;}
+  .ms-trigger .ms-label{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .ms-trigger .ms-pill{background:#1A1A1A;color:#FFFFFF;font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;flex-shrink:0;}
+  .ms-trigger .ms-caret{width:14px;height:14px;flex-shrink:0;opacity:0.55;transition:transform .18s;}
+  .ms-wrap.open .ms-trigger .ms-caret{transform:rotate(180deg);}
+  /* Dropdown panel uses the page theme color (#F1F1F1) — matches the rest
+     of the SaaS background instead of pure white. */
+  .ms-pop{display:none;position:absolute;top:44px;left:0;right:0;background:#F1F1F1;border:1px solid #DCDCDC;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,0.12);z-index:1000;max-height:400px;overflow:hidden;}
+  .ms-wrap.open .ms-pop{display:flex;flex-direction:column;}
+  .ms-search{padding:12px 14px;border-bottom:1px solid #DCDCDC;position:relative;background:#F1F1F1;}
+  .ms-search input{width:100%;padding:9px 12px;border:1px solid #DCDCDC;border-radius:8px;font-size:13px;font-family:inherit;background:#FFFFFF;outline:none;}
+  .ms-search input:focus{border-color:#1A1A1A;}
+  /* "Personal accounts" header bar */
+  .ms-group-head{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid #DCDCDC;background:#F1F1F1;font-size:13px;font-weight:600;color:#1A1A1A;cursor:pointer;}
+  .ms-group-head input{margin:0;cursor:pointer;width:14px;height:14px;}
+  .ms-group-head .ms-group-name{flex:1;}
+  .ms-group-head .ms-group-count{color:#6D7175;font-size:12px;font-weight:500;}
+  .ms-list{overflow-y:auto;flex:1;padding:4px 0;background:#F1F1F1;}
+  .ms-row{display:flex;align-items:center;gap:10px;font-size:13px;cursor:pointer;padding:8px 14px 8px 28px;background:transparent;}
+  .ms-row:hover{background:#E2E2E2;}
+  .ms-row input{margin:0;cursor:pointer;width:14px;height:14px;}
+  .ms-row .ms-acc-name{flex:1;font-weight:600;color:#1A1A1A;}
+  .ms-row .ms-acc-meta{color:#6D7175;font-size:12px;}
+  /* Footer with Select all + Clear + Done */
+  .ms-foot{display:flex;align-items:center;gap:8px;padding:10px 14px;border-top:1px solid #DCDCDC;background:#F1F1F1;}
+  .ms-foot .ms-foot-left{flex:1;font-size:13px;color:#1A1A1A;font-weight:500;cursor:pointer;}
+  .ms-foot button{height:30px;padding:0 14px;border-radius:7px;font-size:12.5px;font-family:inherit;font-weight:600;cursor:pointer;border:1px solid #DCDCDC;background:#FFFFFF;color:#1A1A1A;}
+  .ms-foot button:hover{background:#FAFAFA;}
+  .ms-foot button.primary{background:#1A1A1A;color:#FFFFFF;border-color:#1A1A1A;}
+  .ms-foot button.primary:hover{background:#333333;}
+
+  /* Table styled exactly like the Overall Performance card in Ads Analysis */
+  .perf-card{background:#FFFFFF;border:1px solid #E1E3E5;border-radius:12px;overflow:hidden;margin-bottom:14px;}
+  .perf-title{background:#1A1A1A;color:#FAF9F5;padding:14px 18px;font-size:14px;font-weight:700;text-align:center;letter-spacing:0.2px;}
+  table.perf{width:100%;border-collapse:separate;border-spacing:0;font-size:13px;}
+  table.perf thead th{background:#F5F5F5;padding:14px 18px;font-size:13px;font-weight:900;color:#1A1A1A;text-transform:uppercase;letter-spacing:0.06em;border-bottom:1px solid #E1E3E5;text-align:left;}
+  table.perf thead th.right{text-align:right;}
+  table.perf tbody td{padding:14px 18px;border-bottom:1px solid #F1F1F1;font-variant-numeric:tabular-nums;color:#1A1A1A;}
+  table.perf tbody tr:last-child td{border-bottom:none;}
+  table.perf tbody tr:hover td{background:#FAFAFA;}
+  table.perf tbody td.right{text-align:right;}
+  table.perf tfoot .totals-row td{padding:14px 18px;background:#1A1A1A;color:#FAF9F5;font-weight:700;line-height:24px;white-space:nowrap;border:none;border-top:1px solid rgba(255,255,255,0.15);position:sticky;bottom:0;z-index:5;}
+  table.perf tfoot .totals-row td:first-child{font-size:12px;text-transform:uppercase;letter-spacing:0.06em;}
+  table.perf tfoot .totals-row td.right{font-size:16px;text-align:right;border-left:1px solid rgba(255,255,255,0.10);}
+  .table-scroll{max-height:560px;overflow-y:auto;}
+
+  .state{padding:60px 20px;text-align:center;color:#6D7175;font-size:13px;}
+  .spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(0,0,0,0.15);border-top-color:#1A1A1A;border-radius:50%;animation:spin .7s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .err{background:#FEF2F2;border:1px solid #FECACA;color:#991B1B;border-radius:8px;padding:10px 12px;font-size:13px;margin:0 18px 14px;}
+  .meta-line{font-size:12px;color:#6D7175;padding:10px 18px;border-bottom:1px solid #F1F1F1;background:#FAFAFA;}
+</style>
+<script src="../datepicker.js?v=1777792141"></script>
+<script src="../topbar.js?v=1777792141"></script>
+<script src="../sidebar-tools.js?v=1777792141"></script>
+</head>
+<body>
+<div class="app-shell">
+  <aside class="app-sidebar">
+    <nav class="app-sidebar-items">
+      <a href="../index.html" class="app-sidebar-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg><span>Orders</span>
+      </a>
+      <a href="../shipping.html" class="app-sidebar-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg><span>Shipping Analytics</span>
+      </a>
+      <a href="../ads.html" class="app-sidebar-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg><span>Ads Analysis</span>
+      </a>
+      <div class="app-sidebar-divider"></div>
+      <div class="app-sidebar-group">
+        <div class="app-sidebar-group-header">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor" aria-hidden="true"><path d="M11.452 0h1.698c.47 0 .85.38.85.85v1.699c0 .469-.38.85-.85.85h-1.699a.85.85 0 0 1-.849-.85v-1.7c0-.469.38-.849.85-.849M13.15 5.301h-1.699a.85.85 0 0 0-.849.85V7.85c0 .469.38.849.85.849h1.698c.47 0 .85-.38.85-.85V6.15a.85.85 0 0 0-.85-.849M.85 10.602h1.699c.469 0 .85.38.85.85v1.698c0 .47-.381.85-.85.85h-1.7A.85.85 0 0 1 0 13.15v-1.699c0-.469.38-.85.85-.85M7.85 10.602h-1.7a.85.85 0 0 0-.85.85v1.698c.001.47.381.85.85.85h1.7c.469 0 .849-.38.849-.85v-1.699a.85.85 0 0 0-.85-.85M13.15 10.602h-1.699a.85.85 0 0 0-.849.85v1.698c0 .47.38.85.85.85h1.698c.47 0 .85-.38.85-.85v-1.699a.85.85 0 0 0-.85-.85M6.15 5.301h1.7c.469 0 .849.38.849.85V7.85c0 .469-.38.849-.85.849H6.15a.85.85 0 0 1-.85-.85V6.15c.001-.469.381-.849.85-.849M2.549 5.301h-1.7a.85.85 0 0 0-.849.85V7.85c0 .469.38.849.85.849h1.699c.469 0 .85-.38.85-.85V6.15a.85.85 0 0 0-.85-.849M7.85 0h-1.7a.85.85 0 0 0-.85.85v1.699c.001.469.381.85.85.85h1.7c.469 0 .849-.381.849-.85v-1.7A.85.85 0 0 0 7.849 0M.85 0h1.699c.469 0 .85.38.85.85v1.699c0 .469-.381.85-.85.85h-1.7A.85.85 0 0 1 0 2.548v-1.7C0 .38.38 0 .85 0"/></svg>
+          <span>All tools</span>
+        </div>
+        <div class="app-sidebar-group-items">
+          <a href="../copywriting.html" class="app-sidebar-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg><span>Copywriting</span></a>
+          <a href="../landing-page.html" class="app-sidebar-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg><span>Landing page content</span></a>
+          <a href="../headlines.html" class="app-sidebar-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4v16"/><path d="M18 4v16"/><path d="M6 12h12"/></svg><span>Headlines Generator</span></a>
+        </div>
+      </div>
+      <div class="app-sidebar-divider"></div>
+      <div class="app-sidebar-group">
+        <div class="app-sidebar-group-header">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4"/><path d="M12 18v4"/><path d="m4.93 4.93 2.83 2.83"/><path d="m16.24 16.24 2.83 2.83"/><path d="M2 12h4"/><path d="M18 12h4"/><path d="m4.93 19.07 2.83-2.83"/><path d="m16.24 7.76 2.83-2.83"/></svg>
+          <span>Automation Tools</span>
+        </div>
+        <div class="app-sidebar-group-items">
+          <a href="../landing-auto.html" class="app-sidebar-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg><span>Landing Page Auto</span></a>
+        </div>
+      </div>
+    </nav>
+    <div class="app-sidebar-footer">
+      <a href="../settings.html" class="app-sidebar-item" style="text-decoration:none;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg><span>Settings</span>
+      </a>
+    </div>
+  </aside>
+
+  <div class="app-main">
+    <div class="page">
+      <div class="page-bread"><a href="../index.html">Home</a> › Reports › Amount Spent</div>
+      <div class="page-head" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+        <h1>Amount Spent</h1>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+          <!-- Same date trigger button as Ads Analysis -->
+          <button type="button" id="dateTrigger" class="adp-trigger" data-adp-attached="0"></button>
+          <button class="btn" id="runBtn">↻ Refresh</button>
+        </div>
+      </div>
+
+      <!-- Ad accounts picker (same dropdown design as Ads Analysis).
+           overflow:visible is REQUIRED so the absolute-positioned dropdown
+           list isn't clipped by the panel's default overflow:hidden. -->
+      <div class="panel" style="padding:10px 14px;margin-bottom:14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;overflow:visible;position:relative;z-index:50;">
+        <span style="font-size:12px;font-weight:700;color:#1A1A1A;white-space:nowrap;">Load from Meta</span>
+        <div class="ms-wrap" id="acctWrap" style="flex:1;min-width:240px;">
+          <button type="button" class="ms-trigger" id="acctTrigger">
+            <span class="ms-label" id="acctLabel">Loading…</span>
+            <span class="ms-pill" id="acctPill" style="display:none;">0</span>
+            <svg class="ms-caret" viewBox="0 0 20 20" fill="none"><path d="M5 7l5 5 5-5" stroke="#1A1A1A" stroke-width="2" fill="none" stroke-linecap="round"/></svg>
+          </button>
+          <div class="ms-pop">
+            <div class="ms-search"><input type="text" id="acctSearch" placeholder="Search for an ad account"></div>
+            <label class="ms-group-head" id="acctGroupHead">
+              <input type="checkbox" id="acctGroupCheck">
+              <span class="ms-group-name">Personal accounts</span>
+              <span class="ms-group-count" id="acctGroupCount">0 ad accounts</span>
+            </label>
+            <div class="ms-list" id="acctList"></div>
+            <div class="ms-foot">
+              <span class="ms-foot-left" id="selectAll">Select all (<span id="acctTotal">0</span>)</span>
+              <button type="button" id="selectNone">Clear</button>
+              <button type="button" class="primary" id="acctDone">Done</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Result table styled like Overall Performance -->
+      <div class="perf-card">
+        <div class="perf-title">Amount Spent</div>
+        <div id="errBox"></div>
+        <div class="table-scroll">
+          <table class="perf">
+            <thead>
+              <tr>
+                <th>Ad account</th>
+                <th class="right">Spend</th>
+              </tr>
+            </thead>
+            <tbody id="tbody">
+              <tr><td colspan="2" class="state">—</td></tr>
+            </tbody>
+            <tfoot id="tfoot"></tfoot>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const API_BASE  = 'https://indigo-dog-836598.hostingersite.com/api';
+const API_TOKEN = 'tk_4d2b9f7a8c6e1530a4f2d9b7e8c6a1f5';
+async function api(path, opts = {}) {
+  const headers = Object.assign({ 'Authorization': 'Bearer ' + API_TOKEN }, opts.headers || {});
+  if (opts.body && !headers['Content-Type']) headers['Content-Type'] = 'application/json';
+  const r = await fetch(API_BASE + path, { ...opts, headers });
+  if (!r.ok) throw new Error('API ' + r.status);
+  return r.json();
+}
+
+// ── DATE RANGE (uses the SAME AppDatePicker instance as Ads Analysis) ──
+// Attach the picker to our in-page button so user gets the full calendar UX,
+// + subscribe so we always know the current range when Refresh is clicked.
+let dateRange = { from: '', to: '' };
+function syncDateRange() {
+  if (!window.AppDatePicker) return;
+  const r = window.AppDatePicker.getRange();
+  dateRange = { from: r.from || '', to: r.to || '' };
+}
+function tryAttachDatePicker(retriesLeft) {
+  if (window.AppDatePicker && typeof window.AppDatePicker.attach === 'function') {
+    AppDatePicker.attach(document.getElementById('dateTrigger'), {
+      onChange: ({ from, to }) => {
+        dateRange = { from: from || '', to: to || '' };
+        // Auto-refresh when date changes — no manual Refresh click needed.
+        if (selectedSet.size && dateRange.from && dateRange.to) {
+          clearTimeout(_refreshT);
+          _refreshT = setTimeout(runReport, 250);
+        }
+      }
+    });
+    syncDateRange();
+    return;
+  }
+  if (retriesLeft > 0) setTimeout(() => tryAttachDatePicker(retriesLeft - 1), 120);
+}
+tryAttachDatePicker(20);
+
+// ── LOAD AVAILABLE AD ACCOUNTS ───────────────────────────────────────
+let allAccounts = [];     // [{ id: 'act_X', name, currency, connector_id }]
+let selectedSet = new Set();
+let acctSearchTerm = '';
+
+let loadDiagnostics = { connectors: 0, accounts: 0, errors: [] };
+
+async function loadAccounts() {
+  $('acctLabel').textContent = 'Loading connectors…';
+  let data;
+  try {
+    data = await api('/connectors.php?type=ads&provider=meta');
+  } catch (e) {
+    showErr('Could not reach /connectors.php — ' + e.message);
+    $('acctLabel').textContent = 'No ad accounts';
+    return;
+  }
+  // Tolerate either shape: { rows: [...] } or [...]
+  const conns = Array.isArray(data) ? data : (data.rows || data.connectors || []);
+  loadDiagnostics = { connectors: conns.length, accounts: 0, errors: [] };
+  allAccounts = [];
+  if (!conns.length) {
+    showErr('No Meta connectors are linked. Open Connectors → Meta and connect an ad account first.');
+    $('acctLabel').textContent = 'No ad accounts';
+    renderAccounts();
+    return;
+  }
+  $('acctLabel').textContent = 'Loading accounts from ' + conns.length + ' connector' + (conns.length > 1 ? 's' : '') + '…';
+  await Promise.all(conns.map(async c => {
+    try {
+      const r = await api('/meta.php?action=accounts&connector_id=' + c.id);
+      const rows = Array.isArray(r) ? r : (r.rows || r.accounts || []);
+      rows.forEach(a => allAccounts.push({
+        id: a.id, name: a.name || a.id, currency: a.currency || '', connector_id: c.id,
+      }));
+    } catch (e) {
+      loadDiagnostics.errors.push((c.label || c.name || ('connector ' + c.id)) + ': ' + e.message);
+    }
+  }));
+  loadDiagnostics.accounts = allAccounts.length;
+  // Brand-aware filter — restrict to the active brand's ad accounts.
+  try {
+    const ab = window.getActiveBrand ? window.getActiveBrand() : null;
+    const allowed = ab && ab.meta && Array.isArray(ab.meta.ad_account_ids) ? ab.meta.ad_account_ids : null;
+    if (allowed && allowed.length) {
+      const set = new Set(allowed.map(String));
+      // Account ids may come as 'act_1234' or '1234' — normalize.
+      const normalize = v => String(v).replace(/^act_/, '');
+      allAccounts = allAccounts.filter(a => set.has(String(a.id)) || set.has(normalize(a.id)) || set.has('act_' + normalize(a.id)));
+    }
+  } catch (e) {}
+  // Restore selection from localStorage if available, but drop stale ids
+  const validIds = new Set(allAccounts.map(a => a.id));
+  const savedSel = JSON.parse(localStorage.getItem('app.report.spend.sel') || '[]')
+    .filter(id => validIds.has(id));
+  selectedSet = new Set(savedSel.length ? savedSel : allAccounts.map(a => a.id));
+  // Surface any per-connector errors inline so they aren't silent
+  if (loadDiagnostics.errors.length) {
+    showErr('Loaded ' + loadDiagnostics.accounts + ' account(s) from '
+      + (loadDiagnostics.connectors - loadDiagnostics.errors.length) + '/' + loadDiagnostics.connectors
+      + ' connectors. Errors: ' + loadDiagnostics.errors.join(' · '));
+  } else if (!allAccounts.length) {
+    showErr('Connectors returned 0 ad accounts. Re-authorize Meta in Connectors and confirm the user has ad-account access.');
+  } else {
+    showErr('');
+  }
+  renderAccounts();
+}
+function updateAcctTrigger() {
+  const total = allAccounts.length;
+  const sel   = selectedSet.size;
+  const label = $('acctLabel');
+  const pill  = $('acctPill');
+  if (!total) {
+    label.textContent = 'No ad accounts';
+    pill.style.display = 'none';
+    return;
+  }
+  if (sel === 0)         label.textContent = '— ' + total + ' accounts available — select to load';
+  else if (sel === total) label.textContent = 'All ad accounts';
+  else if (sel === 1)    {
+    const acct = allAccounts.find(a => selectedSet.has(a.id));
+    label.textContent = acct ? acct.name : '1 account';
+  }
+  else label.textContent = sel + ' of ' + total + ' accounts';
+  pill.textContent = sel;
+  pill.style.display = sel > 0 ? '' : 'none';
+}
+
+function renderAccounts() {
+  updateAcctTrigger();
+  const term = acctSearchTerm.toLowerCase();
+  const filtered = allAccounts
+    .filter(a => !term || a.name.toLowerCase().includes(term) || (a.id || '').includes(term))
+    .sort((a, b) => a.name.localeCompare(b.name));
+  // Group head + count
+  const total = allAccounts.length;
+  $('acctTotal').textContent = total;
+  $('acctGroupCount').textContent = total + ' ad account' + (total !== 1 ? 's' : '');
+  const allChecked = total > 0 && selectedSet.size === total;
+  const someChecked = selectedSet.size > 0 && selectedSet.size < total;
+  const grpCb = $('acctGroupCheck');
+  grpCb.checked = allChecked;
+  grpCb.indeterminate = someChecked;
+  // Account rows — each shows: checkbox · name · "EGP · <full account_id digits>"
+  $('acctList').innerHTML = filtered.length
+    ? filtered.map(a => {
+        const numericId = (a.id || '').replace(/^act_/, '');
+        const meta = (a.currency || '') + (numericId ? ' · ' + numericId : '');
+        return `<label class="ms-row">
+          <input type="checkbox" data-id="${a.id}" ${selectedSet.has(a.id) ? 'checked' : ''}>
+          <span class="ms-acc-name">${escapeHtml(a.name)}</span>
+          <span class="ms-acc-meta">${escapeHtml(meta)}</span>
+        </label>`;
+      }).join('')
+    : '<div style="padding:18px;color:#6D7175;font-size:13px;text-align:center;">No matches.</div>';
+  $('acctList').querySelectorAll('input').forEach(cb => cb.addEventListener('change', () => {
+    if (cb.checked) selectedSet.add(cb.dataset.id); else selectedSet.delete(cb.dataset.id);
+    persistAndRefresh();
+  }));
+}
+
+// Save selection + auto-refresh report (debounced) so user never has to
+// click "Refresh" after toggling an account on/off.
+let _refreshT;
+function persistAndRefresh() {
+  localStorage.setItem('app.report.spend.sel', JSON.stringify([...selectedSet]));
+  updateAcctTrigger();
+  $('acctGroupCheck').checked = allAccounts.length > 0 && selectedSet.size === allAccounts.length;
+  $('acctGroupCheck').indeterminate = selectedSet.size > 0 && selectedSet.size < allAccounts.length;
+  clearTimeout(_refreshT);
+  _refreshT = setTimeout(() => { if (selectedSet.size && dateRange.from && dateRange.to) runReport(); }, 250);
+}
+
+// Dropdown open/close + outside-click + search
+$('acctTrigger').addEventListener('click', (e) => {
+  e.stopPropagation();
+  $('acctWrap').classList.toggle('open');
+  if ($('acctWrap').classList.contains('open')) setTimeout(() => $('acctSearch').focus(), 50);
+});
+document.addEventListener('click', (e) => {
+  if (!$('acctWrap').contains(e.target)) $('acctWrap').classList.remove('open');
+});
+$('acctSearch').addEventListener('input', (e) => { acctSearchTerm = e.target.value; renderAccounts(); });
+// Group "Personal accounts" checkbox toggles ALL
+$('acctGroupCheck').addEventListener('change', (e) => {
+  e.stopPropagation();
+  selectedSet = e.target.checked ? new Set(allAccounts.map(a => a.id)) : new Set();
+  renderAccounts();
+  persistAndRefresh();
+});
+$('selectAll').addEventListener('click', () => {
+  selectedSet = new Set(allAccounts.map(a => a.id));
+  renderAccounts();
+  persistAndRefresh();
+});
+$('selectNone').addEventListener('click', () => {
+  selectedSet = new Set();
+  renderAccounts();
+  persistAndRefresh();
+});
+$('acctDone').addEventListener('click', () => {
+  $('acctWrap').classList.remove('open');
+});
+function escapeHtml(s) {
+  return String(s ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+
+// ── RUN REPORT ───────────────────────────────────────────────────────
+$('runBtn').addEventListener('click', runReport);
+
+async function runReport() {
+  syncDateRange();
+  const since = dateRange.from;
+  const until = dateRange.to;
+  if (!since || !until) { showErr('Pick a date range from the calendar button in the topbar.'); return; }
+  if (!selectedSet.size) { showErr('Pick at least one ad account.'); return; }
+  showErr('');
+  $('runBtn').disabled = true;
+  $('runBtn').innerHTML = '<span class="spinner"></span> Loading…';
+  $('tbody').innerHTML = '<tr><td colspan="2" class="state"><span class="spinner"></span> Fetching spend per account…</td></tr>';
+  $('tfoot').innerHTML = '';
+
+  const targets = allAccounts.filter(a => selectedSet.has(a.id));
+  const results = [];
+  let done = 0;
+  await Promise.all(targets.map(async a => {
+    try {
+      const r = await api(
+        '/meta.php?action=account_spend&connector_id=' + a.connector_id
+        + '&account_id=' + encodeURIComponent(a.id)
+        + '&since=' + encodeURIComponent(since)
+        + '&until=' + encodeURIComponent(until)
+      );
+      results.push({ ...a, spend: parseFloat(r.spend) || 0, currency: r.currency || a.currency || '' });
+    } catch (e) {
+      results.push({ ...a, spend: 0, error: e.message });
+    } finally {
+      done++;
+    }
+  }));
+
+  // Sort by spend desc
+  results.sort((a, b) => b.spend - a.spend);
+  // Sum total per currency (in case of mixed currencies)
+  const totalsByCcy = {};
+  results.forEach(r => {
+    const c = r.currency || '—';
+    totalsByCcy[c] = (totalsByCcy[c] || 0) + r.spend;
+  });
+  const grandTotal = results.reduce((s, r) => s + r.spend, 0);
+
+  $('tbody').innerHTML = results.map(r => `
+    <tr>
+      <td>${escapeHtml(r.name)} ${r.error ? `<span style="color:#D72C0D;font-size:11px;">⚠ ${escapeHtml(r.error)}</span>` : ''}</td>
+      <td class="right">${r.spend.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${escapeHtml(r.currency || '')}</td>
+    </tr>`).join('');
+
+  const totalLabel = Object.keys(totalsByCcy).length === 1
+    ? grandTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ' + Object.keys(totalsByCcy)[0]
+    : Object.entries(totalsByCcy).map(([c, v]) => v.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' ' + c).join(' · ');
+
+  $('tfoot').innerHTML = `
+    <tr class="totals-row">
+      <td>Totals</td>
+      <td class="right">${totalLabel}</td>
+    </tr>`;
+  $('runBtn').disabled = false;
+  $('runBtn').innerHTML = '↻ Refresh';
+}
+
+function showErr(msg) {
+  if (!msg) { $('errBox').innerHTML = ''; return; }
+  $('errBox').innerHTML = '<div class="err">⚠ ' + escapeHtml(msg) + '</div>';
+}
+
+// ── INIT ─────────────────────────────────────────────────────────────
+// Auto-load accounts AND auto-run report on page open (no need to click
+// Refresh — the table is always populated when the user lands here).
+(async () => {
+  try {
+    await loadAccounts();
+  } catch (err) {
+    showErr('Failed to load ad accounts: ' + err.message);
+    return;
+  }
+  // Wait briefly for AppDatePicker to settle, then sync + run
+  setTimeout(() => {
+    syncDateRange();
+    if (selectedSet.size && dateRange.from && dateRange.to) runReport();
+  }, 400);
+})();
+
+// Re-load accounts + re-run when the user switches brand from the topbar.
+window.addEventListener('app:brandChanged', async () => {
+  try { localStorage.removeItem('app.report.spend.sel'); } catch(_){}
+  await loadAccounts();
+  if (selectedSet.size && dateRange.from && dateRange.to) runReport();
+});
+</script>
+</body>
+</html>

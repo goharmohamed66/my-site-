@@ -1,0 +1,1107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Copywriting</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Almarai:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html,body{min-height:100vh;background:#F1F1F1;font-family:'Inter','Almarai',system-ui,sans-serif;color:#1A1A1A;font-size:14px;}
+  .app-shell{display:flex;min-height:100vh;}
+  .app-sidebar{width:240px;min-width:240px;background:#EBEBEB;border-right:1px solid #DCDCDC;display:flex;flex-direction:column;height:calc(100vh - 48px);position:sticky;top:48px;font-family:'Inter',system-ui,sans-serif;}
+  .app-sidebar-items{padding:10px 8px;flex:1;display:flex;flex-direction:column;gap:2px;overflow-y:auto;}
+  .app-sidebar-item{padding:7px 12px;border-radius:8px;font-size:13px;color:#303030;display:flex;align-items:center;gap:10px;cursor:pointer;text-decoration:none;font-weight:800;background:transparent;}
+  .app-sidebar-item:hover{background:#E2E2E2;}
+  .app-sidebar-item.active{background:#FFFFFF;font-weight:600;box-shadow:0 0 0 0.5px rgba(0,0,0,0.1),0 1px 1px rgba(0,0,0,0.05);}
+  .app-sidebar-footer{padding:10px 8px;border-top:1px solid #DCDCDC;}
+  .app-sidebar-divider{height:1px;background:#DCDCDC;margin:8px 4px;}
+  .app-sidebar-group-header{padding:7px 12px;border-radius:8px;font-size:12px;color:#6D7175;font-weight:800;display:flex;align-items:center;gap:10px;user-select:none;background:transparent;text-transform:uppercase;letter-spacing:0.4px;}
+  .app-sidebar-group-items{display:flex;flex-direction:column;gap:2px;padding:2px 0;}
+  .app-main{flex:1;min-width:0;display:flex;flex-direction:column;}
+  .page{padding:24px 32px;max-width:none;width:100%;}
+  .page-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:24px;align-items:start;}
+  .page-col-left{position:sticky;top:72px;}
+  @media (max-width: 1100px){
+    .page-grid{grid-template-columns:1fr;}
+    .page-col-left{position:static;}
+  }
+  .page h1{font-size:22px;font-weight:700;letter-spacing:-0.3px;margin-bottom:6px;}
+  .page p.sub{font-size:13px;color:#6D7175;margin-bottom:20px;}
+  .panel{background:#FFFFFF;border:1px solid #E1E3E5;border-radius:12px;padding:20px;margin-bottom:16px;box-shadow:0 1px 0 rgba(0,0,0,0.05);}
+  .panel-title{font-size:14px;font-weight:600;color:#1A1A1A;margin-bottom:4px;display:flex;align-items:center;justify-content:space-between;gap:8px;}
+  .panel-desc{font-size:12px;color:#6D7175;margin-bottom:14px;}
+  .field{margin-bottom:14px;}
+  .field-label{display:flex;align-items:center;justify-content:space-between;font-size:13px;color:#1A1A1A;font-weight:500;margin-bottom:6px;}
+  .field-hint{font-size:11px;color:#8A8A8A;font-weight:400;}
+  .field-input,.field-textarea{width:100%;padding:10px 12px;border:1px solid #DCDCDC;border-radius:8px;font-size:13px;font-family:inherit;color:#1A1A1A;background:#F1F1F1;line-height:1.55;}
+  .field-input:focus,.field-textarea:focus{outline:none;border-color:#1A1A1A;box-shadow:0 0 0 1px #1A1A1A;background:#FFFFFF;}
+  .field-textarea{min-height:110px;resize:vertical;direction:rtl;text-align:right;font-family:'Almarai','Inter',system-ui,sans-serif;}
+  .btn{display:inline-flex;align-items:center;gap:8px;padding:0 18px;height:38px;border-radius:8px;border:1px solid #1A1A1A;background:#1A1A1A;color:#FFFFFF;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;}
+  .btn:hover:not(:disabled){background:#303030;}
+  .btn:disabled{opacity:0.55;cursor:not-allowed;}
+  .btn-ghost{background:#FFFFFF;color:#1A1A1A;border-color:#DCDCDC;}
+  .btn-ghost:hover:not(:disabled){background:#F5F5F5;}
+  .out-card{background:#FFFFFF;border:1px solid #E1E3E5;border-radius:12px;padding:24px;box-shadow:0 1px 0 rgba(0,0,0,0.05);min-height:220px;}
+  .copies-list .copy-card{background:#FFFFFF;}
+  .copies-list .copy-card-head{background:#F1F1F1;}
+  .out-empty{text-align:center;padding:40px 20px;color:#8A8A8A;font-size:13px;}
+  .out-empty .ic{width:56px;height:56px;border-radius:14px;background:#F1F1F1;display:inline-flex;align-items:center;justify-content:center;margin-bottom:14px;color:#6D7175;}
+  .out-text{white-space:pre-wrap;line-height:1.85;font-size:15px;color:#1A1A1A;direction:rtl;text-align:right;font-family:'Almarai','Inter',system-ui,sans-serif;}
+  .copies-list{display:flex;flex-direction:column;gap:14px;}
+  .copy-card{border:1px solid #E1E3E5;border-radius:10px;background:#FAFAFA;overflow:hidden;transition:background .12s,border-color .12s;}
+  .copy-card:hover{background:#FFFFFF;border-color:#C9CCCF;}
+  .copy-card-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;background:#F1F1F1;border-bottom:1px solid #E1E3E5;}
+  .copy-card-head .label{display:inline-flex;align-items:center;gap:8px;font-family:'Inter',system-ui,sans-serif;font-size:12px;font-weight:600;color:#1A1A1A;}
+  .copy-card-head .num{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:#1A1A1A;color:#FFFFFF;font-size:11px;font-weight:700;font-variant-numeric:tabular-nums;}
+  .copy-card-head .angle{padding:3px 9px;background:#FFFFFF;border:1px solid #DCDCDC;border-radius:6px;font-size:11px;color:#6D7175;font-weight:500;}
+  .copy-card-head .copy-one{flex-shrink:0;height:30px;padding:0 12px;font-size:12px;font-weight:500;border-radius:6px;border:1px solid #DCDCDC;background:#FFFFFF;color:#1A1A1A;cursor:pointer;display:inline-flex;align-items:center;gap:5px;font-family:'Inter',system-ui,sans-serif;}
+  .copy-card-head .copy-one:hover{background:#F5F5F5;border-color:#1A1A1A;}
+  .copy-card-head .copy-one.copied{background:#0E8345;color:#FFFFFF;border-color:#0E8345;}
+  .copy-card-body{padding:16px 18px;white-space:pre-wrap;line-height:1.85;font-size:15px;color:#1A1A1A;direction:rtl;text-align:right;font-family:'Almarai','Inter',system-ui,sans-serif;}
+  .out-toolbar{display:flex;justify-content:flex-end;gap:8px;margin-bottom:14px;}
+  .err{background:#FEF2F2;border:1px solid #FECACA;color:#991B1B;border-radius:8px;padding:10px 12px;font-size:13px;margin-top:10px;}
+  .spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1A1A1A;color:#FFFFFF;padding:10px 18px;border-radius:8px;font-size:13px;z-index:300;opacity:0;transition:opacity .2s;pointer-events:none;}
+  .toast.show{opacity:1;}
+  .toast.error{background:#D72C0D;}
+  .key-row{display:flex;align-items:center;gap:8px;}
+  .key-row input{flex:1;}
+  .counter{display:inline-flex;align-items:center;border:1px solid #DCDCDC;border-radius:8px;background:#FFFFFF;height:38px;overflow:hidden;}
+  .counter button{width:34px;height:38px;border:none;background:#FFFFFF;color:#1A1A1A;font-size:16px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;font-family:inherit;}
+  .counter button:hover:not(:disabled){background:#F1F1F1;}
+  .counter button:disabled{color:#C9CCCF;cursor:not-allowed;}
+  .counter .val{min-width:32px;text-align:center;font-size:13px;font-weight:600;color:#1A1A1A;border-left:1px solid #DCDCDC;border-right:1px solid #DCDCDC;height:38px;display:inline-flex;align-items:center;justify-content:center;font-variant-numeric:tabular-nums;}
+  .counter-label{font-size:12px;color:#6D7175;font-weight:500;margin-left:4px;}
+</style>
+<script src="topbar.js?v=1777784143"></script>
+<script src="sidebar-tools.js?v=1777784143"></script>
+<script src="https://cdn.jsdelivr.net/npm/mammoth@1.6.0/mammoth.browser.min.js"></script>
+<script src="ai-keys.js?v=1777784143"></script>
+<script src="google-picker.js?v=1777784143"></script>
+</head>
+<body>
+<div class="app-shell">
+  <aside class="app-sidebar">
+    <nav class="app-sidebar-items">
+      <a href="index.html" class="app-sidebar-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg><span>Orders</span>
+      </a>
+      <a href="shipping.html" class="app-sidebar-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg><span>Shipping Analytics</span>
+      </a>
+      <a href="ads.html" class="app-sidebar-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg><span>Ads Analysis</span>
+      </a>
+      <div class="app-sidebar-divider"></div>
+      <div class="app-sidebar-group">
+        <div class="app-sidebar-group-header">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor" aria-hidden="true"><path d="M11.452 0h1.698c.47 0 .85.38.85.85v1.699c0 .469-.38.85-.85.85h-1.699a.85.85 0 0 1-.849-.85v-1.7c0-.469.38-.849.85-.849M13.15 5.301h-1.699a.85.85 0 0 0-.849.85V7.85c0 .469.38.849.85.849h1.698c.47 0 .85-.38.85-.85V6.15a.85.85 0 0 0-.85-.849M.85 10.602h1.699c.469 0 .85.38.85.85v1.698c0 .47-.381.85-.85.85h-1.7A.85.85 0 0 1 0 13.15v-1.699c0-.469.38-.85.85-.85M7.85 10.602h-1.7a.85.85 0 0 0-.85.85v1.698c.001.47.381.85.85.85h1.7c.469 0 .849-.38.849-.85v-1.699a.85.85 0 0 0-.85-.85M13.15 10.602h-1.699a.85.85 0 0 0-.849.85v1.698c0 .47.38.85.85.85h1.698c.47 0 .85-.38.85-.85v-1.699a.85.85 0 0 0-.85-.85M6.15 5.301h1.7c.469 0 .849.38.849.85V7.85c0 .469-.38.849-.85.849H6.15a.85.85 0 0 1-.85-.85V6.15c.001-.469.381-.849.85-.849M2.549 5.301h-1.7a.85.85 0 0 0-.849.85V7.85c0 .469.38.849.85.849h1.699c.469 0 .85-.38.85-.85V6.15a.85.85 0 0 0-.85-.849M7.85 0h-1.7a.85.85 0 0 0-.85.85v1.699c.001.469.381.85.85.85h1.7c.469 0 .849-.381.849-.85v-1.7A.85.85 0 0 0 7.849 0M.85 0h1.699c.469 0 .85.38.85.85v1.699c0 .469-.381.85-.85.85h-1.7A.85.85 0 0 1 0 2.548v-1.7C0 .38.38 0 .85 0"/></svg>
+          <span>All tools</span>
+        </div>
+        <div class="app-sidebar-group-items">
+          <a href="copywriting.html" class="app-sidebar-item active">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg><span>Copywriting</span>
+          </a>
+          <a href="landing-page.html" class="app-sidebar-item">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg><span>Landing page content</span>
+          </a>
+          <a href="headlines.html" class="app-sidebar-item">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4v16"/><path d="M18 4v16"/><path d="M6 12h12"/></svg><span>Headlines Generator</span>
+          </a>
+        </div>
+      </div>
+      <div class="app-sidebar-divider"></div>
+      <div class="app-sidebar-group">
+        <div class="app-sidebar-group-header">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4"/><path d="M12 18v4"/><path d="m4.93 4.93 2.83 2.83"/><path d="m16.24 16.24 2.83 2.83"/><path d="M2 12h4"/><path d="M18 12h4"/><path d="m4.93 19.07 2.83-2.83"/><path d="m16.24 7.76 2.83-2.83"/></svg>
+          <span>Automation Tools</span>
+        </div>
+        <div class="app-sidebar-group-items">
+          <a href="landing-auto.html" class="app-sidebar-item">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg><span>Landing Page Auto</span>
+          </a>
+        </div>
+      </div>
+    </nav>
+    <div class="app-sidebar-footer">
+      <a href="settings.html" class="app-sidebar-item" style="text-decoration:none;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        <span>Settings</span>
+      </a>
+    </div>
+  </aside>
+  <div class="app-main">
+    <div class="page">
+      <h1 style="margin-bottom:18px;">Copywriting</h1>
+      <div class="page-grid">
+       <div class="page-col-left">
+      <div class="panel">
+        <div class="field">
+          <div class="field-label" style="justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;">
+            <span>Product details &amp; customer reviews <span style="color:#D72C0D;">*</span></span>
+            <span style="display:inline-flex;gap:6px;flex-wrap:wrap;">
+              <label for="folderInput" style="display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border:1px solid #DCDCDC;border-radius:6px;background:#FFFFFF;cursor:pointer;font-size:11px;font-weight:600;color:#1A1A1A;">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                Upload from device
+              </label>
+              <input id="folderInput" type="file" webkitdirectory directory multiple style="display:none;">
+              <button type="button" id="driveFolderBtn" style="display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border:1px solid #DCDCDC;border-radius:6px;background:#FFFFFF;cursor:pointer;font-size:11px;font-weight:600;color:#1A1A1A;font-family:inherit;">
+                <img src="logos/google-drive.svg" width="14" height="14" alt="" style="display:block;">
+                Upload from Drive
+              </button>
+            </span>
+          </div>
+          <textarea class="field-textarea" id="productInput" placeholder="Example: Book 'Awwal Marra Atadabbar Al-Quran' by Adham Al-Sharqawy. Helps the reader understand the Quran like never before. Price 250 EGP. Shipping nationwide. Reviews: 'changed my life', 'I recommended it to everyone', 'finally I understand what I'm reading'..."></textarea>
+          <div id="folderSummary" style="display:none;margin-top:8px;padding:8px 12px;background:#F0FDF4;border:1px solid #BBF7D0;border-radius:6px;font-size:11px;color:#0F5132;line-height:1.5;"></div>
+        </div>
+
+        <div class="field">
+          <div class="field-label"><span>Angles (one per line, optional)</span><span class="field-hint">Each copy will use one angle, in order.</span></div>
+          <textarea class="field-textarea" id="anglesInput" placeholder="مثال:&#10;الخوف من ضياع الوقت&#10;الفضول&#10;الفخر بالإنجاز&#10;الراحة النفسية" style="min-height:90px;"></textarea>
+        </div>
+
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            <label for="modelSelect" style="font-size:13px;color:#1A1A1A;font-weight:500;">Model:</label>
+            <select class="field-input" id="modelSelect" style="width:auto;min-width:200px;padding:8px 12px;background:#FFFFFF;">
+              <option value="agent">Ai agent</option>
+              <option value="claude">Claude (Anthropic)</option>
+              <option value="chatgpt">ChatGPT (OpenAI)</option>
+              <option value="demo">Demo (preview, no API)</option>
+            </select>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <div class="counter" role="group" aria-label="Number of copies">
+              <button id="countDecBtn" type="button" aria-label="Decrease">−</button>
+              <span class="val" id="countValue">3</span>
+              <button id="countIncBtn" type="button" aria-label="Increase">+</button>
+            </div>
+            <span class="counter-label">copies</span>
+            <button class="btn" id="generateBtn" type="button">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+              <span id="generateLabel">Generate copy</span>
+            </button>
+          </div>
+        </div>
+        <div class="err" id="errBox" style="display:none;"></div>
+      </div>
+       </div>
+       <div class="page-col-right">
+      <div class="out-toolbar" id="outToolbar" style="display:none;">
+        <button class="btn btn-ghost" id="copyBtn" type="button">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          <span>Copy all</span>
+        </button>
+        <button class="btn btn-ghost" id="regenBtn" type="button">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+          <span>Regenerate</span>
+        </button>
+      </div>
+
+      <div class="out-card" id="outCard">
+        <div class="out-empty" id="outEmpty">
+          <div class="ic">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>
+          </div>
+          <div>The generated ad copy will appear here after you click Generate.</div>
+        </div>
+        <div class="copies-list" id="copiesList" style="display:none;"></div>
+        <div class="out-text" id="outText" style="display:none;"></div>
+      </div>
+       </div>
+      </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+<script>
+// ── FOLDER UPLOAD (device or Drive) → fills Product Details textarea ────
+const $ = id => document.getElementById(id);
+async function _extractText(file) {
+  const ext = (file.name.split('.').pop() || '').toLowerCase();
+  if (ext === 'txt' || ext === 'md' || ext === 'csv') return await file.text();
+  if (ext === 'docx' && window.mammoth) {
+    const buf = await file.arrayBuffer();
+    const res = await window.mammoth.extractRawText({ arrayBuffer: buf });
+    return res.value || '';
+  }
+  return '';
+}
+async function ingestFolderFiles(fileList) {
+  const files = Array.from(fileList || []);
+  if (!files.length) return;
+  const folderName = (files[0].webkitRelativePath || files[0].name).split('/')[0] || '';
+  const textFiles = files
+    .filter(f => /\.(txt|md|csv|docx)$/i.test(f.name))
+    .sort((a, b) => {
+      const aRev = /reviews.*details/i.test(a.name) ? -1 : 0;
+      const bRev = /reviews.*details/i.test(b.name) ? -1 : 0;
+      return aRev - bRev;
+    });
+  if (!textFiles.length) { alert('No readable text/Word/Sheet file found in the folder.'); return; }
+  let combined = ''; let totalChars = 0; const usedFiles = [];
+  for (const f of textFiles) {
+    try {
+      const t = await _extractText(f);
+      if (t && t.trim()) {
+        combined += '## ' + f.name + '\n\n' + t.trim() + '\n\n---\n\n';
+        totalChars += t.length;
+        usedFiles.push(f.name);
+      }
+    } catch (e) { console.warn('skip', f.name, e.message); }
+  }
+  if (!combined) { alert('Could not extract text from any file.'); return; }
+  const ta = document.getElementById('productInput');
+  if (!ta.value.trim()) ta.value = combined.trim();
+  const sum = document.getElementById('folderSummary');
+  sum.style.display = 'block';
+  sum.textContent = '? ' + folderName + ' - ' + totalChars.toLocaleString() + ' chars from ' + usedFiles.length + ' file(s): ' + usedFiles.slice(0, 3).join(', ') + (usedFiles.length > 3 ? '...' : '');
+}
+$('folderInput').addEventListener('change', (e) => ingestFolderFiles(e.target.files));
+$('driveFolderBtn').addEventListener('click', () => {
+  const btn = $('driveFolderBtn');
+  const orig = btn.innerHTML;
+  btn.disabled = true; btn.innerHTML = 'Loading…';
+  pickGoogleDriveFolder(
+    (files) => { btn.disabled = false; btn.innerHTML = orig; ingestFolderFiles(files); },
+    {
+      onProgress: (p) => {
+        if (p.phase === 'listing') btn.innerHTML = 'Listing folder…';
+        else if (p.phase === 'downloading') btn.innerHTML = 'Downloading ' + p.current + '/' + p.total;
+      },
+      onError: (e) => { btn.disabled = false; btn.innerHTML = orig; alert('Drive: ' + e.message); }
+    }
+  );
+});
+
+// ── SKILLS LOADER (Settings → Brain → Skills) ──────────────────────────
+// Pulls active skill instructions from the backend and prepends them to the
+// AI system prompt so the model speaks in the user's saved voice/style.
+const __SKILLS_API   = 'https://indigo-dog-836598.hostingersite.com/api/skills.php';
+const __SKILLS_TOKEN = 'tk_4d2b9f7a8c6e1530a4f2d9b7e8c6a1f5';
+const __skillCache = {};
+async function loadSkill(slug) {
+  // cache disabled — always fetch fresh so updated skills apply immediately
+  try {
+    const r = await fetch(__SKILLS_API + '?slug=' + encodeURIComponent(slug) + '&_t=' + Date.now(), {
+      headers: { 'Authorization': 'Bearer ' + __SKILLS_TOKEN }
+    });
+    if (!r.ok) { __skillCache[slug] = null; return null; }
+    const d = await r.json();
+    __skillCache[slug] = d.instructions || null;
+    return __skillCache[slug];
+  } catch (e) { __skillCache[slug] = null; return null; }
+}
+// Load multiple skills, concatenate non-empty ones with blank lines between.
+async function buildSkillBlock(slugs) {
+  const parts = await Promise.all(slugs.map(slug => loadSkill(slug).then(text => ({ slug, text }))));
+  const out = [];
+  for (const p of parts) {
+    if (!p.text) continue;
+    if (p.slug === 'egyptian-writing-voice') {
+      // Voice skill = STYLE EXAMPLES, not instructions. Frame it that way so
+      // the model imitates the rhythm/wording instead of just listing rules.
+      out.push(
+        '## STYLE REFERENCE — How to write (Egyptian voice)\n' +
+        'Below are real examples of the exact tone, rhythm, word choice, sentence length and emotional pull the user wants. Study them carefully. When you write, match this voice as closely as a human copywriter would imitate a mentor — same rhythm, same colloquialisms, same punch. Do NOT copy any line verbatim; mirror the STYLE.\n\n' +
+        '──────── EXAMPLES START ────────\n' +
+        p.text + '\n' +
+        '──────── EXAMPLES END ────────'
+      );
+    } else if (p.slug === 'about-gohar') {
+      out.push('## USER PROFILE — Who you are writing for\n' + p.text);
+    } else {
+      // Per-task skill (copywriter / landing / headlines): treat as instructions
+      out.push('## TASK INSTRUCTIONS\n' + p.text);
+    }
+  }
+  return out.join('\n\n---\n\n');
+}
+
+// Load EVERY active skill from Settings → Brain → Skills and concatenate them.
+// This way any new skill the user adds is automatically picked up by every AI
+// tool — no code change needed. Order: base voice first (so it sets the tone),
+// other skills after.
+let __allSkillsCache = null;
+async function loadAllSkills() {
+  if (__allSkillsCache) return __allSkillsCache;
+  try {
+    const r = await fetch(__SKILLS_API, { headers: { 'Authorization': 'Bearer ' + __SKILLS_TOKEN } });
+    if (!r.ok) { __allSkillsCache = []; return []; }
+    const d = await r.json();
+    const rows = (d.rows || []).filter(s => s.instructions && s.instructions.trim());
+    // Voice/base skill first (sets the foundational tone) so other skills layer on top.
+    rows.sort((a, b) => {
+      const aBase = /voice|tone|base/i.test(a.slug) ? -1 : 0;
+      const bBase = /voice|tone|base/i.test(b.slug) ? -1 : 0;
+      return aBase - bBase;
+    });
+    __allSkillsCache = rows;
+    return rows;
+  } catch (e) { __allSkillsCache = []; return []; }
+}
+async function buildAllSkillsBlock() {
+  const rows = await loadAllSkills();
+  if (!rows.length) return '';
+  return rows.map(s =>
+    '## Skill: ' + (s.name || s.slug) + ' (/' + s.slug + ')\n' +
+    (s.description ? s.description + '\n\n' : '') +
+    s.instructions
+  ).join('\n\n---\n\n');
+}
+
+// ── TECH OP AGENT (Media Buyer Persona) ──────────────────────────────
+// Heavy persona prompt that turns whichever LLM is available into a focused
+// Egyptian-market media buyer / direct-response copywriter. Layered on TOP of
+// the user's saved Skills so personal voice still wins.
+const AGENT_PERSONA = `أنت "Tech Op Agent" — ميديا باير محترف ومخضرم في السوق المصري، خبرتك أكثر من 8 سنين في الـ DTC على فيسبوك وإنستجرام وتيك توك.
+
+## شخصيتك المهنية:
+- شُفت آلاف الكامبينز وعارف اللي بيكنفرت واللي بيموت.
+- بتفكر دايماً كـ "Hook → Pain → Promise → Proof → CTA".
+- بتعرف نفسية المستهلك المصري: اللغة، التريبت، الأسعار، الـ objections، الـ trust signals.
+- مهووس بالـ CTR ومعدل التحويل، بتحارب على كل كلمة.
+
+## قواعد العمل:
+1. التزم بالـ Skills المحفوظة فوق — هي الصوت والستايل بتاع المستخدم.
+2. اكتب بالعامية المصرية الطبيعية، بلاش فصحى، بلاش كلام AI.
+3. كل سطر لازم يخدم: hook قوي / pain حقيقي / benefit ملموس / CTA واضح.
+4. أرقام محددة وتفاصيل، مش كلام عام (بدل "كتير" قول "5 آلاف عميل").
+5. لو فيه أكثر من نسخة، كل نسخة بانجل مختلف (Pain / Desire / Curiosity / Social Proof / Authority / Urgency).
+6. ابعد عن الكلمات المُستهلكة (رائع، مذهل، الأفضل في…).
+
+## الجودة:
+- النص لازم يخلي القارئ يقف عن السكرول.
+- لو الـ output طلع متوسط، اعمله re-write أقوى قبل ما ترجعه.
+- أي كلمة لو شيلتها مش هتفرق = شيلها.
+
+أنت مش chatbot. أنت بتشتغل لحساب صاحب البزنس.`;
+
+// Pick the best available provider (Claude > GPT > OpenRouter) so the agent
+// works no matter what key the user has configured.
+function pickAgentProvider() {
+  if (localStorage.getItem(ANTHROPIC_KEY_LS))  return 'claude';
+  if (localStorage.getItem(OPENAI_KEY_LS))     return 'chatgpt';
+  if (localStorage.getItem(OPENROUTER_KEY_LS)) return 'openrouter';
+  return null;
+}
+
+// Run a single pass through whichever provider is picked.
+async function __agentSinglePass(sub, system, userMessage, maxTokens) {
+  if (sub === 'chatgpt')    return callChatGPT(system, userMessage, maxTokens);
+  if (sub === 'openrouter') return callOpenRouter(system, userMessage, maxTokens);
+  return callClaude(system, userMessage, maxTokens);
+}
+
+// Two-pass refine: draft → self-critique against media-buyer criteria → rewrite.
+// Costs ~2x tokens but yields noticeably stronger, less generic output.
+const AGENT_REFINE_PROMPT = `أنت دلوقتي بتراجع مسودة كوبي بعقلية ميديا باير ناقد. اعمل التالي بترتيب:
+
+1. اقرأ المسودة كأنك مستهلك مصري بيعدّي على فيسبوك بسرعة. هل هتقف؟ هل هتقرأ؟ هل هتدوس؟
+2. شطب أي:
+   - كلمات مُستهلكة (رائع، مذهل، الأفضل، عالي الجودة، تجربة لا تُنسى).
+   - جمل عامة بدون أرقام أو تفاصيل ملموسة.
+   - أي حشو أو تكرار.
+   - أي صياغة بتحس إنها ChatGPT.
+3. قوّي الـ hook في أول 6 كلمات.
+4. خلي كل benefit يربط بـ pain حقيقي.
+5. خلي الـ CTA واضح ومحدد.
+
+ارجع النسخة المُحسّنة فقط، من غير شرح، من غير تعليق، من غير "النسخة المحسنة:".`;
+
+async function callAgent(systemPrompt, userMessage, maxTokens) {
+  if (window.aiKeysReady) { try { await window.aiKeysReady; } catch (e) {} }
+  const hasClaude  = !!localStorage.getItem(ANTHROPIC_KEY_LS);
+  const hasGPT     = !!localStorage.getItem(OPENAI_KEY_LS);
+  const hasOR      = !!localStorage.getItem(OPENROUTER_KEY_LS);
+  if (!hasClaude && !hasGPT && !hasOR) {
+    throw new Error('Agent needs at least one AI key (Settings → Connectors → Claude / ChatGPT / OpenRouter).');
+  }
+  const label = $('generateLabel');
+  const setLabel = (txt) => { if (label) label.innerHTML = '<span class="spinner"></span> ' + txt; };
+  const agentPrompt = AGENT_PERSONA + '\n\n---\n\n' + systemPrompt;
+
+  // ── Solo flow (only one provider configured) — original 2-pass refine ──
+  if (!(hasClaude && hasGPT)) {
+    const sub = hasClaude ? 'claude' : (hasGPT ? 'chatgpt' : 'openrouter');
+    setLabel('Drafting…');
+    const draft = await __agentSinglePass(sub, agentPrompt, userMessage, maxTokens);
+    setLabel('Refining…');
+    const refined = await __agentSinglePass(
+      sub,
+      AGENT_PERSONA + '\n\n---\n\n' + AGENT_REFINE_PROMPT,
+      'الطلب الأصلي:\n' + userMessage + '\n\n---\n\nالمسودة المطلوب تحسينها:\n' + draft,
+      maxTokens
+    );
+    return refined || draft;
+  }
+
+  // ── Ensemble flow (Claude + ChatGPT both available) ──────────────────
+  // Pass 1: Both models draft IN PARALLEL from the same prompt.
+  setLabel('Drafting (Claude + ChatGPT in parallel)…');
+  const [draftClaude, draftGPT] = await Promise.all([
+    callClaude(agentPrompt, userMessage, maxTokens).catch(e => '[Claude draft failed: ' + e.message + ']'),
+    callChatGPT(agentPrompt, userMessage, maxTokens).catch(e => '[ChatGPT draft failed: ' + e.message + ']'),
+  ]);
+
+  // Pass 2: Cross-review — each model critiques the OTHER one's draft.
+  setLabel('Cross-reviewing…');
+  const crossPrompt = (label) =>
+    'إنت بتراجع مسودة كتبها موديل تاني (' + label + '). شغلتك:\n' +
+    '1. اقرأها بعقلية مستهلك مصري حقيقي بيعدّي على فيسبوك.\n' +
+    '2. قارنها بالـ STYLE REFERENCE فوق — هل الـ rhythm صح؟ الكلام طبيعي؟ بيـ match الأمثلة؟\n' +
+    '3. شطب أي كلام مُستهلك أو AI-sounding أو حشو.\n' +
+    '4. لو الموديل التاني فاته شيء من المطلوب — كمّله.\n' +
+    '5. ارجع النسخة المُحسّنة فقط، من غير شرح ولا "النسخة المحسنة:".';
+  const [refinedByGPT, refinedByClaude] = await Promise.all([
+    callChatGPT(
+      AGENT_PERSONA + '\n\n---\n\n' + crossPrompt('Claude'),
+      'الطلب الأصلي:\n' + userMessage + '\n\n---\n\nمسودة Claude:\n' + draftClaude,
+      maxTokens
+    ).catch(() => draftClaude),
+    callClaude(
+      AGENT_PERSONA + '\n\n---\n\n' + crossPrompt('ChatGPT'),
+      'الطلب الأصلي:\n' + userMessage + '\n\n---\n\nمسودة ChatGPT:\n' + draftGPT,
+      maxTokens
+    ).catch(() => draftGPT),
+  ]);
+
+  // Pass 3: Final synthesis — Claude (the stronger reasoner) picks the best
+  // pieces from both refined versions and produces ONE final cut.
+  setLabel('Final synthesis…');
+  const synthPrompt = AGENT_PERSONA + '\n\n---\n\n' +
+    'بين إيدك نسختين كتبهم Claude و ChatGPT بعد ما راجع كل واحد فيهم على التاني. ' +
+    'مهمتك: تطلع نسخة واحدة نهائية تكون أحسن من الاتنين. اشتغل بالخطوات دي:\n\n' +
+    '1. قارن النسختين سطر سطر. اختار أقوى hook، أصدق pain، أوضح benefit، أحسن CTA.\n' +
+    '2. تأكد إن الـ TONE والـ rhythm matching الـ STYLE REFERENCE اللي فوق.\n' +
+    '3. تأكد عدد الكلمات قريب من الأمثلة (مش أطول، مش أقصر بشكل ملحوظ).\n' +
+    '4. شيل أي تكرار بين المصدرين، اخلطهم بذكاء.\n' +
+    '5. ارجع النسخة النهائية فقط — نص نضيف، من غير "النسخة النهائية:" ولا أي كلام مقدمة.';
+  try {
+    const final = await callClaude(
+      synthPrompt,
+      'الطلب الأصلي:\n' + userMessage + '\n\n---\n\nنسخة 1 (Claude refined by GPT):\n' + refinedByGPT +
+      '\n\n---\n\nنسخة 2 (GPT refined by Claude):\n' + refinedByClaude,
+      maxTokens
+    );
+    return final || refinedByClaude || refinedByGPT;
+  } catch (e) {
+    // If synthesis fails, return whichever refined draft we have
+    return refinedByClaude || refinedByGPT;
+  }
+}
+// Format past memories into a system-prompt block ("Past examples to learn from")
+function buildMemoryBlock(memories) {
+  if (!memories.length) return '';
+  const examples = memories.map((m, i) =>
+    'Example ' + (i + 1) + (m.input_summary ? ' (' + m.input_summary.slice(0, 80) + '…)' : '') +
+    ':\n' + (m.output || '').slice(0, 1500)
+  ).join('\n\n---\n\n');
+  return 'Past outputs you produced (learn the user\'s voice and style from them — match patterns, do NOT copy verbatim):\n\n' + examples;
+}
+
+const SYSTEM_PROMPT = `أنت كوبي رايتر مصري محترف، بتكتب نصوص بيع بنفس أسلوب الإعلانات الحقيقية على فيسبوك.
+🎯 المطلوب:
+اكتب نص بنفس الشكل (Structure + Spacing) ده بالظبط:
+• عنوان في أول سطر
+• سطر فاضي
+• مقدمة (3 أو 4 جمل قصيرة)
+• سطر فاضي
+• نقاط تبدأ بـ ✅ (كل نقطة في سطر لوحدها)
+• سطر فاضي
+• CTA يبدأ بـ 🛑
+⚠️ مهم جداً:
+• حافظ على نفس المسافات بين السطور (line breaks) زي المثال بالظبط
+• كل عنصر في سطر منفصل
+• متدمجش أي جزء في بعضه
+━━━━━━━━━━━━━━━━━━━
+📌 قواعد العنوان:
+لكي تكتب عنوان جيد التزم بالتالي:
+حاول أن تجعل العنوان طويلاً نوعا ما (17 كلمة).
+استخدم الأرقام لأنها تعطي إحساس بالثقة وتؤثر في نفس القارئ
+استخدم العناصر الملفتة مثل (- الـ Emojis)
+استخدم الكلمات القوية (أفضل - أقوى - المؤثرات - التغيرات)
+يعتمد على المشاعر ( 10 خطوات لإنقاص الوزن ستغير حياتك للأفضل)
+راقب منافسيك والمؤثرين في مجالك وحاول أن تستلهم منهم بعض الأفكار
+
+
+
+━━━━━━━━━━━━━━━━━━━
+📌 المشاعر (استخدم واحدة أو أكثر):
+الخوف - السعادة - الذنب - الفخر - الغيرة - الخجل - الراحة - الثقة - الطمع - الانتماء
+📌 العوامل:
+الأرقام - الفضول - الصدمة - التخصيص - السؤال - التحذير
+━━━━━━━━━━━━━━━━━━━
+📌 المقدمة:
+• 3 أو 4 جمل
+• لازم ومهم المقدمة تكون  30 كلمة
+• تحتوي على كلمة "أنت" مرة واحدة على الأقل
+• تشير لمشكلة أو إحساس
+• لا تلمح للحل
+• لا تكرر العنوان
+
+المقدمة (Continuous Style — مهم جداً):
+• تُكتب كسطر واحد متصل (فقرة واحدة فقط)
+• بدون تقسيم أو نزول سطر جديد داخل المقدمة
+• تكون عبارة عن تدفق طبيعي للكلام (زي ما حد بيتكلم)
+━━━━━━━━━━━━━━━━━━━
+📌 النقاط:
+•  5 نقاط
+• كل نقطة تبدأ بـ ✅
+•لازم ومهم  كل نقطة تكون  15 كلمة
+• كل نقطة منفعة (مش ميزة)
+━━━━━━━━━━━━━━━━━━━
+📌 CTA:
+• يبدأ بـ 🛑
+• فيه عرض (خصم / شحن مجاني / ضمان)
+• فيه إحساس بالإلحاح
+━━━━━━━━━━━━━━━━━━━
+🧠 الأسلوب:
+• عامية مصرية طبيعية جداً
+• كأنك بتكلم صاحبك
+• جمل قصيرة
+• إيقاع سريع
+• بسيط ومباشر
+🚫 ممنوع:
+• الفصحى
+• الأسلوب الرسمي
+• دمج الفقرات
+• تغيير شكل التنسيق
+
+مهم جداَ هبعتلك أمثلة تتلعم منها طريقة الكلام لازم تحاكي طريقة الكلام بحيث احس ان انسان اللي بيتكلم وانا الللي كاتب امثلة الكوبي دي بنفسي ف حاول تكون بتتكلم بنفس الطريقة كأن انسان اللي كاتب الكوبي مش ذكاء اصتناعي
+
+مثال 1
+قصص القرآن أفضل حاجة تتعلم منها حلول لأعظم مشاكل في حياة الإنسان وأكبرها ❤️
+🟢 وكمان ارتباطك بالوحي وحبك للقرآن مش هييجي من فراغ ومحتاج تعرف ليه تحب القرآن
+🟢 كل ده وأكتر بكتير بيعمله أفضل كتابين هتقرأهم في حياتك وهيحببوك في القراءة للمبدع أدهم الشرقاوي
+🟢 كتباب نحن نقص عليك اللي جمعلك قصص القرآن واداك العبر منها ومطلوب تتعلم منها ايه
+🟢 وكتاب وبالحق أنزلناه اللي هيخليك ترتبط بالقرآن ارتباط فظيع وهيحببك أكتر في القرآن ويخليك تبدأ في الحفظ برغبة عالية وإيمان عالي
+🛑 اطلب نسختك دلوقتي واستمتع بزيادة في الإيمان وحب للقرآن وارتباط بيه والرغبة في حفظة كاملاً كمان
+لو عاوز تحب القراءة أكتر هيكون هما دول أفضل كتابين تبدأ بيهم
+
+مثال 2
+
+🔥 النفسية القوية مش صدفة… دي نتيجة قلب متصل بربنا
+
+في زحمة الحياة، اللي بيكمل بثبات هو اللي محافظ على علاقته بربنا…
+اللي كل يوم بيقوّي قلبه بالقرآن، وبيعرف يتكلم مع ربنا بالدعاء.
+
+📘 كتاب "أول مرة أتدبر القرآن"
+هيخليك تحس إنك بتقرأ القرآن لأول مرة، تفهمه، وتعيشه بكل تفاصيله.
+
+🕊️ كتاب "أول مرة أتَلذّذ بالدعاء"
+هيغير نظرتك للدعاء، ويخليك تدعي من قلبك، وتفهم ليه ساعات بتتأخر الاستجابة.
+
+✅ لو عايز نفسية تواجه الحياة برضا وطموح
+✅ لو بتدور على راحة قلب حقيقية
+✅ لو عايز تستمر بعد رمضان بقلب عامر
+
+📚 دول الكتابين اللي لازم يبدأ بيهم كل مسلم حقيقي.
+
+🛑 اطلبهم دلوقتي بخصم 50% لفترة محدودة، مع ضمان استبدال واسترجاع لمدة 30 يوم بدون إبداء أي أسباب لضمان الرضاء التام!
+
+مثال 3
+
+
+كتابين هيخلوك من واحد لا تفقه شئ عن دينك ولا عن الخشوع في الصلاة والحفاظ عليها لشخص واثق في كل معلومة بيقولها عن الدين وبينتظر الصلاة بفارغ الصبر وبيصلي بكل خشوع وحب ❤
+
+🛑 هتتصدم لما تعرف ان في ناس كتير مسلمة في البطاقة بس وفي حجات كتير أوي متعرفهاش عن الدين
+
+ والأغلب مش بيحافظ على الصلاة ولو صلى مش بيصلي بخشوع وبيخطف الصلاة
+
+ ولو قعدت في قعدة فيها كلام عن الدين هتلاقي أغلب المعلومات اللي بتتقال غلط ما بين حديث ضعيف لحديث موضوع وكتير بيفتي بدون علم
+
+✅ من النهارده هتعرف عن الصلاة حجات تعلقك بكل فرض وتربطك بالصلاة وتخليك تنتظرها وتصلي بخشوع تام
+
+✅ وكمان هتصحح للناس معلوماتها عن الدين لما تتعلم وهتفيد وتنصح أهلك وأصحابك وهتتكلم بكل ثقة وفهم صحيح
+
+✅ هتعرف الحجات اللي لا غنى عنها لكل مسلم وفرض عليه يتعلمها وكل ده في كتب متوسطة تخلصها في أسبوعين
+
+✅ هتقرب من ربنا أكتر بكتير من الأول وهتحب دينك وتنتمي ليه وترتبط بيه أكتر ومش بعيد ترجع تحفظ قرآن زي زمان
+
+🛑 اطلب أهم كتابين في حياة المسلم الآن بخصم 50% وشحن مجاني وهيوصلوا لحد باب بيتك في أسرع وقت
+
+مثال 4
+
+
+🛑 ورد القرآن اليومي هو غذاء الروح بس مش هتحافظ عليه لو بتقرأ وانت مش فاهم حاجة
+
+نفسنا نحفظ قرآن بس مش قادرين نرتبط ونحب القرآن لدرجة اننا منفوتش يوم من غير ورد قراءة كبير وحفظ يومي زي ما الصحابة كانوا مرتبطين بالقرآن الكريم ومتعلقين بيه
+
+✅ عدم فهم القرآن هيخليك تمل وتترك بدري بدري ومش هتكمل
+✅ نفسك تحفظ وتفهم القرآن وترتبط بيه وتحبه أكتر من نفسك
+✅ حابب يكون ليك ورد يومي بتتمنى لو تصحى علشان تبدأ بيه يومك
+✅ تستمتع بقراءة القرآن في الصلاة وفي قيام الليل وانت مستوعبه
+✅ تمشي تقرأ في الشارع وانت هايم في حب القرآن بدون كلل أو ملل
+✅ ومعاه أول مرة اتلذذ بالدعاء اللي هيعرفك كل تفاصيل الدعاء ويخليك ترتبط وتتعلق بيه وتدعي كل يوم
+
+🛑 اطلب نسختك الآن بخصم 50% وشحن مجاني واستمتع بالقرب الله والارتباط بالوحي
+
+مثال 5
+
+
+3 كتب هيحطوا قواعد لحياتك تعيش بيها وتحل لك كل مشاكلك اليومية بدل تضييع الوقت على السوشيال ميديا وكمان هيحببوك جدا في القراءة ❤️
+
+🛑 كتير مننا بيرجع من شغله يقضيها على السوشيال ميديا وفين وفين لما يلاقي بوست يستحق القراءة ومفيد فعلا و 90% من البوستات أي كلام وخلاص
+
+🛑 وللأسف الكلام ده بيأثر على حياتنا بشكل سلبي وبيتزرع جوا عقولنا قواعد مزيفة بتتحكم في حياتنا وبنطبقها غصب عننا لأن مفيش غيرها
+
+✅ بس تخيل لو لقيت أصدق كلام على وجه الأرض رسائل من القرآن ورسائل من النبي ورسائل من الصحابة جايين يحطولك قواعد وأسس تمشي عليها تحل كل مشاكل حياتك فعلا وهتحفظها غصب عنك وهتمشي بيها في يومك
+
+✅ تخيل يبقى كل موقف عندك ليه حل حقيقي يبهرك ويبهر اللي حواليك لأنه فعلا حل صادق ورسائل تطمن قلبك وتطبطب عليه بدل تضيع الوقت في بوستات فارغة
+
+✅  وكمان أوعدك هتحب القراءة جداااا بعد الكتب دي وسهل تخلصهم على فكرة لو قرأت كام صفحة قبل ما تنام وحتى تنام وانت مطمن ومستعد لبكره
+
+🛑 اطلب مجموعة رسائل دلوقتي بخصم 50% وشحن مجاني وسريع لحد باب بيتك اطلبهم فوراً واستمتع بقرائتهم
+https://rasikhun.com/all-rasa2l
+
+مثال : كتير بنبقى نفسنا نعرف أكتر عن القرآن علشان نتعلق بيه ونرتبط بيه ونحب نقراء الورد اليومي ونحفظ كمان بكل حب
+مثال: كتابين هيخلوك من واحد لا تفقه شئ عن دينك ولا عن الخشوع في الصلاة والحفاظ عليها لشخص واثق في كل معلومة بيقولها عن الدين وبينتظر الصلاة بفارغ الصبر وبيصلي بكل خشوع وحب
+مثال :3 كتب هيحطوا قواعد لحياتك تعيش بيها وتحل لك كل مشاكلك اليومية بدل تضييع الوقت على السوشيال ميديا وكمان هيحببوك جدا في القراءة
+مثال :قلوب كتير أرهقتها الحياة ومتاعبتها ومصاعبها ويأتي أدهم الشرقاوي بقلمه البديع ليغوص في القرآن والسنة ويخرج بآخر مؤلفاته لعامة الناس
+مثال :كتير بنبقى نفسنا نعرف أكتر عن القرآن علشان نتعلق بيه ونرتبط بيه ونحب نقراء الورد اليومي ونحفظ كمان بكل حب
+مثال : كتابين هيخلوك من واحد لا تفقه شئ عن دينك ولا عن الخشوع في الصلاة والحفاظ عليها لشخص واثق في كل معلومة بيقولها عن الدين وبينتظر الصلاة بفارغ الصبر وبيصلي بكل خشوع وحب
+مثال : دلوقتي تقدر تفهم القرآن زي ما فهمه الصحابة وقلبك يتعلق بيه لأنه الحبل الوحيد المتصل بالسماء وأصدق كلام على الأرض
+
+
+
+مثال : أسرار الإرتباط بالقرآن وليه في ناس بترتبط بالقرآن وبتحب تعيش معاه بل وممكن تمشي تقرأ في الشارع ومش فارق معاهم كل هموم الدنيا ده محتاجين نعرفه
+مثال :أساسيات الدين لازم تكون عندك وإلا هتكون آثم لأن طلب العلم فريضة على كل مسلم وتقصيرك في الصلاة وعدم الحفاظ عليها 100% هيخلي موقفك صعب يوم القيامة لأنها أول ما يسأل عليه العبد وان صلحت صلح عمله وان فسدت فسد عمله
+مثال :كتير مننا بيرجع من شغله يقضيها على السوشيال ميديا وفين وفين لما يلاقي بوست يستحق القراءة ومفيد فعلا و 90% من البوستات أي كلام وخلاص
+وللأسف الكلام ده بيأثر على حياتنا بشكل سلبي وبيتزرع جوا عقولنا قواعد مزيفة بتتحكم في حياتنا وبنطبقها غصب عننا لأن مفيش غيرها
+مثال :أسرار الإرتباط بالقرآن وليه في ناس بترتبط بالقرآن وبتحب تعيش معاه بل وممكن تمشي تقرأ في الشارع ومش فارق معاهم كل هموم الدنيا ده محتاجين نعرفه
+مثال :أساسيات الدين لازم تكون عندك وإلا هتكون آثم لأن طلب العلم فريضة على كل مسلم وتقصيرك في الصلاة وعدم الحفاظ عليها 100% هيخلي موقفك صعب يوم القيامة لأنها أول ما يسأل عليه العبد وان صلحت صلح عمله وان فسدت فسد عمله
+مثال : كتير من المسلمين بيقرأ قرآن وهو مش فاهم جزء كبير منه ودي كارثة لأنه الحقيقة الوحيدة على الأرض واللي لازم حياتك تمشي كلها بيه من ساعة ما تصحى ولحد ما تنام
+
+مثال : حب القرآن مش بييجي غير بمعرفة قوية بفضل القرآن وتأثيره على الصحابة
+لو عرفنا ليه الصحابة كانوا مرتبطين بالوحي وعرفنا حب النبي للقرآن هنرتبط بيه اكتر
+لكل القلوب المرهقة من زحمة الحياة هتخرج مفيش عندك غير هم الآخرة
+مثال :من النهارده هتعرف عن الصلاة حجات تعلقك بكل فرض وتربطك بالصلاة وتخليك تنتظرها وتصلي بخشوع تام
+وكمان هتصحح للناس معلوماتها عن الدين لما تتعلم وهتفيد وتنصح أهلك وأصحابك وهتتكلم بكل ثقة وفهم صحيح
+هتقرب من ربنا أكتر بكتير من الأول وهتحب دينك وتنتمي ليه وترتبط بيه أكتر ومش بعيد ترجع تحفظ قرآن زي زمان
+مثال :تخيل لو لقيت أصدق كلام على وجه الأرض رسائل من القرآن ورسائل من النبي ورسائل من الصحابة جايين يحطولك قواعد وأسس تمشي عليها تحل كل مشاكل حياتك فعلا وهتحفظها غصب عنك وهتمشي بيها في يومك
+تخيل يبقى كل موقف عندك ليه حل حقيقي يبهرك ويبهر اللي حواليك لأنه فعلا حل صادق ورسائل تطمن قلبك وتطبطب عليه بدل تضيع الوقت في بوستات فارغة
+وكمان أوعدك هتحب القراءة جداااا بعد الكتب دي وسهل تخلصهم على فكرة لو قرأت كام صفحة قبل ما تنام وحتى تنام وانت مطمن ومستعد لبكره
+مثال :لكل مهموم ولكل منكسر من مصائب ومشاكل ومنغصات الحياة
+جاء اليوم لتعرف حقيقة الدنيا وترتبط بالآخرة وترتبط بالقرآن والسنة
+ولكل القلوب المرهقة من زحمة الحياة هتخرج مفيش عندك غير هم الآخرة
+مثال :حب القرآن مش بييجي غير بمعرفة قوية بفضل القرآن وتأثيره على الصحابة
+لو عرفنا ليه الصحابة كانوا مرتبطين بالوحي وعرفنا حب النبي للقرآن هنرتبط بيه اكتر
+لكل القلوب المرهقة من زحمة الحياة هتخرج مفيش عندك غير هم الآخرة
+مثال :من النهارده هتعرف عن الصلاة حجات تعلقك بكل فرض وتربطك بالصلاة وتخليك تنتظرها وتصلي بخشوع تام
+وكمان هتصحح للناس معلوماتها عن الدين لما تتعلم وهتفيد وتنصح أهلك وأصحابك وهتتكلم بكل ثقة وفهم صحيح
+هتقرب من ربنا أكتر بكتير من الأول وهتحب دينك وتنتمي ليه وترتبط بيه أكتر ومش بعيد ترجع تحفظ قرآن زي زمان
+مثال : نفسك تحفظ وتفهم القرآن وترتبط بيه وتحبه أكتر من نفسك
+حابب يكون ليك ورد يومي بتتمنى لو تصحى علشان تبدأ بيه يومك
+تستمتع بقراءة القرآن في الصلاة وفي قيام الليل وانت مستوعبه
+____
+
+
+وده المثال النهائي اللي عايز زيه بالظبط في الكلمات والحروف وكل حاجة والمسافات والاستراكتشر وطريقة الكلام
+
+المثال
+
+🛑 ورد القرآن اليومي هو غذاء الروح بس مش هتحافظ عليه لو بتقرأ وانت مش فاهم حاجة
+
+نفسنا نحفظ قرآن بس مش قادرين نرتبط ونحب القرآن لدرجة اننا منفوتش يوم من غير ورد قراءة كبير وحفظ يومي زي ما الصحابة كانوا مرتبطين بالقرآن الكريم ومتعلقين بيه
+
+✅ عدم فهم القرآن هيخليك تمل وتترك بدري بدري ومش هتكمل
+✅ نفسك تحفظ وتفهم القرآن وترتبط بيه وتحبه أكتر من نفسك
+✅ حابب يكون ليك ورد يومي بتتمنى لو تصحى علشان تبدأ بيه يومك
+✅ تستمتع بقراءة القرآن في الصلاة وفي قيام الليل وانت مستوعبه
+✅ تمشي تقرأ في الشارع وانت هايم في حب القرآن بدون كلل أو ملل
+✅ ومعاه أول مرة اتلذذ بالدعاء اللي هيعرفك كل تفاصيل الدعاء ويخليك ترتبط وتتعلق بيه وتدعي كل يوم
+
+🛑 اطلب نسختك الآن بخصم 50% وشحن مجاني واستمتع بالقرب الله والارتباط بالوحي
+
+━━━━━━━━━━━━━━━━━━━
+INPUT DATA
+Product Details:
+[PASTE PRODUCT DETAILS]
+Customer Reviews:
+[PASTE REVIEWS]
+━━━━━━━━━━━━━━━━━━━
+ابدأ كتابة النص مباشرة بنفس الشكل والمسافات بالظبط بدون أي شرح`;
+
+const PROVIDER_LS = 'app.aiProvider';
+const ANTHROPIC_KEY_LS = 'app.anthropicApiKey';
+const OPENAI_KEY_LS = 'app.openaiApiKey';
+const OPENROUTER_KEY_LS = 'app.openrouterApiKey';
+
+// Restore last-used provider
+const savedProvider = localStorage.getItem(PROVIDER_LS);
+if (savedProvider) $('modelSelect').value = savedProvider;
+$('modelSelect').addEventListener('change', () => {
+  localStorage.setItem(PROVIDER_LS, $('modelSelect').value);
+});
+
+function showToast(msg, isError) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (isError ? ' error' : '');
+  setTimeout(() => t.className = 'toast' + (isError ? ' error' : ''), 2400);
+}
+
+function showError(msg) {
+  const e = $('errBox');
+  if (msg) { e.textContent = msg; e.style.display = 'block'; }
+  else { e.style.display = 'none'; e.textContent = ''; }
+}
+
+async function callClaude(systemPrompt, userMessage, maxTokens) {
+  if (window.aiKeysReady) { try { await window.aiKeysReady; } catch (e) {} }
+  const apiKey = localStorage.getItem(ANTHROPIC_KEY_LS) || '';
+  if (!apiKey) throw new Error('No Claude API key. Settings → Connect AI Tools → Claude.');
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true'
+    },
+    body: JSON.stringify({
+      model: 'claude-opus-4-7',
+      max_tokens: maxTokens || 2000,
+      system: systemPrompt,
+      messages: [{ role: 'user', content: userMessage }]
+    })
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error((data && data.error && data.error.message) || ('HTTP ' + res.status));
+  const text = (data.content || []).map(b => b.text || '').join('').trim();
+  if (!text) throw new Error('Empty response');
+  return text;
+}
+
+async function callChatGPT(systemPrompt, userMessage, maxTokens) {
+  if (window.aiKeysReady) { try { await window.aiKeysReady; } catch (e) {} }
+  const apiKey = localStorage.getItem(OPENAI_KEY_LS) || '';
+  if (!apiKey) throw new Error('No ChatGPT API key. Settings → Connect AI Tools → ChatGPT.');
+  const res = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + apiKey
+    },
+    body: JSON.stringify({
+      model: 'gpt-5',
+      max_completion_tokens: maxTokens || 2000,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userMessage }
+      ]
+    })
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error((data && data.error && data.error.message) || ('HTTP ' + res.status));
+  const text = ((data.choices || [])[0] || {}).message?.content?.trim() || '';
+  if (!text) throw new Error('Empty response');
+  return text;
+}
+
+// Demo mode — returns N hard-coded copies (with angles) so the UI can be previewed without an API key.
+async function callDemo(angles, count) {
+  await new Promise(r => setTimeout(r, 800));
+  const samples = [
+    {
+      angle: 'الفضول',
+      copy: `🛑 كتاب هيخليك تتعلق بالقرآن وتعيش قصصه بقلب مختلف لأول مرة ❤️
+
+كتير مننا بيقرأ قرآن من غير ما يعيش القصص ويفهم العبر اللي وراها وانت ممكن تعدّي على آيات كبيرة من غير ما تحس بقيمتها وحلاوتها لأنك مش فاهم الـ context.
+
+✅ هتعيش قصص الأنبياء بكل تفاصيلها وكأنك بتشوفها قدامك بعينك
+✅ هتطلع من كل قصة بعبرة تحط نقاط في حياتك وقواعد تمشي عليها
+✅ هتحب القرآن أكتر وتربط نفسك بيه كل يوم بشكل مختلف خالص
+✅ أسلوب أدهم الشرقاوي البسيط والعميق هيخليك تخلص الكتاب في يومين
+✅ هتنصح كل اللي حواليك بالكتاب لأنه فعلاً غير شكل علاقتك بالقرآن
+
+🛑 اطلب نسختك دلوقتي بسعر 250 جنيه وشحن مجاني لكل المحافظات في خلال 48 ساعة`
+    },
+    {
+      angle: 'الخوف من ضياع الوقت',
+      copy: `🛑 ساعتين كل يوم على السوشيال ميديا مقابل صفر فايدة لقلبك وعقلك ❤️
+
+اوقاتنا بتروح في حاجات مش بتزيدنا حاجة وانت ممكن تخلص يومك من غير حتى آية واحدة فهمتها صح ولا قصة لمست قلبك ولا عبرة طبقتها في حياتك العملية.
+
+✅ هتقرأ كل يوم 20 دقيقة بس وتطلع بعبرة هتغير يومك
+✅ هتعرف قصص نبي زي ما الصحابة عرفوها بكل التفاصيل المهمة
+✅ هتحس إن وقتك بقى ليه قيمة فعلاً وقلبك بيكبر مش بيضيع
+✅ هتكلم اللي حواليك بثقة وفهم لكل آية ولكل موقف
+✅ هتنام مرتاح كل ليلة بإحساس إنك قربت من ربنا خطوة جديدة
+
+🛑 اطلب نسختك دلوقتي بخصم 30% وشحن مجاني وضمان استرجاع لـ 14 يوم`
+    },
+    {
+      angle: 'الانتماء',
+      copy: `🛑 الصحابة كانوا متعلقين بالقرآن لأنهم فهموه — والكتاب ده هيوصلك لنفس الإحساس ❤️
+
+في ناس بتقرأ قرآن وقلبها بيرتجف وفي ناس بتقرأ ومش حاسة بحاجة وانت لو من الناس اللي بتقرأ من غير ما تحس بحاجة، يبقى ده طبيعي لأنك مش فاهم القصص الجوة.
+
+✅ هتدخل عالم الصحابة وتشوف ليه كانوا متعلقين بكل آية
+✅ هتعرف قصص قراها رسول الله نفسه ووقف عندها وبكى
+✅ هتربط بين كل قصة وموقف من حياتك اليومية بشكل مدهش
+✅ هتحس إنك جزء من قافلة كبيرة من الناس اللي عاشوا بالقرآن
+✅ هترجع تحفظ زي زمان لما كنت طفل بس بفهم وحب أكتر بكتير
+
+🛑 اطلب نسختك الآن وانضم لآلاف القراء اللي غيروا علاقتهم بالقرآن`
+    },
+    {
+      angle: 'الراحة النفسية',
+      copy: `🛑 لو قلبك تعبان من زحمة الحياة، الكتاب ده هيقولك ربنا كاتبلك إيه ❤️
+
+في أيام بنحس فيها إن الدنيا واقفة علينا وانت محتاج صوت يطمنك ويقولك إن في حد فوق شايفك ومدبر كل حاجة بحكمة فوق ما تتخيل وكل قصة في القرآن بتأكدلك ده.
+
+✅ هتقرأ قصة النبي يوسف وانت في أصعب موقف فهتلاقي راحة فظيعة
+✅ هتفهم ليه ربنا بياخد منك حاجة وبيديك حاجة أحسن منها بكتير
+✅ هتعرف إن صبرك مش هيضيع وإن نهاية كل قصة فيها فرج وأمل
+✅ هتنام كل ليلة بقلب مرتاح ومعرف إن مفيش شر مطلق في حياتك
+✅ هتقدر تطمن أهلك واصحابك بنفس القصص اللي طمنت قلبك
+
+🛑 اطلب نسختك دلوقتي بخصم 50% وشحن مجاني واستمتع بالقرب من ربنا`
+    },
+    {
+      angle: 'الفخر بالنفس',
+      copy: `🛑 من النهارده بقى عندك معلومة قوية تتكلم بيها في أي قعدة عن الدين ❤️
+
+كتير مننا بيستحي يدخل في كلام عن الدين خوفاً من الغلط وانت ممكن تكون عايز تنصح حد قريبك بس مش بتلاقي الكلام المظبوط ولا الحجة القوية اللي تقنعه فبتسكت.
+
+✅ هتعرف أصول كل قصة وتقدر تحكيها لأي حد بكل ثقة وفهم
+✅ هتصحح المعلومات الغلط اللي بتنتشر بدون ما تخش في خلاف
+✅ هتنصح أهلك واصحابك بالكلام اللي يلمسهم فعلاً مش الكلام المحفوظ
+✅ هتحس بفخر إنك بقيت مرجع لأي حد عايز يفهم آية أو قصة
+✅ ولادك هيشوفوك وانت بتقرأ وبتحب الكتاب فهيمشوا على نفس الطريق
+
+🛑 اطلب نسختك الآن بخصم 50% وضمان استرجاع لـ 30 يوم بدون أسئلة`
+    },
+    {
+      angle: 'الإحساس بالذنب',
+      copy: `🛑 هتفضل تأجل علاقتك بالقرآن لحد إمتى؟ كل يوم بيعدي بدون فهم خسارة ❤️
+
+كل يوم بنقول هنبدأ بكرة هنحفظ بكرة هنفهم بكرة وانت لسه بتأجل من سنين والقرآن مفتوح على نفس الصفحة من شهور والإحساس بالذنب بيكبر كل يوم وانت مش عارف تبدأ منين.
+
+✅ هتبدأ من ساعة فتح الكتاب وهتلاقي نفسك مش قادر تسيبه
+✅ هتفهم في يومين أكتر مما فهمت في سنين من القراءة من غير دليل
+✅ هتمسح إحساس التقصير وتبدأ علاقة جديدة وحقيقية مع كلام ربنا
+✅ هتحس إن كل دقيقة في الكتاب بتقربك خطوة من اللي كنت بتأجلها
+✅ هتفتخر بنفسك إنك أخيراً بدأت مش بس قلت هبدأ بكرة
+
+🛑 اطلب نسختك دلوقتي وابدأ من الليلة بخصم 50% وشحن مجاني سريع`
+    }
+  ];
+  const out = [];
+  const n = Math.max(1, Math.min(samples.length, count || 3));
+  for (let i = 0; i < n; i++) {
+    const sample = samples[i % samples.length];
+    const angle = (angles && angles[i]) || sample.angle;
+    out.push(`ANGLE: ${angle}\n\n${sample.copy}`);
+  }
+  return out.join('\n\n===\n\n');
+}
+
+async function callOpenRouter(systemPrompt, userMessage, maxTokens) {
+  const apiKey = localStorage.getItem(OPENROUTER_KEY_LS) || '';
+  if (!apiKey) throw new Error('No OpenRouter API key. Settings → Connect AI Tools → OpenRouter.');
+  const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + apiKey,
+      'HTTP-Referer': window.location.origin,
+      'X-Title': 'Sila Gallery'
+    },
+    body: JSON.stringify({
+      model: 'anthropic/claude-opus-4.7',
+      max_tokens: maxTokens || 2000,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userMessage }
+      ]
+    })
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error((data && data.error && data.error.message) || ('HTTP ' + res.status));
+  const text = ((data.choices || [])[0] || {}).message?.content?.trim() || '';
+  if (!text) throw new Error('Empty response');
+  return text;
+}
+
+function getAngles() {
+  return $('anglesInput').value.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+}
+
+function buildUserMessage(input, angles, count) {
+  const lines = ['INPUT DATA', input, ''];
+  if (angles.length) {
+    lines.push('Angles to use (in this order):');
+    angles.slice(0, count).forEach((a, i) => lines.push(`${i + 1}. ${a}`));
+    lines.push('');
+  }
+  if (count > 1) {
+    lines.push(`اكتب ${count} إعلانات منفصلة، كل واحد بنفس الـ structure (عنوان + سطر فاضي + مقدمة + سطر فاضي + 5 ✅ + سطر فاضي + 🛑 CTA).`);
+    lines.push('');
+    lines.push('قبل كل إعلان اكتب سطر فيه: ANGLE: <اسم الزاوية اللي بنيت الإعلان عليها>');
+    lines.push('بعدين سطر فاضي ثم الإعلان كامل.');
+    lines.push('افصل الإعلانات عن بعض بسطر فيه === فقط (ثلاث علامات يساوي).');
+    lines.push('');
+  } else {
+    if (angles.length) lines.push(`استخدم زاوية: ${angles[0]}`);
+    lines.push('قبل الإعلان اكتب سطر: ANGLE: <اسم الزاوية>');
+    lines.push('بعدين سطر فاضي ثم الإعلان كامل.');
+    lines.push('');
+  }
+  lines.push('بدون أي شرح أو commentary، الإعلان مباشرة.');
+  return lines.join('\n');
+}
+
+// Parse the model output into [{angle, copy}, ...]
+function parseCopies(text) {
+  // Split by separator line consisting of "===" (allow trailing whitespace)
+  const chunks = text.split(/^\s*={3,}\s*$/m).map(c => c.trim()).filter(Boolean);
+  return chunks.map((chunk, i) => {
+    const lines = chunk.split(/\r?\n/);
+    let angle = '';
+    // Look for ANGLE: marker on the first non-empty line
+    const firstNonEmpty = lines.findIndex(l => l.trim());
+    if (firstNonEmpty >= 0) {
+      const m = lines[firstNonEmpty].match(/^\s*ANGLE\s*[:：]\s*(.+?)\s*$/i);
+      if (m) {
+        angle = m[1].trim();
+        lines.splice(firstNonEmpty, 1);
+        // Trim leading blank lines after removing angle marker
+        while (lines.length && !lines[0].trim()) lines.shift();
+      }
+    }
+    return { angle, copy: lines.join('\n').trim() };
+  }).filter(c => c.copy);
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+
+function renderCopies(text) {
+  const list = $('copiesList');
+  const copies = parseCopies(text);
+  if (!copies.length) {
+    list.style.display = 'none';
+    $('outText').style.display = 'block';
+    $('outText').textContent = text;
+    return;
+  }
+  list.style.display = 'flex';
+  $('outText').style.display = 'none';
+  list.innerHTML = copies.map((c, i) => `
+    <div class="copy-card">
+      <div class="copy-card-head">
+        <div class="label">
+          <span class="num">${i + 1}</span>
+          <span>Copy ${i + 1}</span>
+          ${c.angle ? `<span class="angle">${escapeHtml(c.angle)}</span>` : ''}
+        </div>
+        <button class="copy-one" data-idx="${i}" type="button">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          Copy
+        </button>
+      </div>
+      <div class="copy-card-body">${escapeHtml(c.copy)}</div>
+    </div>
+  `).join('');
+
+  list.querySelectorAll('.copy-one').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const idx = +btn.dataset.idx;
+      const t = copies[idx].copy;
+      try {
+        await navigator.clipboard.writeText(t);
+      } catch (e) {
+        const ta = document.createElement('textarea');
+        ta.value = t; document.body.appendChild(ta); ta.select();
+        document.execCommand('copy'); document.body.removeChild(ta);
+      }
+      const original = btn.innerHTML;
+      btn.classList.add('copied');
+      btn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Copied';
+      setTimeout(() => { btn.classList.remove('copied'); btn.innerHTML = original; }, 1400);
+    });
+  });
+}
+
+async function generate() {
+  showError('');
+  const input = $('productInput').value.trim();
+  const provider = $('modelSelect').value;
+  const count = parseInt($('countValue').textContent, 10) || 1;
+  const angles = getAngles();
+
+  if (!input) { showToast('Enter product details first', true); return; }
+
+  const userMessage = buildUserMessage(input, angles, count);
+  const maxTokens = Math.max(2000, count * 700);
+
+  const btn = $('generateBtn');
+  const label = $('generateLabel');
+  btn.disabled = true;
+  label.innerHTML = '<span class="spinner"></span> Generating…';
+
+  try {
+    // Load EVERY saved Skill so the AI sees all your voice/style/instructions
+    // — adding a new skill in Settings auto-applies here, no code change.
+    const skillBlock = await buildSkillBlock(['about-gohar', 'egyptian-writing-voice', 'egyptian-copywriter']);
+    const sysPrompt  = (skillBlock ? skillBlock + '\n\n---\n\n' : '') + SYSTEM_PROMPT;
+    const text = provider === 'demo'       ? await callDemo(angles, count)
+              : provider === 'agent'      ? await callAgent(sysPrompt, userMessage, maxTokens)
+              : provider === 'chatgpt'    ? await callChatGPT(sysPrompt, userMessage, maxTokens)
+              : provider === 'openrouter' ? await callOpenRouter(sysPrompt, userMessage, maxTokens)
+              : await callClaude(sysPrompt, userMessage, maxTokens);
+
+    $('outEmpty').style.display = 'none';
+    $('outText').textContent = text; // keep raw for "Copy all"
+    renderCopies(text);
+    $('outToolbar').style.display = 'flex';
+  } catch (err) {
+    showError('Failed: ' + err.message);
+  } finally {
+    btn.disabled = false;
+    label.textContent = 'Generate copy';
+  }
+}
+
+// Counter for number of copies
+const COUNT_LS = 'app.copywriting.count';
+const COUNT_MIN = 1, COUNT_MAX = 10;
+function updateCount(val) {
+  const v = Math.max(COUNT_MIN, Math.min(COUNT_MAX, val));
+  $('countValue').textContent = v;
+  $('countDecBtn').disabled = (v <= COUNT_MIN);
+  $('countIncBtn').disabled = (v >= COUNT_MAX);
+  try { localStorage.setItem(COUNT_LS, String(v)); } catch (e) {}
+}
+const savedCount = parseInt(localStorage.getItem(COUNT_LS) || '3', 10);
+updateCount(isNaN(savedCount) ? 3 : savedCount);
+$('countDecBtn').addEventListener('click', () => updateCount(parseInt($('countValue').textContent, 10) - 1));
+$('countIncBtn').addEventListener('click', () => updateCount(parseInt($('countValue').textContent, 10) + 1));
+
+$('generateBtn').addEventListener('click', generate);
+$('regenBtn').addEventListener('click', generate);
+
+$('copyBtn').addEventListener('click', async () => {
+  const txt = $('outText').textContent;
+  try {
+    await navigator.clipboard.writeText(txt);
+    showToast('Copied');
+  } catch (e) {
+    // Fallback
+    const ta = document.createElement('textarea');
+    ta.value = txt; document.body.appendChild(ta); ta.select();
+    document.execCommand('copy'); document.body.removeChild(ta);
+    showToast('Copied');
+  }
+});
+</script>
+  </div>
+</div>
+</body>
+</html>

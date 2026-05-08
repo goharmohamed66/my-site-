@@ -1,0 +1,1828 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Profit Analysis — Reports</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Almarai:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html,body{min-height:100vh;background:#F1F1F1;font-family:'Inter','Almarai',system-ui,sans-serif;color:#1A1A1A;font-size:14px;}
+  .app-shell{display:flex;min-height:100vh;}
+  .app-sidebar{width:240px;min-width:240px;background:#EBEBEB;border-right:1px solid #DCDCDC;display:flex;flex-direction:column;height:calc(100vh - 48px);position:sticky;top:48px;font-family:'Inter',system-ui,sans-serif;}
+  .app-sidebar-items{padding:10px 8px;flex:1;display:flex;flex-direction:column;gap:2px;overflow-y:auto;}
+  .app-sidebar-item{padding:7px 12px;border-radius:8px;font-size:13px;color:#303030;display:flex;align-items:center;gap:10px;cursor:pointer;text-decoration:none;font-weight:800;background:transparent;}
+  .app-sidebar-item:hover{background:#E2E2E2;}
+  .app-sidebar-item.active{background:#FFFFFF;font-weight:600;box-shadow:0 0 0 0.5px rgba(0,0,0,0.1),0 1px 1px rgba(0,0,0,0.05);}
+  .app-sidebar-footer{padding:10px 8px;border-top:1px solid #DCDCDC;}
+  .app-sidebar-divider{height:1px;background:#DCDCDC;margin:8px 4px;}
+  .app-sidebar-group-header{padding:7px 12px;border-radius:8px;font-size:13px;color:#1A1A1A;font-weight:800;display:flex;align-items:center;gap:10px;user-select:none;background:transparent;}
+  .app-sidebar-group-items{display:flex;flex-direction:column;gap:2px;padding:2px 0;}
+  .app-main{flex:1;min-width:0;display:flex;flex-direction:column;}
+  .page{padding:24px 32px;width:100%;max-width:none;}
+  .page-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;gap:12px;flex-wrap:wrap;}
+  .page h1{font-size:22px;font-weight:700;letter-spacing:-0.3px;}
+  .page-bread{font-size:12px;color:#6D7175;margin-bottom:6px;}
+  .page-bread a{color:#6D7175;text-decoration:none;}
+  .panel{background:#FFFFFF;border:1px solid #E1E3E5;border-radius:12px;box-shadow:0 1px 0 rgba(0,0,0,0.05);overflow:hidden;margin-bottom:14px;}
+  .btn{display:inline-flex;align-items:center;gap:8px;padding:0 16px;height:36px;border-radius:8px;border:1px solid #1A1A1A;background:#1A1A1A;color:#FFFFFF;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;}
+  .btn:disabled{opacity:0.55;cursor:not-allowed;}
+
+  /* Brand card — one per brand. Header strip + table inside. */
+  .brand-card{background:#FFFFFF;border:1px solid #E1E3E5;border-radius:12px;box-shadow:0 1px 0 rgba(0,0,0,0.05);margin-bottom:18px;overflow:hidden;}
+  .brand-head{background:#1A1A1A;color:#FAF9F5;padding:14px 18px;display:flex;align-items:center;justify-content:space-between;gap:10px;}
+  .brand-head .brand-name{font-size:15px;font-weight:800;letter-spacing:0.2px;}
+  .brand-head .brand-meta{font-size:12px;font-weight:500;color:#C9CCCF;}
+  .brand-head .pill{display:inline-flex;align-items:center;padding:3px 10px;border-radius:99px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;}
+  .pill.ok{background:#E6F4EA;color:#1E7A38;border:1px solid #A8DDB7;}
+  .pill.warn{background:#FFF8E1;color:#7A5500;border:1px solid #FCE39A;}
+  .pill.err{background:#FEF2F2;color:#991B1B;border:1px solid #FECACA;}
+
+  /* Table styled like Overall Performance card in Ads Analysis */
+  table.perf{width:100%;border-collapse:separate;border-spacing:0;font-size:13px;}
+  table.perf thead th{background:#F5F5F5;padding:14px 18px;font-size:12px;font-weight:900;color:#1A1A1A;text-transform:uppercase;letter-spacing:0.06em;border-bottom:1px solid #E1E3E5;text-align:left;white-space:nowrap;}
+  table.perf thead th.right{text-align:right;}
+  table.perf tbody td{padding:12px 18px;border-bottom:1px solid #F1F1F1;font-variant-numeric:tabular-nums;color:#1A1A1A;}
+  table.perf tbody tr:last-child td{border-bottom:none;}
+  table.perf tbody tr:hover td{background:#FAFAFA;}
+  table.perf tbody td.right{text-align:right;}
+  table.perf tbody td.ar{font-family:'Almarai','Inter',sans-serif;direction:rtl;text-align:right;}
+  table.perf tbody td.profit-pos{color:#0E8345;font-weight:700;}
+  table.perf tbody td.profit-neg{color:#D72C0D;font-weight:700;}
+  table.perf tfoot .totals-row td{padding:14px 18px;background:#1A1A1A;color:#FAF9F5;font-weight:700;line-height:24px;white-space:nowrap;border:none;border-top:1px solid rgba(255,255,255,0.15);}
+  table.perf tfoot .totals-row td:first-child{font-size:12px;text-transform:uppercase;letter-spacing:0.06em;}
+  table.perf tfoot .totals-row td.right{font-size:14px;text-align:right;border-left:1px solid rgba(255,255,255,0.10);}
+  table.perf tfoot .totals-row td.profit-cell{font-size:16px;}
+  .table-scroll{max-height:560px;overflow-y:auto;}
+
+  .miss-list{padding:10px 18px;background:#FFFBEA;border-top:1px solid #FCE39A;font-size:12px;color:#7A5500;}
+  .miss-list ul{list-style:disc;padding-left:20px;margin-top:4px;max-height:160px;overflow-y:auto;}
+  .state{padding:60px 20px;text-align:center;color:#6D7175;font-size:13px;}
+  .spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(0,0,0,0.15);border-top-color:#1A1A1A;border-radius:50%;animation:spin .7s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .err{background:#FEF2F2;border:1px solid #FECACA;color:#991B1B;border-radius:8px;padding:10px 12px;font-size:13px;margin-bottom:14px;}
+  /* Summary card = compact vertical stack of stat rows. All rows share
+     the SAME 8-column grid so columns align across rows (cell #1 in
+     row 1 sits directly above cell #1 in row 2). Empty trailing
+     columns in shorter rows just stay blank. */
+  .summary-card{background:#FFFFFF;border:1px solid #E1E3E5;border-radius:12px;margin-bottom:14px;padding:12px 14px;display:flex;flex-direction:column;gap:8px;}
+  .summary-row{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:10px;}
+  .summary-row.with-divider{padding-top:4px;border-top:none;}
+  .summary-card .stat{display:flex;flex-direction:column;gap:2px;min-width:0;}
+  .summary-card .stat-label{font-size:10.5px;color:#6D7175;text-transform:uppercase;letter-spacing:0.04em;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .summary-card .stat-val{font-size:16px;font-weight:800;color:#1A1A1A;font-variant-numeric:tabular-nums;line-height:1.2;}
+  .summary-card .stat-val.profit-pos{color:#0E8345;}
+  .summary-card .stat-val.profit-neg{color:#D72C0D;}
+  .summary-card .stat.is-total .stat-val{font-size:17px;color:#1A1A1A;}
+  .summary-card .stat-input{font-size:14px;font-weight:700;color:#1A1A1A;font-variant-numeric:tabular-nums;background:#FFFFFF;border:1px solid #DCDCDC;border-radius:5px;padding:2px 8px;width:100%;font-family:inherit;outline:none;line-height:1.4;}
+  .summary-card .stat-input:focus{border-color:#1A1A1A;box-shadow:0 0 0 2px rgba(26,26,26,0.08);}
+  .summary-card .stat-input.dirty{border-color:#0E8345;background:#F0FDF4;}
+  .summary-profit{margin-top:4px;padding-top:8px;border-top:2px solid #1A1A1A;display:flex;align-items:baseline;justify-content:space-between;gap:14px;flex-wrap:wrap;}
+  .summary-profit .label{font-size:13px;font-weight:800;color:#1A1A1A;text-transform:uppercase;letter-spacing:0.04em;}
+  .summary-profit .val{font-size:22px;font-weight:900;font-variant-numeric:tabular-nums;}
+  .summary-profit .val.profit-pos{color:#0E8345;}
+  .summary-profit .val.profit-neg{color:#D72C0D;}
+  /* Mobile: collapse to 4, then 2 columns */
+  @media (max-width: 900px){ .summary-row{grid-template-columns:repeat(4,minmax(0,1fr));} }
+  @media (max-width: 540px){ .summary-row{grid-template-columns:repeat(2,minmax(0,1fr));} }
+</style>
+<script src="../datepicker.js?v=1778055079"></script>
+<script src="../topbar.js?v=1778055079"></script>
+<script src="../sidebar-tools.js?v=1778055079"></script>
+<!-- SheetJS for parsing carrier xlsx exports — same lib used in shipping.html upload flow -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+<div class="app-shell">
+  <aside class="app-sidebar">
+    <nav class="app-sidebar-items">
+      <a href="../index.html" class="app-sidebar-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg><span>Orders</span>
+      </a>
+      <a href="../shipping.html" class="app-sidebar-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg><span>Shipping Analytics</span>
+      </a>
+      <a href="../ads.html" class="app-sidebar-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg><span>Ads Analysis</span>
+      </a>
+    </nav>
+    <div class="app-sidebar-footer">
+      <a href="../settings.html" class="app-sidebar-item" style="text-decoration:none;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg><span>Settings</span>
+      </a>
+    </div>
+  </aside>
+
+  <div class="app-main">
+    <div class="page">
+      <div class="page-bread"><a href="../index.html">Home</a> › Reports › Profit Analysis</div>
+      <div class="page-head">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <h1>Profit Analysis</h1>
+          <!-- Carrier pills from uploaded sheets show up here next to the
+               title so the user sees at a glance which sources Compute is
+               reading from. Populated by renderUploads(). -->
+          <span id="uploadCarriers" style="display:flex;gap:6px;flex-wrap:wrap;"></span>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+          <button type="button" id="dateTrigger" class="adp-trigger" data-adp-attached="0"></button>
+          <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" multiple style="display:none;">
+          <button class="btn" id="uploadBtn" style="background:#FFFFFF;color:#1A1A1A;border-color:#DCDCDC;">📂 رفع شيتات</button>
+          <button type="button" id="clearUploadsBtn" style="display:none;height:36px;padding:0 12px;border:1px solid #FFA396;background:#FFFFFF;color:#D72C0D;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">✕ مسح الشيتات</button>
+          <button class="btn" id="runBtn">↻ Compute</button>
+        </div>
+      </div>
+      <!-- Hidden helpers — kept in DOM so existing renderUploads JS that
+           references these IDs (uploadsBar / uploadCount / uploadsList)
+           keeps working without changes. -->
+      <div id="uploadsBar" style="display:none;"><span id="uploadCount">0</span><div id="uploadsList"></div></div>
+
+      <div id="errBox"></div>
+      <div id="cards"><div class="state">— اضغط Compute عشان تحسب الربح للبراند ده —</div></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const API_BASE  = 'https://indigo-dog-836598.hostingersite.com/api';
+const API_TOKEN = 'tk_4d2b9f7a8c6e1530a4f2d9b7e8c6a1f5';
+async function api(path, opts){
+  opts = opts || {};
+  const headers = Object.assign({ 'Authorization': 'Bearer ' + API_TOKEN }, opts.headers || {});
+  if (opts.body && !headers['Content-Type']) headers['Content-Type'] = 'application/json';
+  const r = await fetch(API_BASE + path, Object.assign({}, opts, { headers }));
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error((d && d.error) || ('HTTP ' + r.status));
+  return d;
+}
+function escapeHtml(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+function showErr(msg){ $('errBox').innerHTML = msg ? '<div class="err">⚠ ' + escapeHtml(msg) + '</div>' : ''; }
+function fmtMoney(v){
+  if (v == null || isNaN(v)) return '—';
+  return Math.round(v).toLocaleString('en-US');
+}
+function fmtNum(v){
+  if (v == null || isNaN(v)) return '—';
+  return Math.round(v).toLocaleString('en-US');
+}
+
+// ── Arabic normalization (copied 1:1 from shipping.html / automation-fm-update.html) ──
+function normalizeAr(s){return String(s||'').replace(/[ةه]/g,'ه').replace(/[أإآا]/g,'ا').replace(/ى/g,'ي').replace(/\s+/g,' ').toLowerCase().trim();}
+function normalizeProd(name){
+  let s = String(name||'').trim();
+  s = s.replace(/\s*\([a-z0-9]{1,3}-[a-z0-9]{1,3}\)\s*$/i, '');
+  return s.replace(/\s+/g,' ').trim();
+}
+function nKey(name){ return normalizeAr(normalizeProd(name)); }
+
+// Fuzzy product matching (Word Overlap) — same as automation-fm-update.html
+function tokenize(name){
+  return normalizeAr(normalizeProd(name))
+    .split(/[\s\-_,،×x]+/)
+    .map(t => t.replace(/^(ال|ل|ب|ك|و|ف)/, ''))
+    .filter(t => t.length >= 2);
+}
+function wordOverlap(a, b){
+  const aw = tokenize(a), bw = tokenize(b);
+  if (!aw.length || !bw.length) return 0;
+  let score = 0;
+  aw.forEach(at => {
+    const hit = bw.some(bt => at === bt
+      || (at.length >= 3 && bt.length >= 3 && (at.startsWith(bt) || bt.startsWith(at))));
+    if (hit) score++;
+  });
+  return score;
+}
+function fuzzyFind(query, candidates, minOverlap){
+  if (minOverlap === undefined) minOverlap = 2;
+  let best = null, bestScore = 0;
+  candidates.forEach(c => {
+    const s = wordOverlap(query, c.name);
+    if (s > bestScore) { bestScore = s; best = c; }
+  });
+  return bestScore >= minOverlap ? best : null;
+}
+
+// ── Multi-product splitting ──────────────────────────────────────────
+// Order's `product` field can contain MULTIPLE products in one string.
+// Two formats observed:
+//   (A) Single product, qty suffix:    "جهاز قياس ضغط (ga-gm) x1"
+//   (B) Multi-product, qty PREFIX + trailing dash separator:
+//         "1X باور بانك (3n-ya)-  1X مصباح مكتبي (3n-ya)-"
+//
+// Detection: if the whole field starts with `\d+X ` it's format B (split
+// on "-\s+\d+X" using lookahead so the qty stays glued to its product).
+// Otherwise treat as a SINGLE product — this avoids accidentally
+// shattering names like "حامل تجفيف الاطباق - الحجم الكبير" on the
+// internal " - ".
+//
+// Pipe `|` is also accepted as an explicit multi-product separator in
+// either format.
+function splitProducts(productField){
+  const raw = String(productField || '').trim();
+  if (!raw) return [];
+  // Split detection — find positions where a SEPARATOR (-, –, —, |) is
+  // immediately followed by a QTY MARKER (1X, *2, ×3 …). This decouples
+  // detection from "leading qty" because shipping.html's upload pipeline
+  // strips the FIRST "1X" from Remarks before storing → DB rows look
+  // like "ProductA (xx-yy) - 1X ProductB (xx-yy)" with NO leading qty.
+  // Old code treated those as single-product (because the string didn't
+  // start with a digit), which silently lost the first product.
+  //
+  // Supported qty notations:
+  //   1X / 2X / 3X            (J&T standard)
+  //   ×3                      (multiplication sign)
+  //   *1 / *2 / *3            (user's other convention)
+  //
+  // Pipe `|` is also a generic multi-product separator on its own.
+  const splitRe = /\s*[-–—]\s*(?=(?:\d+\s*[xX×]|\*\s*\d+))|\s*\|\s*/g;
+  let parts = raw.split(splitRe).map(s => s.trim()).filter(Boolean);
+  if (parts.length === 0) parts = [raw];
+  return parts.map(part => {
+    let qty = 1;
+    let cleanName = part;
+    // Leading qty: "1X ", "2X ", "3 × ", or "*1 ", "*2 ", "*3 "
+    const leadStarM = cleanName.match(/^\*\s*(\d+)\s+/);
+    if (leadStarM) {
+      qty = parseInt(leadStarM[1], 10) || 1;
+      cleanName = cleanName.slice(leadStarM[0].length);
+    } else {
+      const leadXM = cleanName.match(/^(\d+)\s*[xX×]\s+/);
+      if (leadXM) {
+        qty = parseInt(leadXM[1], 10) || 1;
+        cleanName = cleanName.slice(leadXM[0].length);
+      }
+    }
+    // Trailing qty: " x1", " × 3", " *2"
+    const trailStarM = cleanName.match(/\s*\*\s*(\d+)\s*$/);
+    if (trailStarM) {
+      qty = parseInt(trailStarM[1], 10) || qty;
+      cleanName = cleanName.slice(0, trailStarM.index);
+    } else {
+      const trailXM = cleanName.match(/\s*[xX×]\s*(\d+)\s*$/);
+      if (trailXM) {
+        qty = parseInt(trailXM[1], 10) || qty;
+        cleanName = cleanName.slice(0, trailXM.index);
+      }
+    }
+    // Extract (prefix-mkt) marker — first one in the segment.
+    let prefix = '';
+    const prefM = cleanName.match(/\(\s*([a-z0-9]{1,4})-([a-z0-9]{1,4})\s*\)/i);
+    if (prefM) prefix = (prefM[1] + '-' + prefM[2]).toLowerCase();
+    // Drop trailing dash FIRST, then the "(prefix-mkt)" marker. Order
+    // matters: J&T appends "-" after the prefix on the last segment of
+    // multi-product orders ("...(3n-ya)-"). Stripping prefix first leaves
+    // the dash and our $ anchor never matches "(...) " with no dash.
+    cleanName = cleanName
+      .replace(/\s*[-–—]+\s*$/, '')
+      .replace(/\s*\([a-z0-9]{1,4}-[a-z0-9]{1,4}\)\s*$/i, '')
+      .trim();
+    if (!cleanName) return null;
+    return { name: cleanName, qty, prefix, key: nKey(cleanName) };
+  }).filter(Boolean);
+}
+
+// ── Self-tests for splitProducts (run automatically on page load) ────
+// Validates piece counting against real cases pulled from the Gohar
+// April 2026 settlement file. Logs PASS/FAIL to console so the user can
+// open DevTools → Console and verify splitting is correct BEFORE relying
+// on the profit numbers. Each test specifies expected [name, qty] pairs.
+function _runSplitTests(){
+  const tests = [
+    // Format: { in: "order text", expected: [[name, qty], ...] }
+    // Single-product, leading qty marker:
+    { in: "1X العلاقات الخطرة (sh-gm)-",
+      expected: [["العلاقات الخطرة", 1]] },
+    // Single-product, trailing qty marker:
+    { in: "كرة قفز ألباندا (at-gm) x1",
+      expected: [["كرة قفز ألباندا", 1]] },
+    // Single-product, qty=2:
+    { in: "جهاز قياس ضغط الدم على المعصم (ga-gm) x2",
+      expected: [["جهاز قياس ضغط الدم على المعصم", 2]] },
+    // Multi-product, qty=1 each:
+    { in: "1X باور بانك متعدد الاستخدامات (3n-ya)-  1X مصباح مكتبي مع تكيف خفيف (3n-ya)-",
+      expected: [["باور بانك متعدد الاستخدامات", 1], ["مصباح مكتبي مع تكيف خفيف", 1]] },
+    // Multi-product mixed languages:
+    { in: "1X Keyboard with Magnetic Stand-  1X مقوي جهاز الواي فاي-",
+      expected: [["Keyboard with Magnetic Stand", 1], ["مقوي جهاز الواي فاي", 1]] },
+    // Multi-product, mixed qty (2 of A, 1 of B):
+    { in: "2X كتاب باور-  1X بازل-",
+      expected: [["كتاب باور", 2], ["بازل", 1]] },
+    // EDGE: single-product with internal " - " — must NOT be split:
+    { in: "حامل تجفيف الاطباق - الحجم الكبير (ol-gm) x1",
+      expected: [["حامل تجفيف الاطباق - الحجم الكبير", 1]] },
+    // EDGE: multi-format leading "1X" but only one product (no trailing 1X):
+    { in: "1X طائرة هولي فان-",
+      expected: [["طائرة هولي فان", 1]] },
+    // EDGE: multi-product, 3 items:
+    { in: "1X كتاب أ-  1X كتاب ب-  1X كتاب ج-",
+      expected: [["كتاب أ", 1], ["كتاب ب", 1], ["كتاب ج", 1]] },
+    // CRITICAL: shipping.html upload pipeline strips the FIRST "1X" so
+    // the DB row looks like this. Both products MUST count.
+    { in: "بروجيكتور عدسات الفضاء (3n-ya) - 1X باور بانك متعدد الاستخدامات (3n-ya)",
+      expected: [["بروجيكتور عدسات الفضاء", 1], ["باور بانك متعدد الاستخدامات", 1]] },
+    // Asterisk qty notation:
+    { in: "*1 منتج أ - *2 منتج ب",
+      expected: [["منتج أ", 1], ["منتج ب", 2]] },
+    // Asterisk-only single product:
+    { in: "*3 لعبة كرة (at-gm)",
+      expected: [["لعبة كرة", 3]] },
+    // CRITICAL: multi-product with DIFFERENT qty per product (uploaded raw,
+    // pipe-separated). Both qty markers must be respected.
+    { in: "2X بروجيكتور عدسات الفضاء (3n-ya) | 3X باور بانك متعدد الاستخدامات (3n-ya)",
+      expected: [["بروجيكتور عدسات الفضاء", 2], ["باور بانك متعدد الاستخدامات", 3]] },
+    // Same with dash separator:
+    { in: "2X بروجيكتور عدسات الفضاء (3n-ya) - 3X باور بانك متعدد الاستخدامات (3n-ya)",
+      expected: [["بروجيكتور عدسات الفضاء", 2], ["باور بانك متعدد الاستخدامات", 3]] },
+  ];
+  let passed = 0, failed = 0;
+  const failures = [];
+  tests.forEach((t, i) => {
+    const got = splitProducts(t.in);
+    const gotPairs = got.map(g => [g.name, g.qty]);
+    const ok = JSON.stringify(gotPairs) === JSON.stringify(t.expected);
+    if (ok) passed++;
+    else {
+      failed++;
+      failures.push({ idx: i + 1, in: t.in, expected: t.expected, got: gotPairs });
+    }
+  });
+  if (failed === 0) {
+    console.log('%c[profit] splitProducts self-tests: ' + passed + '/' + tests.length + ' PASSED ✅',
+                'color:#0E8345;font-weight:bold;');
+  } else {
+    console.error('[profit] splitProducts self-tests: ' + failed + '/' + tests.length + ' FAILED ❌');
+    failures.forEach(f => {
+      console.error('  Test #' + f.idx + ':', f.in);
+      console.error('    Expected:', JSON.stringify(f.expected));
+      console.error('    Got:     ', JSON.stringify(f.got));
+    });
+  }
+  return { passed, failed, total: tests.length };
+}
+// Expose so user can re-run in console: window.testProfitSplit()
+window.testProfitSplit = _runSplitTests;
+// Run once on page load
+_runSplitTests();
+
+// ── Carrier-sheet parsers (copied 1:1 from shipping.html) ───────────
+// Lets the user upload an xlsx export from any configured shipping
+// company (J&T, QP, Bosta, Zomeza, Wesell, or any custom-mapped one)
+// and compute profit on the parsed rows directly — no DB write needed.
+// The parsers produce rows in the SHIPPING-FORMAT shape ({prod, st, cod,
+// fees, net, date, source}); a small adapter at the bottom converts
+// them to the API shape ({product, status, ...}) so aggregateByProduct
+// can consume them unchanged.
+var SHIP_DEL = 'DELIVERED', SHIP_RET = 'RETURNED', SHIP_CONF = 'CONFIRMED', SHIP_CANC = 'CANCELED';
+var SHIP_COL = {
+  WESELL_EMP1: 'القائم علي التاكيد', WESELL_EMP2: 'القائم على التاكيد',
+  ZOM_STATUS:  'حالة الأوردر', ZOM_PROD: 'اسم المنتج', ZOM_CITY: 'المدينة',
+  ZOM_DATE:    'تاريخ الإنشاء', ZOM_EMP: 'موظف التأكيد',
+  WES_STATUS:  'الحالة', WES_PROD: 'اسم المنتج', WES_CITY: 'المدينة',
+  WES_DATE:    'تاريخ الطلب', WES_ORDER: 'رقم الطلب',
+  WES_CONF1: 'تم الإنشاء', WES_CONF2: 'تم التسليم',
+  WES_CONF3: 'الإرجاع قيد المعالجة', WES_CONF4: 'تم الإرسال',
+  WES_CANC1: 'ملغي من قبل العميل', WES_CANC2: 'ملغي من قبل الموظف'
+};
+var WES_CONF_SET = {}; WES_CONF_SET[SHIP_COL.WES_CONF1] = 1; WES_CONF_SET[SHIP_COL.WES_CONF2] = 1;
+WES_CONF_SET[SHIP_COL.WES_CONF3] = 1; WES_CONF_SET[SHIP_COL.WES_CONF4] = 1; WES_CONF_SET['جاهز للتعبئة'] = 1;
+var WES_CANC_SET = {}; WES_CANC_SET[SHIP_COL.WES_CANC1] = 1; WES_CANC_SET[SHIP_COL.WES_CANC2] = 1;
+var ZOM_CONF_SET = {Confirmed:1,'Under processing':1,processing:1,'In shipping':1,Delivered:1,Failed:1};
+function shipStripQty(s){ return String(s||'').replace(/\s*[xX×]\s*\d+\s*$/u, '').trim(); }
+function shipCleanRemarks(s){ return shipStripQty(String(s||'').replace(/^\d+\s*[Xx]\s+/, '').replace(/\s*-+\s*$/, '').trim()); }
+function shipCleanZomProd(s){ return shipStripQty(String(s||'').replace(/\s*-+\s*$/, '').replace(/^\d+\s*[xX]\s*/, '').trim()); }
+function shipParseDate(val){
+  if (!val) return null;
+  if (val instanceof Date) { return isNaN(val.getTime()) ? null : new Date(val.getFullYear(), val.getMonth(), val.getDate()); }
+  if (typeof val === 'number') {
+    var d = new Date(Math.round((val - 25569) * 86400 * 1000));
+    return new Date(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+  }
+  var s = String(val).trim();
+  var iso = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (iso) return new Date(+iso[1], +iso[2]-1, +iso[3]);
+  var m = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/);
+  if (m) {
+    var y = +m[3]; if (y < 100) y += 2000;
+    return new Date(y, +m[2]-1, +m[1]);
+  }
+  return null;
+}
+function detectCarrier(row){
+  var keys = Object.keys(row).map(function(k){ return String(k).toLowerCase().trim(); });
+  if (keys.indexOf(SHIP_COL.WESELL_EMP1.toLowerCase())>=0 || keys.indexOf(SHIP_COL.WESELL_EMP2.toLowerCase())>=0) return 'wesell';
+  if (keys.indexOf(SHIP_COL.ZOM_STATUS.toLowerCase())>=0) return 'zomeza';
+  if (keys.indexOf('waybill status')>=0) return 'jt';
+  if (keys.indexOf('shipment contents')>=0 || keys.indexOf('full name')>=0
+      || (keys.indexOf('serial')>=0 && keys.indexOf('city')>=0 && keys.indexOf('status')>=0)) return 'qp';
+  return 'bosta';
+}
+function parseJTRow(row){
+  var st = String(row['Waybill status']||'').trim();
+  var isDel = st === 'Signed', isRet = (st === 'Returned' || st === 'Returning');
+  var billable = isDel || isRet;
+  // IMPORTANT: pass the RAW Remarks (not shipCleanRemarks) so splitProducts
+  // can see the leading qty marker for multi-product orders. The legacy
+  // cleaner stripped the FIRST "1X / 2X / 3X" which silently lost the
+  // qty for the first product when the order had multiple products. Now
+  // splitProducts handles trimming, qty extraction, prefix stripping
+  // for each segment uniformly.
+  var prod = String(row['Remarks']||'').trim() || '--';
+  var rawFee = parseFloat(row['Reference delivery fees']||0);
+  var cod    = parseFloat(row['COD amount']||0);
+  var feesActual = billable ? rawFee : 0;
+  // Set `net` to the gross COD amount — same shape shipping.html stores
+  // in /orders.php. Revenue (COD − fees) is computed downstream in
+  // aggregateByProduct so BOTH paths (uploaded sheet + DB rows from
+  // Shipping Analytics) deduct fees uniformly. Earlier fix did the
+  // subtraction here, which double-deducted when paired with the
+  // aggregator's deduction; keeping `net = COD` is the consistent shape.
+  return { prod:prod, city:String(row['Receiving province']||'').trim(),
+           st: isDel?SHIP_DEL : isRet?SHIP_RET : st.toUpperCase(),
+           cod: cod, fees: feesActual,
+           net: cod, date: shipParseDate(row['collection time']),
+           source: 'J&T' };
+}
+function parseQPRow(row){
+  var st = String(row['status']||'').trim();
+  var isDel = st === 'Delivered', isRet = st === 'Undelivered';
+  var billable = isDel || isRet;
+  var rawFee = parseFloat(row['total fees']||row['Total Fees']||0);
+  return { prod: String(row['shipment contents']||row['Shipment Contents']||'').trim() || '--',
+           city: String(row['city']||row['City']||'').trim(),
+           st: isDel?SHIP_DEL : isRet?SHIP_RET : st.toUpperCase(),
+           cod: parseFloat(row['total amount']||row['Total Amount']||0),
+           fees: billable?rawFee:0, net: parseFloat(row['COD']||0),
+           date: shipParseDate(row['order date']||row['Order Date']),
+           source: 'QP' };
+}
+function parseBostaRow(row){
+  var bFee = parseFloat(row['Total Fees']||row['TotalFees']||0);
+  var fields = ['Package Description','PackageDescription','Product Name','ProductName','Product','product'];
+  var prod = '--';
+  for (var i = 0; i < fields.length; i++){ var v = String(row[fields[i]]||'').trim(); if (v) { prod = v; break; } }
+  return { prod:prod, city: (row['Dropoff City']||row['DropoffCity']||'').trim(),
+           st: (row['Order Status']||row['OrderStatus']||'').trim().toUpperCase(),
+           cod: parseFloat(row['COD']||0), fees: bFee,
+           net: parseFloat(row['Net Value']||row['NetValue']||0),
+           date: shipParseDate(row['Completed At']), source: 'Bosta' };
+}
+function parseZomezaRow(row){
+  var st = String(row[SHIP_COL.ZOM_STATUS]||'').trim();
+  var isConf = !!ZOM_CONF_SET[st], isCanc = st === 'Canceled';
+  var prod = shipCleanZomProd(row[SHIP_COL.ZOM_PROD]) || '--';
+  return { prod:prod, city: String(row[SHIP_COL.ZOM_CITY]||'').trim(),
+           st: isConf?SHIP_CONF : isCanc?SHIP_CANC : st.toUpperCase(),
+           cod:0, fees:0, net:0, date: shipParseDate(row[SHIP_COL.ZOM_DATE]),
+           employee: String(row[SHIP_COL.ZOM_EMP]||'').trim() || '--', source: 'Zomeza' };
+}
+function parseWesellRow(row){
+  var st = String(row[SHIP_COL.WES_STATUS]||'').trim();
+  if (!st) return null;
+  var isConf = !!WES_CONF_SET[st], isCanc = !!WES_CANC_SET[st];
+  return { prod: String(row[SHIP_COL.WES_PROD]||'').trim() || '--',
+           city: String(row[SHIP_COL.WES_CITY]||'').trim(),
+           st: isConf?SHIP_CONF : isCanc?SHIP_CANC : st.toUpperCase(),
+           cod:0, fees:0, net:0, date: shipParseDate(row[SHIP_COL.WES_DATE]),
+           employee: String(row[SHIP_COL.WESELL_EMP1]||row[SHIP_COL.WESELL_EMP2]||'').trim() || '--',
+           orderId: String(row[SHIP_COL.WES_ORDER]||'').trim(), source: 'Wesell' };
+}
+// Generic confirmation parser — uses a saved column_map (from a connector
+// in Settings → Connectors → Confirmation systems) to read any sheet.
+function parseConfirmationGenericRow(row, map){
+  if (!map || !map.product || !map.status) return null;
+  var st = String(row[map.status]||'').trim();
+  if (!st) return null;
+  var toSet = function(csv){ var s = {}; String(csv||'').split(',').forEach(function(v){ var t = v.trim(); if (t) s[t] = 1; }); return s; };
+  var confSet = toSet(map.confirmed_values);
+  var cancSet = toSet(map.canceled_values);
+  var isConf = !!confSet[st], isCanc = !!cancSet[st];
+  if (!isConf && !isCanc) return null;
+  var prod = shipCleanZomProd(String(row[map.product]||'').trim()) || '--';
+  return { prod:prod, city: map.city ? String(row[map.city]||'').trim() : '',
+           st: isConf?SHIP_CONF : SHIP_CANC,
+           cod:0, fees:0, net:0,
+           date: map.date ? shipParseDate(row[map.date]) : null,
+           employee: map.employee ? (String(row[map.employee]||'').trim() || '--') : '--',
+           source: 'Confirmation' };
+}
+function pickConfirmationMap(sampleRow, connectors){
+  if (!sampleRow || !connectors || !connectors.length) return null;
+  var keys = Object.keys(sampleRow);
+  for (var i = 0; i < connectors.length; i++){
+    var c = connectors[i];
+    var meta = c && c.meta;
+    if (typeof meta === 'string') { try { meta = JSON.parse(meta); } catch(e) { meta = null; } }
+    var map = meta && meta.column_map;
+    if (!map || !map.product || !map.status) continue;
+    if (keys.indexOf(map.product) >= 0 && keys.indexOf(map.status) >= 0) return { connector: c, map: map };
+  }
+  return null;
+}
+
+// ── Brand attribution from SKU prefix ────────────────────────────────
+// Builds a Map<prefix, brand_id> from each brand's meta.sku_prefixes.
+// Used to assign uploaded sheet rows to the correct brand based on the
+// "(prefix-mkt)" marker in the product name. NULL when prefix unknown.
+let _prefixToBrandPromise = null;
+function loadPrefixToBrand(){
+  if (_prefixToBrandPromise) return _prefixToBrandPromise;
+  _prefixToBrandPromise = (async function(){
+    const map = new Map();
+    try {
+      const brands = window.getAllBrandsAsync ? (await window.getAllBrandsAsync()) : [];
+      brands.forEach(b => {
+        const pre = (b && b.meta && Array.isArray(b.meta.sku_prefixes)) ? b.meta.sku_prefixes : [];
+        pre.forEach(p => {
+          const k = String(p||'').trim().toLowerCase();
+          if (k) map.set(k, { id: b.id, name: b.name });
+        });
+      });
+    } catch (e) { console.warn('[profit] loadPrefixToBrand failed:', e.message); }
+    return map;
+  })();
+  return _prefixToBrandPromise;
+}
+
+// Convert a parsed shipping-format row (from parseJT/QP/.../parseConfirmationGenericRow)
+// to the API shape that aggregateByProduct expects. The shapes diverged
+// slightly: shipping uses { prod, st, ... } while orders.php returns
+// { product, status, ... }. Date is also formatted YYYY-MM-DD.
+function shipRowToApiRow(r){
+  let dateStr = null;
+  if (r.date instanceof Date && !isNaN(r.date.getTime())) {
+    dateStr = r.date.getFullYear() + '-'
+      + String(r.date.getMonth() + 1).padStart(2, '0') + '-'
+      + String(r.date.getDate()).padStart(2, '0');
+  }
+  return {
+    product: r.prod || '',
+    city: r.city || '',
+    status: r.st || '',
+    cod: r.cod || 0,
+    fees: r.fees || 0,
+    net: r.net || 0,
+    date: dateStr,
+    source: r.source || '',
+    employee: r.employee || null,
+    order_id: r.orderId || null,
+    raw: null
+  };
+}
+
+// ── Upload state ─────────────────────────────────────────────────────
+// uploadedFiles[]: { name, carrier, rowCount, brandCounts: Map<brandId, count>, apiRows: [] }
+// Aggregating apiRows from all uploads gives us the orders set we feed
+// to computeProfitForBrand instead of /api/orders.php.
+let uploadedFiles = [];
+function rowsForBrandFromUploads(brandId){
+  // Collect all api-shape rows from every uploaded file that match the
+  // brand_id (resolved from the (prefix-mkt) marker per row at parse time).
+  const out = [];
+  uploadedFiles.forEach(f => {
+    f.apiRows.forEach(row => {
+      if (row.__brand_id === brandId) out.push(row);
+    });
+  });
+  return out;
+}
+
+async function handleFiles(files){
+  if (!files || !files.length) return;
+  if (typeof XLSX === 'undefined') { showErr('SheetJS مش محمل — حدث الصفحة وحاول تاني.'); return; }
+  // Load brand prefix map + confirmation connectors once for this batch.
+  const [prefixMap, confConnsResp] = await Promise.all([
+    loadPrefixToBrand(),
+    api('/connectors.php?type=confirmation').catch(() => ({ rows: [] })),
+  ]);
+  const confConnectors = (confConnsResp && confConnsResp.rows) || [];
+  for (const file of files) {
+    try {
+      const data = await file.arrayBuffer();
+      const wb = XLSX.read(data, { type: 'array' });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rawData = XLSX.utils.sheet_to_json(ws, { defval: '', raw: false });
+      if (!rawData.length) continue;
+      // Carrier detection — first try saved confirmation column_map (custom
+      // connectors from Settings), fall back to hardcoded carrier sniffer.
+      const confPick = pickConfirmationMap(rawData[0], confConnectors);
+      let carrier, parseFn;
+      if (confPick) {
+        const map = confPick.map;
+        parseFn = function(r){ return parseConfirmationGenericRow(r, map); };
+        carrier = (confPick.connector && confPick.connector.name) || 'Confirmation';
+      } else {
+        const c = detectCarrier(rawData[0]);
+        carrier = c === 'qp' ? 'QP' : c === 'jt' ? 'J&T' : c === 'zomeza' ? 'Zomeza' : c === 'wesell' ? 'Wesell' : 'Bosta';
+        parseFn = c === 'qp' ? parseQPRow : c === 'jt' ? parseJTRow : c === 'zomeza' ? parseZomezaRow : c === 'wesell' ? parseWesellRow : parseBostaRow;
+      }
+      const parsed = rawData.map(r => parseFn(r)).filter(Boolean);
+      // Wesell dedupe by orderId — same as shipping.html upload
+      let cleaned = parsed;
+      if (carrier === 'Wesell') {
+        const seen = {};
+        cleaned = parsed.filter(r => { if (!r.orderId) return true; if (seen[r.orderId]) return false; seen[r.orderId] = true; return true; });
+      }
+      // Convert + brand-tag every row using the (prefix-mkt) marker
+      const brandCounts = new Map();
+      const apiRows = cleaned.map(r => {
+        const apiRow = shipRowToApiRow(r);
+        // Extract prefix → brand id
+        const m = String(r.prod || '').match(/\(\s*([a-z0-9]{1,4})-([a-z0-9]{1,4})\s*\)/i);
+        const prefix = m ? m[1].toLowerCase() : '';
+        const brand = prefix ? prefixMap.get(prefix) : null;
+        apiRow.__brand_id = brand ? brand.id : null;
+        if (brand) brandCounts.set(brand.id, (brandCounts.get(brand.id) || 0) + 1);
+        return apiRow;
+      });
+      uploadedFiles.push({
+        name: file.name, carrier, rowCount: apiRows.length, brandCounts, apiRows
+      });
+    } catch (e) {
+      console.error('[profit] failed to parse', file.name, e);
+      showErr('فشل قراءة "' + file.name + '": ' + e.message);
+    }
+  }
+  renderUploads();
+}
+
+function renderUploads(){
+  const wrap = $('uploadsBar');
+  const list = $('uploadsList');
+  const count = $('uploadCount');
+  const carriersHost = $('uploadCarriers');
+  const clearBtn = $('clearUploadsBtn');
+  const uploadBtnLabel = $('uploadBtnLabel');
+  if (carriersHost) carriersHost.innerHTML = '';
+  if (clearBtn) clearBtn.style.display = 'none';
+  if (uploadBtnLabel) uploadBtnLabel.textContent = '📂 رفع شيتات';
+  if (!uploadedFiles.length) {
+    if (wrap) wrap.style.display = 'none';
+    return;
+  }
+  if (wrap) wrap.style.display = '';
+  if (count) count.textContent = uploadedFiles.length;
+  // Show DISTINCT carriers next to the H1 — pretty pills, J&T-style.
+  if (carriersHost) {
+    const seen = new Set();
+    const pills = [];
+    uploadedFiles.forEach(f => {
+      if (seen.has(f.carrier)) return;
+      seen.add(f.carrier);
+      pills.push('<span style="background:#1A1A1A;color:#FFFFFF;padding:3px 12px;border-radius:99px;font-size:12px;font-weight:700;letter-spacing:0.02em;">' + escapeHtml(f.carrier) + '</span>');
+    });
+    carriersHost.innerHTML = pills.join('');
+  }
+  if (clearBtn) clearBtn.style.display = '';
+  if (uploadBtnLabel) uploadBtnLabel.textContent = '📂 ' + uploadedFiles.length + ' شيت مرفوع';
+  if (list) list.innerHTML = '';
+}
+
+// ── Exchange / Refund note detection ────────────────────────────────
+// Some "orders" in the shipping data are actually OPERATIONAL NOTES
+// for the carrier — not real product orders. Examples:
+//   "طرد مقابل طرد هنستلم منه طائره هولي فان ونسلمه طائره هولي فان"
+//     → exchange (parcel-for-parcel) — keep count, don't COGS-charge
+//   "استرجاع هنستلم منه جهاز التنظيف بالبخار وتحويل 1400"
+//     → refund pickup — keep count, don't COGS-charge
+//
+// These rows skew product analytics (no real product moved, no revenue
+// to attribute), so we EXCLUDE them from per-product aggregation but
+// still report their counts in the brand summary card so the user
+// can see them at a glance.
+function isExchangeNote(productText){
+  const s = String(productText || '');
+  return /طرد\s*مقابل\s*طرد/.test(s) || /استبدال/.test(s);
+}
+function isRefundNote(productText){
+  const s = String(productText || '');
+  // "استرجاع" but NOT inside "استبدال". Also "هنستلم منه ... وتحويل" (refund + cash transfer).
+  if (/استبدال/.test(s)) return false;
+  return /استرجاع/.test(s) || (/هنستلم\s*منه/.test(s) && /وتحويل/.test(s));
+}
+// Follow-up delivery notes — carrier instructions like:
+//   "توصيل سقف منظم دولاب"
+//   "1X توصيل تلات أفلام بروجيكتور النجوم"
+//   "توصيل جهاز التنظيف بالبخار / باقي اوردر"
+//   "توصيل حامل رفع الأثقال"
+//   "توصيل عوامة سباحه للاطفال"
+// These are deliveries of a remainder/accessory of a previously-paid
+// order — not new product orders. Excluded from the table and from
+// COGS/revenue/overhead.
+//
+// IMPORTANT: don't use \b after "توصيل" — JavaScript regex \b only
+// recognizes ASCII word chars [A-Za-z0-9_], so it never matches the
+// boundary between Arabic letters and whitespace. Use whitespace /
+// end-of-string / common separator anchors instead. The earlier \b
+// version was silently broken for Arabic input.
+function isDeliveryNote(productText){
+  const s = String(productText || '').trim();
+  return /^(\d+\s*[xX×]\s+)?توصيل(\s|$|\/|-)/.test(s);
+}
+
+// ── Status normalization ─────────────────────────────────────────────
+// Verified from raw data: مسلم كيو بي has 3472 rows with "تم التوريد" AND
+// 54 rows with "delivered" (English lowercase). Both must count as DELIVERED.
+const DELIVERED_SET = new Set(['delivered','تم التوريد','signed']);
+const RETURNED_SET  = new Set(['returned','المرتجعة','undelivered','returning']);
+function normalizeStatus(raw){
+  return String(raw || '').trim().toLowerCase();
+}
+function isDelivered(raw){
+  const s = normalizeStatus(raw);
+  return DELIVERED_SET.has(s) || s === 'delivered'.toLowerCase();
+}
+function isReturned(raw){
+  const s = normalizeStatus(raw);
+  return RETURNED_SET.has(s);
+}
+
+// ── Per-product aggregation ──────────────────────────────────────────
+// Returns Map<productKey, {name, prefix, deliveredPieces, returnedPieces,
+//   deliveredOrders, returnedOrders, deliveredNet, returnedFees}>.
+//
+// PIECE COUNTING — the foundation of COGS. Each order's `product` field
+// gets parsed by splitProducts() into items[] with their actual quantities:
+//   "جهاز ضغط (ga-gm) x2"            → 1 item  qty=2
+//   "1X باور (3n-ya)- 1X مصباح-"     → 2 items qty=1 each
+//   "2X كتاب- 1X بازل-"              → 2 items qty=2 + qty=1
+// For each delivered order, the EXACT qty per product is added to that
+// product's deliveredPieces. COGS later = unit_cost × deliveredPieces.
+// So a 2-piece order of one product → that product gets +2 (not +1).
+// A multi-product order with 1 each → each product gets +1 (not +0.5).
+// This matches the accountant's manual 32-column matrix exactly.
+//
+// Net + fees are split PROPORTIONALLY across products by piece share so
+// totals don't double-count. Single-product orders → 100% to that product.
+function aggregateByProduct(rows){
+  const out = new Map();
+  let dbgDel = 0, dbgRet = 0, dbgRowsParsed = 0, dbgRowsSkipped = 0;
+  let exchangeCount = 0, refundCount = 0;
+  // Track orders with >1 piece OR >1 product so the user can verify
+  // multi-piece detection. Logged at the end with up to 10 examples.
+  const multiPieceExamples = [];
+  const multiProductExamples = [];
+  let totalMultiPiece = 0, totalMultiProduct = 0;
+  rows.forEach(r => {
+    // Filter out operational notes (exchanges + refund pickups). They
+    // get counted into separate buckets and excluded from product-level
+    // COGS / revenue / overhead — they aren't real product flow.
+    if (isExchangeNote(r.product)) {
+      const isDelN = isDelivered(r.status);
+      const isRetN = isReturned(r.status);
+      if (isDelN || isRetN) exchangeCount++;
+      dbgRowsSkipped++;
+      return;
+    }
+    if (isRefundNote(r.product)) {
+      const isDelN = isDelivered(r.status);
+      const isRetN = isReturned(r.status);
+      if (isDelN || isRetN) refundCount++;
+      dbgRowsSkipped++;
+      return;
+    }
+    // Follow-up delivery notes (e.g. "توصيل ...") — silently exclude
+    // from the products table per user request. Not counted as exchanges
+    // or refunds, just dropped.
+    if (isDeliveryNote(r.product)) {
+      dbgRowsSkipped++;
+      return;
+    }
+    const items = splitProducts(r.product || '');
+    if (!items.length) { dbgRowsSkipped++; return; }
+    const isDel = isDelivered(r.status);
+    const isRet = isReturned(r.status);
+    // First pass: ALWAYS count this row toward "total orders" per product
+    // (even if it's IN TRANSIT / DELIVERING / PICKED-UP). The user wants
+    // overhead computed on the FULL order count, not just the resolved
+    // delivered+returned. The prefix gate above already ensured the row
+    // belongs to this brand, so any status that survives is real.
+    const totalPiecesPre = items.reduce((s, it) => s + it.qty, 0) || 1;
+    items.forEach(it => {
+      let slot = out.get(it.key);
+      if (!slot) {
+        slot = {
+          name: it.name, prefix: it.prefix,
+          deliveredPieces: 0, returnedPieces: 0,
+          deliveredOrders: 0, returnedOrders: 0,
+          deliveredNet: 0, returnedFees: 0,
+          totalOrders: 0  // any status — used by overhead calc
+        };
+        out.set(it.key, slot);
+      }
+      slot.totalOrders += it.qty / totalPiecesPre;
+    });
+    if (!isDel && !isRet) { dbgRowsSkipped++; return; }
+    dbgRowsParsed++;
+    // Diagnostic: find orders where total pieces > 1 (either qty > 1 on
+    // any single item, OR multiple items in one order).
+    const orderTotalPieces = items.reduce((s, it) => s + it.qty, 0);
+    if (orderTotalPieces > 1) {
+      totalMultiPiece++;
+      if (multiPieceExamples.length < 10) {
+        multiPieceExamples.push({
+          status: r.status, raw: r.product,
+          parsed: items.map(i => i.name + ' ×' + i.qty),
+          totalPieces: orderTotalPieces
+        });
+      }
+    }
+    if (items.length > 1) {
+      totalMultiProduct++;
+      if (multiProductExamples.length < 10) {
+        multiProductExamples.push({
+          status: r.status, raw: r.product,
+          parsed: items.map(i => i.name + ' ×' + i.qty)
+        });
+      }
+    }
+    const totalPieces = items.reduce((s, it) => s + it.qty, 0) || 1;
+    items.forEach(it => {
+      let slot = out.get(it.key);
+      if (!slot) {
+        slot = {
+          name: it.name, prefix: it.prefix,
+          deliveredPieces: 0, returnedPieces: 0,
+          deliveredOrders: 0, returnedOrders: 0,
+          deliveredNet: 0, returnedFees: 0,
+          totalOrders: 0
+        };
+        out.set(it.key, slot);
+      }
+      const share = it.qty / totalPieces;
+      if (isDel) {
+        slot.deliveredPieces += it.qty;       // EXACT qty, not share
+        slot.deliveredOrders += share;
+        // Revenue per delivered row = NET money credited to the merchant.
+        // Carrier-aware: J&T stores `net` as the gross COD (the carrier
+        // deducts the shipping fee separately), so we subtract `fees`
+        // here. QP/Bosta store `net` as already post-fee, so use as-is.
+        // Without this, J&T orders show inflated revenue (COD instead of
+        // COD − delivery fees), which the user verified manually:
+        // 5 × باور بانك at COD 2099 = 10,495 gross → 10,202.8 net.
+        const grossNet = parseFloat(r.net) || 0;
+        const fee      = parseFloat(r.fees) || 0;
+        const src = String(r.source || '').toLowerCase();
+        const isJT = src === 'j&t' || src === 'jt' || src.indexOf('j&t') !== -1 || src.indexOf('jt') === 0;
+        const actualNet = isJT ? Math.max(0, grossNet - fee) : grossNet;
+        slot.deliveredNet    += actualNet * share;
+        dbgDel += it.qty;
+      } else if (isRet) {
+        slot.returnedPieces += it.qty;        // EXACT qty, not share
+        slot.returnedOrders += share;
+        slot.returnedFees   += (parseFloat(r.fees) || 0) * share;
+        dbgRet += it.qty;
+      }
+    });
+  });
+  console.log('[profit] aggregated', rows.length, 'orders →',
+              dbgRowsParsed, 'used,', dbgRowsSkipped, 'skipped |',
+              'delivered pieces=', dbgDel, '· returned pieces=', dbgRet,
+              '· unique products=', out.size,
+              '· exchanges=', exchangeCount, '· refunds=', refundCount);
+  console.log('[profit] MULTI-PIECE diagnostic:',
+              'orders with >1 total pieces =', totalMultiPiece,
+              '(of', dbgRowsParsed, 'product orders)',
+              '· multi-product orders =', totalMultiProduct);
+  if (multiPieceExamples.length) {
+    console.log('[profit] First multi-piece examples:');
+    multiPieceExamples.forEach((ex, i) => {
+      console.log('  #' + (i+1) + ' [' + ex.status + '] ' + ex.totalPieces + 'pcs · raw="' + ex.raw + '" → ' + JSON.stringify(ex.parsed));
+    });
+  } else if (dbgRowsParsed > 0) {
+    console.log('[profit] ⚠ NO multi-piece orders detected. Either every order is genuinely 1 piece, or splitProducts() is missing a format. Check sample r.product values:',
+                rows.slice(0, 5).map(r => r.product));
+  }
+  // Stash the auto-detected counts on the map itself so the caller can
+  // pass them to the brand card without changing the function signature.
+  out.__exchangeCount = exchangeCount;
+  out.__refundCount = refundCount;
+  return out;
+}
+
+// ── FM sheet header detection (mirrors automation-fm-update.html) ─────
+// Returns { headerRow, colName, colCogs, colOverhead } or null.
+function detectFMLayout(rows){
+  const max = Math.min(30, rows.length);
+  for (let r = 0; r < max; r++){
+    const row = rows[r] || [];
+    let colReturn = -1, coltROAS = -1, colName = -1, colCogs = -1, colOverhead = -1;
+    for (let c = 0; c < row.length; c++){
+      const cell = String(row[c] || '').trim();
+      if (cell === '') continue;
+      if (colReturn < 0 && /return\s*%/i.test(cell) && /from\s*total/i.test(cell)) colReturn = c;
+      else if (colReturn < 0 && /^return\s*%$/i.test(cell)) colReturn = c;
+      if (coltROAS < 0 && /^t?roas$/i.test(cell)) coltROAS = c;
+      if (colCogs < 0 && (/\bCOGS\b/i.test(cell) || /unit\s*cost/i.test(cell) || /تكلفة\s*المنتج/i.test(cell) || /^cost$/i.test(cell))) colCogs = c;
+      // Tolerant overhead detection — anything containing "overhead" as a
+      // standalone word (case-insensitive), with or without "cost" / spaces.
+      // Catches: "OVERHEAD", "Overhead Cost", "OVERHEADCOST", "Overhead /Order",
+      // "Overhead Per Order", "مصاريف نثرية".
+      if (colOverhead < 0 && (/\boverhead/i.test(cell) || /overhead/i.test(cell) || /مصاريف\s*نثرية/i.test(cell))) colOverhead = c;
+      if (colName < 0 && (/المنتج|product|name/i.test(cell))) colName = c;
+    }
+    // Need either an anchor (Return%/tROAS) OR a name+cost combo to lock on a row.
+    const hasAnchor = colReturn >= 0 && coltROAS >= 0;
+    const hasCostCombo = colName >= 0 && (colCogs >= 0 || colOverhead >= 0);
+    if (hasAnchor || hasCostCombo) {
+      if (colName < 0) colName = 0;
+      return { headerRow: r, colName, colCogs, colOverhead };
+    }
+  }
+  return null;
+}
+
+// ── Pull COGS + OVERHEADCOST from each brand's FM sheet ──────────────
+// Returns Map<nKey(productName), { cogs, overhead }>.
+async function loadCostsFromFM(brand){
+  const linked = (brand.meta && brand.meta.linked_sheets) || [];
+  const fm = linked.find(s => /Financial Modeling.*Monetization/i.test(s.name));
+  if (!fm) return { map: new Map(), reason: 'no FM sheet linked' };
+  const conns = await api('/connectors.php?type=storage&provider=google_drive');
+  const conn = (conns && conns.rows && conns.rows[0]) || null;
+  if (!conn) return { map: new Map(), reason: 'no Drive connector' };
+  let rows = [];
+  try {
+    const r = await api('/sheets-write.php?action=read&connector_id=' + conn.id + '&file_id=' + encodeURIComponent(fm.id));
+    rows = (r && r.rows) || [];
+  } catch (e) {
+    return { map: new Map(), reason: 'sheet read failed: ' + e.message };
+  }
+  if (!rows.length) return { map: new Map(), reason: 'sheet empty' };
+  const layout = detectFMLayout(rows);
+  if (!layout) return { map: new Map(), reason: 'header row not found in FM sheet' };
+  // Always dump the detected header row so the user can verify which
+  // column maps to which detector regex.
+  const headerRow = rows[layout.headerRow] || [];
+  const headers = headerRow.map((c, i) => i + ':' + String(c || '').trim()).filter(h => h.split(':')[1]).join(' | ');
+  console.log('[profit] FM sheet header row #' + layout.headerRow + ':', headers);
+  console.log('[profit] FM sheet detected →',
+              { colName: layout.colName, colCogs: layout.colCogs, colOverhead: layout.colOverhead });
+  if (layout.colCogs < 0 && layout.colOverhead < 0) {
+    return { map: new Map(), reason: 'COGS / OVERHEADCOST columns not found in FM sheet (check header names — must contain "COGS" / "Overhead" / "تكلفة المنتج" / "مصاريف نثرية")' };
+  }
+  if (layout.colOverhead < 0) {
+    console.warn('[profit] FM sheet — OVERHEAD column NOT detected. Header names tried: /overhead\\s*cost/, /^overhead$/, /مصاريف\\s*نثرية/. Check the actual header in the sheet.');
+  }
+  if (layout.colCogs < 0) {
+    console.warn('[profit] FM sheet — COGS column NOT detected. Header names tried: /\\bCOGS\\b/, /unit\\s*cost/, /تكلفة\\s*المنتج/, /^cost$/.');
+  }
+  // Tolerant numeric parse — strips currency symbols, commas, Arabic
+  // numerals, and trailing units like "جنيه" / "EGP". Returns 0 for blanks.
+  function parseMoney(v){
+    if (v == null) return 0;
+    if (typeof v === 'number') return v;
+    let s = String(v).trim();
+    if (!s) return 0;
+    // Convert Arabic-Indic digits → ASCII
+    s = s.replace(/[٠-٩]/g, d => String.fromCharCode(d.charCodeAt(0) - 0x0660 + 48));
+    // Strip thousands commas + currency tokens + non-numeric chars (keep . - and digits)
+    s = s.replace(/[,\s]/g, '').replace(/[^\d.\-]/g, '');
+    const n = parseFloat(s);
+    return isNaN(n) ? 0 : n;
+  }
+  const map = new Map();
+  let nWithCogs = 0, nWithOverhead = 0;
+  for (let r = layout.headerRow + 1; r < rows.length; r++) {
+    const row = rows[r] || [];
+    const name = String(row[layout.colName] || '').trim();
+    if (!name) continue;
+    const cogs     = layout.colCogs     >= 0 ? parseMoney(row[layout.colCogs])     : 0;
+    const overhead = layout.colOverhead >= 0 ? parseMoney(row[layout.colOverhead]) : 0;
+    if (cogs === 0 && overhead === 0) continue; // skip empty rows
+    if (cogs > 0)     nWithCogs++;
+    if (overhead > 0) nWithOverhead++;
+    map.set(nKey(name), { name, cogs, overhead });
+  }
+  console.log('[profit] FM sheet loaded — layout:',
+              { headerRow: layout.headerRow, colName: layout.colName,
+                colCogs: layout.colCogs, colOverhead: layout.colOverhead },
+              '· products with cogs=' + nWithCogs,
+              '· products with overhead=' + nWithOverhead,
+              '· total mapped=' + map.size);
+  return { map, reason: '' };
+}
+
+// ── Meta ROAS aggregation ──
+// Two-step approach to get accurate spend AND per-product allocation:
+//
+// 1. PER-PRODUCT (keyword matching against insights) — gives us a relative
+//    distribution: which products got more campaigns/spend than others.
+//    BUT this OVER-COUNTS at the brand level because one campaign can
+//    match multiple keywords (e.g. "PROSPECTING | RACK | CBO" matches
+//    keywords "rack" AND "cbo" if both are products).
+//
+// 2. ACCOUNT TOTAL (account_spend action — same as Amount Spent page) —
+//    the AUTHORITATIVE brand-total spend including DELETED campaigns.
+//
+// Final allocation: rescale each product's keyword-matched spend so the
+// SUM equals the account total. Same proportional shape, exact brand sum.
+//
+// Returns { perProduct: Map<keyword, {spend, revenue, roas}>, brandTotalSpend }
+async function computeProductROAS(brand, from, to, keywords){
+  const result = new Map();
+  const cleanKeys = (keywords || [])
+    .map(k => String(k || '').trim())
+    .filter(k => k.length >= 2);
+  cleanKeys.forEach(k => result.set(k, { spend: 0, revenue: 0, roas: 0 }));
+  let brandTotalSpend = 0;
+  if (!from || !to) {
+    return { perProduct: result, brandTotalSpend };
+  }
+  const conns = await api('/connectors.php?type=ads&provider=meta').catch(() => ({ rows: [] }));
+  const list = (conns && conns.rows) || [];
+  if (!list.length) return { perProduct: result, brandTotalSpend };
+  // EXACT mirror of amount-spent.html brand filter (3 fallbacks):
+  //   set.has(a.id) || set.has(strip_prefix(a.id)) || set.has('act_' + strip_prefix(a.id))
+  // Without this match all 3 forms, brands storing ids with `act_` prefix
+  // wouldn't filter and we'd pull from EVERY connected account → inflated spend.
+  const allowed = (brand && brand.meta && Array.isArray(brand.meta.ad_account_ids))
+    ? new Set(brand.meta.ad_account_ids.map(String))
+    : null;
+  const accountTasks = list.map(c =>
+    api('/meta.php?action=accounts&connector_id=' + c.id)
+      .then(r => ({ connId: c.id, accounts: (r && r.rows) || [] }))
+      .catch(() => ({ connId: c.id, accounts: [] }))
+  );
+  const perConn = await Promise.all(accountTasks);
+  const calls = [];
+  let totalAccountsSeen = 0;
+  let totalAccountsKept = 0;
+  perConn.forEach(({ connId, accounts }) => {
+    accounts.forEach(a => {
+      totalAccountsSeen++;
+      // Resolve raw id from either field; build numeric (no act_) variant.
+      const rawId    = String(a.id || a.account_id || '');
+      const numericId = rawId.replace(/^act_/, '');
+      if (!numericId) return;
+      // Brand filter: try all 3 storage forms (matches amount-spent.html)
+      if (allowed && allowed.size > 0) {
+        const matched = allowed.has(rawId)
+                     || allowed.has(numericId)
+                     || allowed.has('act_' + numericId);
+        if (!matched) return;
+      }
+      totalAccountsKept++;
+      calls.push({ connId, accId: 'act_' + numericId, rawId, numericId });
+    });
+  });
+  console.log('[profit][' + brand.name + '] ad accounts filter:',
+              'seen=' + totalAccountsSeen,
+              '· kept=' + totalAccountsKept,
+              '· brand_allowed=' + (allowed ? Array.from(allowed).join(',') : '(no filter)'),
+              '· kept_ids=' + calls.map(c => c.accId).join(','));
+  if (!calls.length) {
+    console.warn('[profit][' + brand.name + '] no ad accounts matched the brand filter — ads spend will be 0. Check brand.meta.ad_account_ids in Settings → Brand → Configure.');
+    return { perProduct: result, brandTotalSpend };
+  }
+
+  // STEP 1: account_spend per allowed account → authoritative total.
+  // Same endpoint amount-spent.html uses; includes deleted campaigns.
+  const spendTasks = calls.map(({ connId, accId }) =>
+    api('/meta.php?action=account_spend&connector_id=' + connId
+      + '&account_id=' + encodeURIComponent(accId)
+      + '&since=' + encodeURIComponent(from)
+      + '&until=' + encodeURIComponent(to))
+      .then(r => parseFloat(r && r.spend) || 0)
+      .catch(e => { console.warn('[profit] account_spend failed for', accId, e.message); return 0; })
+  );
+  const spends = await Promise.all(spendTasks);
+  brandTotalSpend = spends.reduce((s, v) => s + v, 0);
+  console.log('[profit][' + brand.name + '] brand TOTAL spend (authoritative, all-campaigns including deleted):',
+              Math.round(brandTotalSpend), 'EGP across', calls.length, 'account(s)');
+
+  if (!cleanKeys.length || brandTotalSpend === 0) {
+    return { perProduct: result, brandTotalSpend };
+  }
+
+  // STEP 2: insights per campaign → per-keyword raw spend + revenue.
+  // Used ONLY to determine relative distribution between products. The
+  // actual numbers get rescaled below to match the authoritative total.
+  const insightTasks = calls.map(({ connId, accId }) =>
+    api('/meta.php?action=insights&connector_id=' + connId + '&account_id=' + encodeURIComponent(accId) + '&since=' + from + '&until=' + to)
+      .then(r => (r && r.rows) || [])
+      .catch(() => [])
+  );
+  const allRowsArrs = await Promise.all(insightTasks);
+  const lowerKeys = cleanKeys.map(k => ({ orig: k, lc: k.toLowerCase() }));
+  allRowsArrs.forEach(rows => {
+    rows.forEach(row => {
+      const cn = String(row['Campaign name'] || row.campaignName || row.campaign_name || '').toLowerCase();
+      if (!cn) return;
+      const spend   = parseFloat(row['Amount spent (EGP)'] || row.spend || 0) || 0;
+      const revenue = parseFloat(row['Purchases conversion value'] || row.revenue || 0) || 0;
+      lowerKeys.forEach(({ orig, lc }) => {
+        if (cn.indexOf(lc) === -1) return;
+        const slot = result.get(orig);
+        slot.spend   += spend;
+        slot.revenue += revenue;
+      });
+    });
+  });
+
+  // Per-product spend stays RAW — exactly what was spent on campaigns
+  // whose name contained that product's campaign_name keyword. No
+  // rescaling, no redistribution. Per user request: "ضيف الرقم بتاع
+  // الإعلانات بتاع كل منتج زي ما هو بالظبط حسب الكامبينات بتاعته،
+  // والإعلانات اللي ملهاش اسم منتج مش عايزها في الجدول."
+  // Brand summary still shows the authoritative brandTotalSpend
+  // (account_spend, matches Amount Spent). The difference between the
+  // sum of per-product and brandTotalSpend = unattributed campaigns
+  // (no matching campaign_name) — kept out of the table on purpose.
+  result.forEach(v => { v.roas = v.spend > 0 ? v.revenue / v.spend : 0; });
+  let rawSum = 0;
+  result.forEach(v => { rawSum += v.spend; });
+  console.log('[profit][' + brand.name + '] per-product spend (RAW, not rescaled):',
+              'sum=' + Math.round(rawSum), '· brand authoritative=' + Math.round(brandTotalSpend),
+              '· unattributed=' + Math.round(brandTotalSpend - rawSum));
+  return { perProduct: result, brandTotalSpend };
+}
+
+// ── Date range (same AppDatePicker pattern as amount-spent.html) ─────
+let dateRange = { from: '', to: '' };
+function syncDateRange() {
+  if (!window.AppDatePicker) return;
+  const r = window.AppDatePicker.getRange();
+  dateRange = { from: r.from || '', to: r.to || '' };
+}
+// Debounced auto-refresh handle so rapid date toggles don't fire
+// multiple Computes back-to-back. Same pattern as amount-spent.html.
+let _autoRefreshT = null;
+function scheduleAutoRefresh(){
+  clearTimeout(_autoRefreshT);
+  _autoRefreshT = setTimeout(() => { runReport(); }, 250);
+}
+function tryAttachDatePicker(retriesLeft) {
+  if (window.AppDatePicker && typeof window.AppDatePicker.attach === 'function') {
+    AppDatePicker.attach(document.getElementById('dateTrigger'), {
+      onChange: ({ from, to }) => {
+        dateRange = { from: from || '', to: to || '' };
+        // Auto-recompute on date change — matches Amount Spent UX so the
+        // user never has to click Compute manually after picking dates.
+        scheduleAutoRefresh();
+      }
+    });
+    syncDateRange();
+    return;
+  }
+  if (retriesLeft > 0) setTimeout(() => tryAttachDatePicker(retriesLeft - 1), 120);
+}
+tryAttachDatePicker(20);
+
+// ── Profit per brand ─────────────────────────────────────────────────
+async function computeProfitForBrand(brand, from, to){
+  const out = { brand, missList: [] };
+  // ── Order source: uploaded sheets with smart per-brand fallback ───
+  // Uploads OVERRIDE /orders.php for the brands they cover. But if the
+  // uploaded rows for this brand all fall outside the requested date
+  // range (e.g. user uploaded a May sheet then asked for April), we
+  // SILENTLY fall back to /api/orders.php for this brand so the saved
+  // DB data from Shipping Analytics still surfaces. This matches the
+  // user's mental model: "if uploads can't answer for this period, try
+  // the database."
+  const uploadedRowsAll = (typeof rowsForBrandFromUploads === 'function')
+    ? rowsForBrandFromUploads(brand.id)
+    : [];
+  let filteredUploads = uploadedRowsAll;
+  if (uploadedRowsAll.length && (from || to)) {
+    filteredUploads = uploadedRowsAll.filter(r => {
+      if (!r.date) return true;
+      const d = String(r.date).slice(0, 10);
+      if (from && d < from) return false;
+      if (to   && d > to)   return false;
+      return true;
+    });
+  }
+  const useUploads = filteredUploads.length > 0;
+  out.usingUploadedData = useUploads;
+  out.uploadedRowCount = filteredUploads.length;
+  out.uploadedRowsTotal = uploadedRowsAll.length;
+  out.fellBackToDb = uploadedRowsAll.length > 0 && filteredUploads.length === 0;
+  console.log('[profit][' + brand.name + '] order source:',
+              useUploads ? 'UPLOADS' :
+                (out.fellBackToDb
+                  ? 'DB (fallback — uploads had ' + uploadedRowsAll.length + ' rows but 0 in range)'
+                  : 'DB'),
+              '· upload_rows_for_brand=' + uploadedRowsAll.length,
+              '· after_date_filter=' + filteredUploads.length);
+
+  // 1. Fetch in parallel — skip /orders.php only when uploads cover this brand+range
+  // When using DB: include `legacy=1` so rows that were uploaded BEFORE
+  // brand attribution was strict (and got brand_id=NULL) still surface
+  // for the active brand. Mirrors what Shipping Analytics shows by default.
+  const ordersUrl = '/orders.php?limit=20000&brand_id=' + brand.id
+    + '&legacy=1'
+    + (from ? '&from=' + from : '')
+    + (to   ? '&to='   + to   : '');
+  const [ordersR, fmRes, productsR] = await Promise.all([
+    useUploads
+      ? Promise.resolve({ rows: filteredUploads })
+      : api(ordersUrl).catch(e => { out.missList.push('orders fetch failed: ' + e.message); return { rows: [] }; }),
+    loadCostsFromFM(brand),
+    api('/products.php?brand_id=' + brand.id).catch(() => ({ rows: [] })),
+  ]);
+  let orders = (ordersR && ordersR.rows) || [];
+  // Diagnostic for DB path: show row count + status breakdown so the
+  // user can see whether DB has data at all, and if so why it might
+  // have been skipped (e.g. all rows have status="In transit" which
+  // isn't DELIVERED/RETURNED).
+  if (!useUploads) {
+    const statusCounts = {};
+    orders.forEach(r => { const s = String(r.status || '(blank)').trim(); statusCounts[s] = (statusCounts[s] || 0) + 1; });
+    console.log('[profit][' + brand.name + '] DB fetch:', ordersUrl,
+                '→', orders.length, 'rows · status breakdown:', statusCounts);
+  }
+  // ── STRICT per-brand SKU-prefix gate ────────────────────────────────
+  // Hard rule: every row in this brand's profit table MUST carry a
+  // (prefix-mkt) marker matching one of brand.meta.sku_prefixes.
+  // Anything else is dropped — including rows with no prefix at all.
+  // Guarantees zero leakage between brands. Confirmation rows (no
+  // marker) are dropped here; they aren't part of the profit calc
+  // anyway (only DELIVERED + RETURNED count).
+  const brandPrefixes = (brand.meta && Array.isArray(brand.meta.sku_prefixes))
+    ? new Set(brand.meta.sku_prefixes.map(p => String(p).toLowerCase().trim()).filter(Boolean))
+    : new Set();
+  if (brandPrefixes.size > 0) {
+    const sizeBefore = orders.length;
+    let droppedNoPrefix = 0, droppedOtherBrand = 0;
+    const droppedSamples = [];
+    orders = orders.filter(r => {
+      const m = String(r.product || '').match(/\(\s*([a-z0-9]{1,4})-([a-z0-9]{1,4})\s*\)/i);
+      if (!m) { droppedNoPrefix++; return false; }
+      const pref = m[1].toLowerCase();
+      if (!brandPrefixes.has(pref)) {
+        droppedOtherBrand++;
+        if (droppedSamples.length < 3) droppedSamples.push('(' + pref + '-..) ' + r.product);
+        return false;
+      }
+      return true;
+    });
+    console.log('[profit][' + brand.name + '] prefix gate (STRICT):',
+                sizeBefore + ' → ' + orders.length + ' rows',
+                '· brand prefixes=[' + Array.from(brandPrefixes).join(',') + ']',
+                '· dropped: no-prefix=' + droppedNoPrefix + ' · other-brand=' + droppedOtherBrand);
+    if (droppedSamples.length) {
+      console.log('[profit][' + brand.name + '] sample dropped (other-brand prefix):', droppedSamples);
+    }
+  } else {
+    console.warn('[profit][' + brand.name + '] no sku_prefixes configured — skipping prefix gate. Rows from other brands may leak. Set prefixes in Settings → Brand → Configure.');
+  }
+  // No client-side date filter needed anymore — uploads were pre-filtered
+  // above, and /orders.php applies from/to server-side.
+  let beforeFilter = orders.length, afterFilter = beforeFilter;
+  if (false && useUploads && (from || to)) {
+    orders = orders.filter(r => {
+      if (!r.date) return true;
+      const d = String(r.date).slice(0, 10);
+      if (from && d < from) return false;
+      if (to   && d > to)   return false;
+      return true;
+    });
+    afterFilter = orders.length;
+    console.log('[profit][' + brand.name + '] upload date-filter:',
+                'range=' + (from||'(none)') + '..' + (to||'(none)'),
+                '· before=' + beforeFilter, '· after=' + afterFilter,
+                '· dropped=' + (beforeFilter - afterFilter));
+  }
+  const fmCosts = fmRes.map;
+  if (fmRes.reason) out.fmWarn = fmRes.reason;
+  const dbProducts = (productsR && productsR.rows) || [];
+  // 2. Aggregate
+  const productAgg = aggregateByProduct(orders);
+  // Auto-detected exchange + refund counts (excluded from product agg).
+  // User can override via inputs in the brand summary card; overrides
+  // persist in localStorage per brand. Defaults to auto-detected.
+  const lsKey = 'app.profit.notes.' + brand.id;
+  let userOverrides = {};
+  try { userOverrides = JSON.parse(localStorage.getItem(lsKey) || '{}'); } catch(e) {}
+  out.userOverrides = userOverrides;
+  out.exchangeCount = (userOverrides.exchanges != null) ? parseInt(userOverrides.exchanges, 10) : (productAgg.__exchangeCount || 0);
+  out.refundCount   = (userOverrides.refunds   != null) ? parseInt(userOverrides.refunds,   10) : (productAgg.__refundCount   || 0);
+  out.exchangeCountAuto = productAgg.__exchangeCount || 0;
+  out.refundCountAuto   = productAgg.__refundCount   || 0;
+  // ── Maximum mode: derive date range from the order data ─────────────
+  // AppDatePicker's "Maximum" preset returns from='', to=''. /orders.php
+  // returns ALL orders in that case (no SQL filter). But the Meta API
+  // requires concrete since/until — empty would 400. Mirror what
+  // automation-fm-update.html does: scan the order rows for the actual
+  // earliest/latest dates and use those for the ads call so the user
+  // gets ALL spend that matches the data span.
+  let effFrom = from, effTo = to;
+  if (!from || !to) {
+    const dates = orders
+      .map(r => String(r.date || '').slice(0, 10))
+      .filter(d => /^\d{4}-\d{2}-\d{2}$/.test(d))
+      .sort();
+    if (dates.length) {
+      if (!from) effFrom = dates[0];
+      if (!to)   effTo   = dates[dates.length - 1];
+    } else {
+      // No dated orders → fall back to last 365 days so the Meta call
+      // doesn't 400 and Amount Spent gets a usable window.
+      const today = new Date();
+      const past  = new Date(today.getTime() - 365 * 86400000);
+      const ymd = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+      if (!from) effFrom = ymd(past);
+      if (!to)   effTo   = ymd(today);
+    }
+    console.log('[profit][' + brand.name + '] Maximum mode → ads window:', effFrom, '→', effTo);
+  }
+  // ── Always compute ads, even when products are empty ───────────────
+  // The user expects the ads spend in the brand summary to match Amount
+  // Spent EXACTLY for the selected date range — independent of whether
+  // any orders matched. Previously we early-returned on empty productAgg
+  // which left ads at 0 even when Meta had real spend in that range.
+  const keywords = dbProducts
+    .map(p => p && p.meta && p.meta.campaign_name)
+    .filter(k => k && String(k).trim());
+  const adsRes = await computeProductROAS(brand, effFrom, effTo, keywords);
+  const roasMap = adsRes.perProduct;
+  const brandTotalSpend = adsRes.brandTotalSpend;
+  out.brandTotalSpend = brandTotalSpend;
+  // No products in this range → render an "ads only" card so the user
+  // still sees the period's ad spend (matches Amount Spent for the range).
+  if (!productAgg.size) {
+    out.empty = true;
+    out.totals = { revenue: 0, ads: brandTotalSpend, cogs: 0, overhead: 0, returns: 0,
+                   profit: -brandTotalSpend, deliveredPieces: 0, deliveredOrders: 0, returnedOrders: 0 };
+    out.uploadDateFilterStats = useUploads ? { before: beforeFilter, after: afterFilter } : null;
+    return out;
+  }
+  // Track how much per-product ads we account for so we can show the
+  // "unallocated" remainder (campaigns whose names don't contain any
+  // product's campaign_name keyword).
+  let allocatedSpend = 0;
+  // 4. Build rows + totals
+  const rows = [];
+  const totals = { revenue: 0, ads: 0, cogs: 0, overhead: 0, returns: 0, profit: 0,
+                   deliveredPieces: 0, deliveredOrders: 0, returnedOrders: 0, totalOrders: 0 };
+  productAgg.forEach((slot, key) => {
+    // Match → DB product (for campaign_name)
+    const dbProd = dbProducts.find(p => nKey(p.name) === key)
+                || fuzzyFind(slot.name, dbProducts);
+    const camp = dbProd && dbProd.meta && dbProd.meta.campaign_name;
+    const adSlot = camp ? (roasMap.get(camp) || null) : null;
+    // Match → FM sheet row (cogs + overhead unit prices)
+    let fmSlot = fmCosts.get(key);
+    if (!fmSlot && dbProd) fmSlot = fmCosts.get(nKey(dbProd.name));
+    if (!fmSlot && fmCosts.size) {
+      // Fuzzy fallback against FM rows
+      const fmCands = Array.from(fmCosts.values());
+      const m = fuzzyFind(slot.name, fmCands);
+      if (m) fmSlot = m;
+    }
+    const cogsUnit     = (fmSlot && fmSlot.cogs)     || 0;
+    const overheadUnit = (fmSlot && fmSlot.overhead) || 0;
+    // Display name: prefer DB live name, else sheet name, else order text.
+    const displayName = (dbProd && dbProd.name) || (fmSlot && fmSlot.name) || slot.name;
+    const revenue  = slot.deliveredNet;
+    const ads      = adSlot ? adSlot.spend : 0;
+    if (adSlot) allocatedSpend += adSlot.spend;
+    // COGS = unit_cost × delivered_pieces. deliveredPieces was accumulated
+    // from EACH item's actual qty (multi-product orders distribute correctly:
+    // 1 piece of A + 1 piece of B → A gets +1 and B gets +1, not 0.5 each).
+    const cogs     = cogsUnit * slot.deliveredPieces;
+    // Overhead = unit × TOTAL ORDERS for this product (any status that
+    // survived the brand's prefix gate — DELIVERED, RETURNED, IN TRANSIT,
+    // DELIVERING, PICKED-UP). The 8 EGP overhead is paid the moment a
+    // shipment leaves the door regardless of outcome. Per user request:
+    // "اضرب الاوفر هيد كوست في إجمالي الاوردرات اللي هما 48 مش المسلم
+    // ومرتجع بس". For a multi-product order each product still gets a
+    // proportional share so brand total = unit × total_unique_orders.
+    const totalOrdersForProduct = slot.totalOrders || 0;
+    const overhead = overheadUnit * totalOrdersForProduct;
+    const returns  = slot.returnedFees; // user choice: shipping fees of returned orders only
+    const profit   = revenue - ads - cogs - overhead - returns;
+    console.log('[profit][' + brand.name + '] ' + displayName,
+                '· delivered=' + slot.deliveredPieces + 'pcs',
+                '· total_orders=' + totalOrdersForProduct.toFixed(2),
+                '· cogs_unit=' + cogsUnit, '→ cogs=' + Math.round(cogs),
+                '· overhead_unit=' + overheadUnit, '→ overhead=' + Math.round(overhead),
+                '· revenue=' + Math.round(revenue),
+                '· ads=' + Math.round(ads),
+                '· returns=' + Math.round(returns),
+                '· profit=' + Math.round(profit));
+    rows.push({
+      name: displayName,
+      campaign: camp || '',
+      deliveredPieces: slot.deliveredPieces,
+      totalOrders: totalOrdersForProduct,
+      revenue, ads, cogs, overhead, returns, profit,
+      hasFM: !!fmSlot, hasAds: !!adSlot
+    });
+    totals.revenue += revenue;
+    totals.ads     += ads;
+    totals.cogs    += cogs;
+    totals.overhead += overhead;
+    totals.returns += returns;
+    totals.profit  += profit;
+    totals.deliveredPieces += slot.deliveredPieces;
+    totals.deliveredOrders += slot.deliveredOrders;
+    totals.returnedOrders  += slot.returnedOrders;
+    totals.totalOrders     += totalOrdersForProduct;
+    if (!fmSlot) out.missList.push(displayName + ' — مفيش COGS/OVERHEAD في شيت FM');
+    if (camp && !adSlot) out.missList.push(displayName + ' — مفيش ads data للـ campaign "' + camp + '"');
+    if (!camp) out.missList.push(displayName + ' — مفيش campaign_name متعرّف على المنتج (Products page)');
+  });
+  rows.sort((a, b) => b.profit - a.profit);
+  out.rows = rows;
+  // OVERRIDE brand-level ads with the authoritative account_spend total —
+  // matches the Amount Spent page exactly (includes deleted campaigns).
+  // Per-product `ads` columns stay as the rescaled keyword-allocation.
+  // If keyword-matching missed everything (no DB campaign_name set on
+  // any product), this still shows the real spend so the brand profit
+  // formula isn't artificially inflated by zero ads.
+  if (brandTotalSpend > 0) {
+    const sumPerProduct = totals.ads;
+    if (Math.abs(sumPerProduct - brandTotalSpend) > 1) {
+      // Adjust totals.profit to use brandTotalSpend instead of sumPerProduct
+      const delta = brandTotalSpend - sumPerProduct;
+      totals.ads = brandTotalSpend;
+      totals.profit -= delta; // more ads → less profit
+      out.adsAdjusted = { sumPerProduct, brandTotalSpend, delta };
+    }
+  }
+  out.totals = totals;
+  // Brand-level sanity log
+  const totalShippedOrders = totals.deliveredOrders + totals.returnedOrders;
+  console.log('[profit][' + brand.name + '] BRAND TOTALS',
+              '· products=' + rows.length,
+              '· shipped_orders(unique)=' + Math.round(totalShippedOrders),
+              '· delivered_pieces=' + totals.deliveredPieces,
+              '· revenue=' + Math.round(totals.revenue),
+              '· ads(authoritative)=' + Math.round(totals.ads),
+              '· ads(allocated to products)=' + Math.round(allocatedSpend),
+              '· cogs=' + Math.round(totals.cogs),
+              '· overhead=' + Math.round(totals.overhead),
+              '· returns=' + Math.round(totals.returns),
+              '· profit=' + Math.round(totals.profit));
+  return out;
+}
+
+// ── Render ───────────────────────────────────────────────────────────
+function renderBrandCard(card){
+  if (card.errored) {
+    return '<div class="brand-card">'
+      + '<div class="brand-head">'
+      +   '<span class="brand-name">' + escapeHtml(card.brand.name) + '</span>'
+      +   '<span class="pill err">Error</span>'
+      + '</div>'
+      + '<div class="miss-list" style="background:#FEF2F2;border-color:#FECACA;color:#991B1B;">'
+      +   '⚠ ' + escapeHtml(card.errorMsg || 'unknown error')
+      + '</div></div>';
+  }
+  if (card.empty) {
+    // No orders for this brand+range — don't render any stat boxes.
+    // Just the brand header pill so the user knows the brand was
+    // processed but had nothing in the requested period. Per user
+    // request: "قبل ما اسحب الداتا ما تعرضش الخانات استنى لما اسحب".
+    let sourceBadge = '';
+    if (card.usingUploadedData) {
+      sourceBadge = '<span class="pill" style="background:#E7F0FD;color:#0A4275;border:1px solid #B3D4FC;margin-left:8px;">📂 من الشيت المرفوع</span>';
+    } else if (card.fellBackToDb) {
+      sourceBadge = '<span class="pill" style="background:#FFF8E1;color:#7A5500;border:1px solid #FCE39A;margin-left:8px;">DB · uploads خارج الـ range</span>';
+    } else {
+      sourceBadge = '<span class="pill" style="background:#F1F1F1;color:#4A5568;border:1px solid #DCDCDC;margin-left:8px;">🗄️ من Shipping Analytics</span>';
+    }
+    return '<div class="brand-card">'
+      + '<div class="brand-head">'
+      +   '<span class="brand-name">' + escapeHtml(card.brand.name) + sourceBadge + '</span>'
+      +   '<span class="pill warn">No orders in this range</span>'
+      + '</div>'
+      + '</div>';
+  }
+  if (!card.rows || !card.rows.length) {
+    return '<div class="brand-card">'
+      + '<div class="brand-head">'
+      +   '<span class="brand-name">' + escapeHtml(card.brand.name) + '</span>'
+      +   '<span class="pill err">No data</span>'
+      + '</div></div>';
+  }
+  const t = card.totals;
+  const delOrdersWhole = Math.round(t.deliveredOrders);
+  const retOrdersWhole = Math.round(t.returnedOrders);
+  const totalOrdersWhole = Math.round(t.totalOrders || 0);
+  // Editable extras — saved per brand in localStorage. Pre-loaded into
+  // card.userOverrides at compute time. Each row's input has a unique
+  // data-key; the change handler persists + recomputes totals live.
+  const ov = card.userOverrides || {};
+  const num = k => (ov[k] != null ? Number(ov[k]) : 0);
+  const exVal      = card.exchangeCount != null ? card.exchangeCount : 0;
+  const refVal     = card.refundCount   != null ? card.refundCount   : 0;
+  const exAuto     = card.exchangeCountAuto || 0;
+  const refAuto    = card.refundCountAuto   || 0;
+  const vCash      = num('vodafone_cash');
+  const otherRev   = num('other_revenue');
+  const refundExp  = num('refund_expense');
+  const exchExp    = num('exchange_expense');
+  const otherExp   = num('other_expense');
+  // Base auto-computed values (for grand totals + reactive update)
+  const baseRev    = t.revenue;
+  const baseCogs   = t.cogs;
+  const baseAds    = t.ads;
+  const baseOver   = t.overhead;
+  const baseRet    = t.returns;
+  // Computed totals
+  const totalRevenue  = baseRev + vCash + otherRev;
+  const totalExpenses = baseCogs + baseRet + baseAds + baseOver + refundExp + exchExp + otherExp;
+  const profit        = totalRevenue - totalExpenses;
+  const profitClass   = profit >= 0 ? 'profit-pos' : 'profit-neg';
+  const bid = card.brand.id;
+  // Pack the base values as a JSON attribute so the input change handler
+  // can recompute totals without re-rendering the whole card.
+  const baseAttrs = ' data-brand-id="' + bid + '"'
+    + ' data-base-revenue="' + baseRev + '"'
+    + ' data-base-cogs="'    + baseCogs + '"'
+    + ' data-base-ads="'     + baseAds + '"'
+    + ' data-base-overhead="'+ baseOver + '"'
+    + ' data-base-returns="' + baseRet + '"';
+  const inputHtml = (key, val, autoLabel) => {
+    const titleAttr = autoLabel != null
+      ? ' title="مكتشف تلقائياً: ' + autoLabel + '. تقدر تعدّله."'
+      : '';
+    return '<input type="number" step="any" class="stat-input"'
+      + ' data-brand-id="' + bid + '"'
+      + ' data-key="' + key + '"'
+      + titleAttr
+      + ' value="' + val + '" />';
+  };
+  // 3 horizontal rows + a profit summary at the bottom. Each row uses
+  // an auto-fit grid so stats wrap on narrow screens but stay one-line
+  // on desktop. No section titles or colored backgrounds — clean look.
+  const summary =
+    '<div class="summary-card" ' + baseAttrs + '>'
+    // Row 1: Orders
+    + '<div class="summary-row">'
+    +   '<div class="stat"><span class="stat-label">إجمالي الاوردرات</span><span class="stat-val">' + fmtNum(totalOrdersWhole) + '</span></div>'
+    +   '<div class="stat"><span class="stat-label">أوردرات مسلمة</span><span class="stat-val">' + fmtNum(delOrdersWhole) + '</span></div>'
+    +   '<div class="stat"><span class="stat-label">أوردرات مرتجعة</span><span class="stat-val">' + fmtNum(retOrdersWhole) + '</span></div>'
+    +   '<div class="stat"><span class="stat-label">قطع مسلمة</span><span class="stat-val">' + fmtNum(t.deliveredPieces) + '</span></div>'
+    +   '<div class="stat"><span class="stat-label" title="مكتشف تلقائياً: ' + refAuto + '. تقدر تعدّله.">عدد الاسترجاع</span>' + inputHtml('refunds', refVal, refAuto) + '</div>'
+    +   '<div class="stat"><span class="stat-label" title="مكتشف تلقائياً: ' + exAuto + '. تقدر تعدّله.">عدد الاستبدال</span>' + inputHtml('exchanges', exVal, exAuto) + '</div>'
+    + '</div>'
+    // Row 2: Revenue
+    + '<div class="summary-row with-divider">'
+    +   '<div class="stat"><span class="stat-label">الإيرادات</span><span class="stat-val">' + fmtMoney(baseRev) + '</span></div>'
+    +   '<div class="stat"><span class="stat-label">تحويلات فودافون كاش</span>' + inputHtml('vodafone_cash', vCash) + '</div>'
+    +   '<div class="stat"><span class="stat-label">إيرادات أخرى</span>' + inputHtml('other_revenue', otherRev) + '</div>'
+    +   '<div class="stat is-total"><span class="stat-label">إجمالي الإيرادات</span><span class="stat-val" data-total="revenue">' + fmtMoney(totalRevenue) + '</span></div>'
+    + '</div>'
+    // Row 3: Expenses
+    + '<div class="summary-row with-divider">'
+    +   '<div class="stat"><span class="stat-label">COGS</span><span class="stat-val">' + fmtMoney(baseCogs) + '</span></div>'
+    +   '<div class="stat"><span class="stat-label">مصاريف مرتجعات</span><span class="stat-val">' + fmtMoney(baseRet) + '</span></div>'
+    +   '<div class="stat"><span class="stat-label">الإعلانات</span><span class="stat-val">' + fmtMoney(baseAds) + '</span></div>'
+    +   '<div class="stat"><span class="stat-label">Overhead</span><span class="stat-val">' + fmtMoney(baseOver) + '</span></div>'
+    +   '<div class="stat"><span class="stat-label">مصاريف إسترجاع</span>' + inputHtml('refund_expense', refundExp) + '</div>'
+    +   '<div class="stat"><span class="stat-label">مصاريف إستبدال</span>' + inputHtml('exchange_expense', exchExp) + '</div>'
+    +   '<div class="stat"><span class="stat-label">مصروفات أخرى</span>' + inputHtml('other_expense', otherExp) + '</div>'
+    +   '<div class="stat is-total"><span class="stat-label">إجمالي المصروفات</span><span class="stat-val" data-total="expenses">' + fmtMoney(totalExpenses) + '</span></div>'
+    + '</div>'
+    // Profit footer
+    + '<div class="summary-profit">'
+    +   '<span class="label">صافي الربح</span>'
+    +   '<span class="val ' + profitClass + '" data-total="profit">' + fmtMoney(profit) + '</span>'
+    + '</div>'
+    + '</div>';
+  const body = card.rows.map(r => {
+    const pcls = r.profit >= 0 ? 'profit-pos' : 'profit-neg';
+    return '<tr>'
+      + '<td class="ar">' + escapeHtml(r.name) + '</td>'
+      + '<td class="right">' + fmtNum(r.deliveredPieces) + '</td>'
+      + '<td class="right">' + fmtMoney(r.revenue) + '</td>'
+      + '<td class="right">' + (r.hasFM ? fmtMoney(r.cogs) : '<span style="color:#9CA3AF;">—</span>') + '</td>'
+      + '<td class="right">' + (r.hasAds ? fmtMoney(r.ads) : '<span style="color:#9CA3AF;">—</span>') + '</td>'
+      + '<td class="right">' + (r.hasFM ? fmtMoney(r.overhead) : '<span style="color:#9CA3AF;">—</span>') + '</td>'
+      + '<td class="right">' + fmtMoney(r.returns) + '</td>'
+      + '<td class="right ' + pcls + '">' + fmtMoney(r.profit) + '</td>'
+      + '</tr>';
+  }).join('');
+  const tableHtml = '<div class="table-scroll"><table class="perf">'
+    + '<thead><tr>'
+    +   '<th>إسم المنتج</th>'
+    +   '<th class="right">قطع مسلمة</th>'
+    +   '<th class="right">الإيرادات</th>'
+    +   '<th class="right">COGS</th>'
+    +   '<th class="right">إعلانات</th>'
+    +   '<th class="right">Overhead</th>'
+    +   '<th class="right">مصاريف مرتجعات</th>'
+    +   '<th class="right">صافي الربح</th>'
+    + '</tr></thead>'
+    + '<tbody>' + body + '</tbody>'
+    + '<tfoot><tr class="totals-row">'
+    +   '<td>Total</td>'
+    +   '<td class="right">' + fmtNum(t.deliveredPieces) + '</td>'
+    +   '<td class="right">' + fmtMoney(t.revenue) + '</td>'
+    +   '<td class="right">' + fmtMoney(t.cogs) + '</td>'
+    +   '<td class="right">' + fmtMoney(t.ads) + '</td>'
+    +   '<td class="right">' + fmtMoney(t.overhead) + '</td>'
+    +   '<td class="right">' + fmtMoney(t.returns) + '</td>'
+    +   '<td class="right profit-cell ' + profitClass + '">' + fmtMoney(t.profit) + '</td>'
+    + '</tr></tfoot>'
+    + '</table></div>';
+  let warnHtml = '';
+  if (card.fmWarn) {
+    warnHtml = '<div class="miss-list">⚠ ' + escapeHtml(card.fmWarn) + ' — أعمدة COGS / OVERHEAD مش هتتحسب لحد ما الشيت يتظبط.</div>';
+  }
+  let missHtml = '';
+  if (card.missList && card.missList.length) {
+    const items = card.missList.slice(0, 50).map(m => '<li>' + escapeHtml(m) + '</li>').join('');
+    missHtml = '<div class="miss-list"><b>' + card.missList.length + '</b> منتج محتاج مراجعة:'
+      + '<ul>' + items + (card.missList.length > 50 ? '<li>… +' + (card.missList.length - 50) + ' أكتر</li>' : '') + '</ul></div>';
+  }
+  // Badge that shows the data source for THIS brand:
+  //   - 📂 Uploaded sheet (with row count)
+  //   - 🗄️ DB (Shipping Analytics) — default when no upload
+  //   - DB fallback — when uploads existed but were outside the range
+  let sourceBadge = '';
+  if (card.usingUploadedData) {
+    sourceBadge = '<span class="pill" style="background:#E7F0FD;color:#0A4275;border:1px solid #B3D4FC;margin-left:8px;">📂 من الشيت المرفوع · ' + fmtNum(card.uploadedRowCount || 0) + ' صف</span>';
+  } else if (card.fellBackToDb) {
+    sourceBadge = '<span class="pill" style="background:#FFF8E1;color:#7A5500;border:1px solid #FCE39A;margin-left:8px;">DB · uploads خارج الـ range</span>';
+  } else {
+    sourceBadge = '<span class="pill" style="background:#F1F1F1;color:#4A5568;border:1px solid #DCDCDC;margin-left:8px;">🗄️ من Shipping Analytics</span>';
+  }
+  return '<div class="brand-card">'
+    + '<div class="brand-head">'
+    +   '<span class="brand-name">' + escapeHtml(card.brand.name) + sourceBadge + '</span>'
+    +   '<span class="brand-meta">' + fmtNum(card.rows.length) + ' منتج · ' + fmtNum(t.deliveredPieces) + ' قطعة مسلمة · ' + fmtNum(Math.round(t.deliveredOrders + t.returnedOrders)) + ' أوردر إجمالي</span>'
+    + '</div>'
+    + summary
+    + tableHtml
+    + warnHtml
+    + missHtml
+    + '</div>';
+}
+
+function renderGrandTotal(allCards){
+  const valid = allCards.filter(c => c.totals);
+  if (valid.length < 2) return '';
+  const t = { revenue: 0, ads: 0, cogs: 0, overhead: 0, returns: 0, profit: 0,
+              deliveredPieces: 0 };
+  valid.forEach(c => {
+    t.revenue += c.totals.revenue;
+    t.ads     += c.totals.ads;
+    t.cogs    += c.totals.cogs;
+    t.overhead += c.totals.overhead;
+    t.returns += c.totals.returns;
+    t.profit  += c.totals.profit;
+    t.deliveredPieces += c.totals.deliveredPieces;
+  });
+  const pcls = t.profit >= 0 ? 'profit-pos' : 'profit-neg';
+  return '<div class="brand-card">'
+    + '<div class="brand-head" style="background:#0E8345;">'
+    +   '<span class="brand-name">All Brands — Grand Total</span>'
+    +   '<span class="brand-meta">' + fmtNum(valid.length) + ' براند · ' + fmtNum(t.deliveredPieces) + ' قطعة</span>'
+    + '</div>'
+    + '<div class="summary-card">'
+    +   '<div class="stat"><span class="stat-label">الإيرادات</span><span class="stat-val">' + fmtMoney(t.revenue) + '</span></div>'
+    +   '<div class="stat"><span class="stat-label">الإعلانات</span><span class="stat-val">' + fmtMoney(t.ads) + '</span></div>'
+    +   '<div class="stat"><span class="stat-label">COGS</span><span class="stat-val">' + fmtMoney(t.cogs) + '</span></div>'
+    +   '<div class="stat"><span class="stat-label">Overhead</span><span class="stat-val">' + fmtMoney(t.overhead) + '</span></div>'
+    +   '<div class="stat"><span class="stat-label">مصاريف مرتجعات</span><span class="stat-val">' + fmtMoney(t.returns) + '</span></div>'
+    +   '<div class="stat"><span class="stat-label">صافي الربح</span><span class="stat-val ' + pcls + '">' + fmtMoney(t.profit) + '</span></div>'
+    + '</div></div>';
+}
+
+// ── Run ──────────────────────────────────────────────────────────────
+async function runReport(){
+  syncDateRange();
+  showErr('');
+  const fromVal = dateRange.from || '';
+  const toVal   = dateRange.to   || '';
+  $('runBtn').disabled = true;
+  $('runBtn').innerHTML = '<span class="spinner"></span> Computing…';
+  $('cards').innerHTML = '<div class="state"><span class="spinner"></span> بيحسب الربح للبراند ده…</div>';
+  try {
+    const activeId = window.getActiveBrandId ? window.getActiveBrandId() : 0;
+    let brands = [];
+    if (activeId === 0 && window.getAllBrandsAsync) {
+      brands = await window.getAllBrandsAsync();
+    } else if (window.getActiveBrandAsync) {
+      const ab = await window.getActiveBrandAsync();
+      if (ab && ab.id) brands = [ab];
+    }
+    if (!brands.length) {
+      $('cards').innerHTML = '<div class="state">— مفيش براند نشط — اختار براند من الـ topbar أو فعل "All brands" —</div>';
+      return;
+    }
+    // Sequential per brand — Meta API hates parallel from same connector.
+    // Per-brand try/catch isolates failures: one brand without an FM sheet
+    // or with a broken Meta connector won't break the rest of the run.
+    // The page renders progressively so the user sees brands as they
+    // complete (no need to wait for all to finish).
+    const cards = [];
+    for (let i = 0; i < brands.length; i++) {
+      const b = brands[i];
+      // Visible progress for "All brands" mode where many brands run
+      const progressHtml = brands.length > 1
+        ? '<div class="state" style="padding:14px 20px;text-align:right;border-radius:8px;background:#FFF;border:1px solid #E1E3E5;margin-bottom:12px;">'
+          + '<span class="spinner"></span> ' + escapeHtml(b.name) + ' (' + (i + 1) + '/' + brands.length + ')…</div>'
+        : '';
+      $('cards').innerHTML = cards.map(renderBrandCard).join('')
+        + progressHtml
+        + renderGrandTotal(cards);
+      let card;
+      try {
+        card = await computeProfitForBrand(b, fromVal, toVal);
+      } catch (err) {
+        console.error('[profit] Brand "' + b.name + '" failed:', err);
+        card = { brand: b, errored: true, errorMsg: err.message || String(err), missList: [] };
+      }
+      cards.push(card);
+      $('cards').innerHTML = cards.map(renderBrandCard).join('') + renderGrandTotal(cards);
+    }
+    console.log('[profit] DONE — processed', cards.length, 'brand(s):',
+                cards.map(c => c.brand.name + (c.errored ? ' ❌' : c.empty ? ' ∅' : ' ✅')).join(', '));
+  } catch (e) {
+    showErr('Compute failed: ' + e.message);
+    $('cards').innerHTML = '<div class="state">⚠ Failed.</div>';
+  } finally {
+    $('runBtn').disabled = false;
+    $('runBtn').innerHTML = '↻ Compute';
+  }
+}
+
+$('runBtn').addEventListener('click', runReport);
+
+// Upload button → file picker. Multiple files supported. Carrier is
+// auto-detected per file from the column headers (or matches a saved
+// custom connector's column_map from Settings).
+$('uploadBtn').addEventListener('click', () => $('fileInput').click());
+$('fileInput').addEventListener('change', async (e) => {
+  const files = Array.from(e.target.files || []);
+  e.target.value = ''; // reset so the same file can be re-picked after a Clear
+  if (!files.length) return;
+  await handleFiles(files);
+});
+$('clearUploadsBtn').addEventListener('click', () => {
+  uploadedFiles = [];
+  renderUploads();
+});
+
+// Recompute brand-level totals (revenue / expenses / profit) live when
+// any editable input in the summary card changes. Reads the base values
+// from the .summary-card data-base-* attributes (set at render time)
+// and adds the current input values on top — so the user sees totals
+// update as they type without re-running the whole compute pipeline.
+function recomputeCardTotals(card){
+  if (!card) return;
+  const baseRev  = parseFloat(card.getAttribute('data-base-revenue')) || 0;
+  const baseCogs = parseFloat(card.getAttribute('data-base-cogs'))    || 0;
+  const baseAds  = parseFloat(card.getAttribute('data-base-ads'))     || 0;
+  const baseOver = parseFloat(card.getAttribute('data-base-overhead'))|| 0;
+  const baseRet  = parseFloat(card.getAttribute('data-base-returns')) || 0;
+  const inputs = card.querySelectorAll('.stat-input');
+  const v = {};
+  inputs.forEach(i => { v[i.getAttribute('data-key')] = parseFloat(i.value) || 0; });
+  const totalRevenue  = baseRev + (v.vodafone_cash || 0) + (v.other_revenue || 0);
+  const totalExpenses = baseCogs + baseRet + baseAds + baseOver
+                      + (v.refund_expense || 0) + (v.exchange_expense || 0) + (v.other_expense || 0);
+  const profit = totalRevenue - totalExpenses;
+  // Inline number formatter — matches fmtMoney rounding behavior.
+  const fmt = n => (n == null || isNaN(n)) ? '—' : Math.round(n).toLocaleString('en-US');
+  const r = card.querySelector('[data-total="revenue"]');
+  const ex = card.querySelector('[data-total="expenses"]');
+  const p = card.querySelector('[data-total="profit"]');
+  if (r) r.textContent = fmt(totalRevenue);
+  if (ex) ex.textContent = fmt(totalExpenses);
+  if (p) {
+    p.textContent = fmt(profit);
+    p.classList.toggle('profit-pos', profit >= 0);
+    p.classList.toggle('profit-neg', profit < 0);
+  }
+}
+
+// Persist editable inputs per brand. Uses event delegation so it
+// survives re-renders. Saves to localStorage + triggers reactive
+// recompute of the brand totals row.
+$('cards').addEventListener('input', function(e){
+  const el = e.target;
+  if (!el || !el.classList || !el.classList.contains('stat-input')) return;
+  const brandId = el.getAttribute('data-brand-id');
+  const key     = el.getAttribute('data-key');
+  if (!brandId || !key) return;
+  const lsKey = 'app.profit.notes.' + brandId;
+  let stored = {};
+  try { stored = JSON.parse(localStorage.getItem(lsKey) || '{}'); } catch(_){}
+  stored[key] = Number(el.value) || 0;
+  try { localStorage.setItem(lsKey, JSON.stringify(stored)); } catch(_){}
+  el.classList.add('dirty');
+  clearTimeout(el.__dirtyT); el.__dirtyT = setTimeout(() => el.classList.remove('dirty'), 1200);
+  // Find the parent summary-card and recompute its totals
+  const card = el.closest('.summary-card');
+  if (card) recomputeCardTotals(card);
+});
+
+// Auto-run on first load + brand change. ALWAYS runs even when no date
+// range is set (Maximum mode) — the tool derives the range from order
+// data so an empty from/to is a valid input.
+window.addEventListener('app:brandChanged', () => runReport());
+setTimeout(() => {
+  syncDateRange();
+  runReport();
+}, 600);
+</script>
+</body>
+</html>

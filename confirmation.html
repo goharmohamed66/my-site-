@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Confirmation</title>
+<script>
+  // Forwards to shipping.html in confirmation-only mode. The shipping
+  // bundle detects ?mode=confirmation, forces tab=confirmation, hides
+  // every shipping-specific control and renames the page header.
+  // Lives as its own URL so the sidebar's active-state detection works
+  // (and so the URL the user bookmarks reflects the page they're on).
+  location.replace('shipping.html?mode=confirmation' + (location.hash || ''));
+</script>
+</head>
+<body></body>
+</html>

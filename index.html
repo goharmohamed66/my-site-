@@ -1,0 +1,2752 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>WooCommerce Orders Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Almarai:wght@400;700;800&display=swap" rel="stylesheet">
+<script src="datepicker.js?v=1777854138"></script>
+<script src="sidebar-tools.js?v=1777854138"></script>
+<script src="topbar.js?v=1777854138"></script>
+<script type="importmap">
+{
+  "imports": {
+    "react": "https://esm.sh/react@18.3.1",
+    "react-dom": "https://esm.sh/react-dom@18.3.1",
+    "react-dom/client": "https://esm.sh/react-dom@18.3.1/client",
+    "recharts": "https://esm.sh/recharts@2.13.0?deps=react@18.3.1,react-dom@18.3.1"
+  }
+}
+</script>
+<style>
+  :root {
+    --bgPage: #F1F1F1;
+    --bgCard: #FFFFFF;
+    --bgTable: #F1F1F1;
+    --bgTableAlt: #FAFAFA;
+    --bgHeader: #F5F5F5;
+    --bgTotalRow: #F5F5F5;
+    --bgHover: #F5F5F5;
+
+    --border: #DCDCDC;
+    --borderLight: #E1E1E1;
+
+    --text: #1A1A1A;
+    --textSub: #4A4A4A;
+    --textMuted: #8A8A8A;
+
+    --accent: #1A1A1A;
+    --metaBlue: #1A1A1A;
+    --metaBlueBG: #F1F1F1;
+    --metaBlueLight: #E8E8E8;
+    --metaBlueHover: #303030;
+    --green: #16A34A;
+    --red: #DC2626;
+
+    --shadow: 0 1px 6px rgba(41,23,94,0.07), 0 0 0 1px rgba(41,23,94,0.04);
+    --shadowHover: 0 6px 20px rgba(41,23,94,0.13), 0 0 0 1px rgba(41,23,94,0.06);
+    --shadowModal: 0 32px 80px rgba(0,0,0,0.22), 0 0 0 1px rgba(0,0,0,0.05);
+    --shadowPopover: 0 12px 40px rgba(15,23,42,0.16), 0 0 0 1px rgba(15,23,42,0.06);
+
+    --crit-bg:#FEF2F2; --crit-bd:#FECACA; --crit-dot:#DC2626; --crit-tx:#991B1B;
+    --warn-bg:#FFFBEB; --warn-bd:#FDE68A; --warn-dot:#D97706; --warn-tx:#92400E;
+    --good-bg:#F0FDF4; --good-bd:#BBF7D0; --good-dot:#16A34A; --good-tx:#14532D;
+    --info-bg:#F0F9FF; --info-bd:#BAE6FD; --info-dot:#0284C7; --info-tx:#0C4A6E;
+
+    --radius: 14px;
+    --radiusSm: 8px;
+    --radiusXs: 6px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    font-family: 'Inter', 'Almarai', system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bgPage);
+    color: var(--text);
+    font-size: 16px;
+    line-height: 24px;
+    font-weight: 400;
+    min-height: 100vh;
+    margin: 0;
+    padding: 0;
+  }
+
+  button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+  input, select { font-family: inherit; font-size: 13px; color: var(--text); }
+
+  /* ───────── BLACK TOPBAR (Shopify style) ───────── */
+  .topbar {
+    background: #000000;
+    color: #FFFFFF;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    z-index: 50;
+  }
+  .topbar-row1 {
+    display: flex; align-items: center; gap: 20px;
+    padding: 8px 16px;
+    height: 48px;
+    box-sizing: border-box;
+  }
+  .brand-shop {
+    display: flex; align-items: center; gap: 6px;
+    color: #FFFFFF;
+    font-style: italic; font-weight: 800; font-size: 15px;
+    min-width: 224px;
+    text-decoration: none;
+  }
+  .brand-shop .logo-icon { font-style: normal; font-size: 18px; }
+  .brand-shop .logo-icon-svg { width: 22px; height: 26px; flex-shrink: 0; }
+  .search-wrap {
+    flex: 1;
+    max-width: 720px;
+    margin: 0 auto;
+    background: #1A1A1A;
+    border: 1px solid #2A2A2A;
+    border-radius: 8px;
+    padding: 7px 12px;
+    display: flex; align-items: center; gap: 10px;
+    box-sizing: border-box;
+  }
+  .search-icon { color: #888; font-size: 13px; }
+  .search-input {
+    flex: 1; background: transparent; border: none; outline: none;
+    color: #FFFFFF; font-size: 13px; padding: 2px 0;
+  }
+  .search-input::placeholder { color: #888; }
+  .kbd {
+    display: inline-flex; align-items: center; gap: 4px;
+    background: #2A2A2A;
+    border-radius: 4px;
+    padding: 3px 7px;
+    font-size: 11px; font-weight: 600;
+    color: #BBB;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .top-icons { display: flex; gap: 10px; align-items: center; }
+  .icon-btn-dark {
+    background: transparent;
+    border: 1px solid #2A2A2A;
+    border-radius: 8px;
+    width: 32px; height: 32px;
+    color: #FFFFFF;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px;
+    position: relative;
+  }
+  .icon-btn-dark:hover { background: #1A1A1A; }
+  .icon-btn-dark .badge-dot {
+    position: absolute; top: -3px; right: -3px;
+    background: #FF3B5C; color: #FFFFFF;
+    border-radius: 999px;
+    font-size: 9px; font-weight: 700;
+    min-width: 14px; height: 14px;
+    display: flex; align-items: center; justify-content: center;
+    padding: 0 3px;
+    border: 1.5px solid #000;
+  }
+  .avatar {
+    width: 28px; height: 28px;
+    border-radius: 6px;
+    background: #FF3B8F;
+    color: #FFFFFF;
+    font-weight: 700; font-size: 11px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+  }
+  /* ───────── PAGE HEADER (light, below black topbar) ───────── */
+  .page-header {
+    background: #F1F1F1;
+    border-bottom: 1px solid #DCDCDC;
+    padding: 14px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    position: relative;
+  }
+  .page-title {
+    display: flex; align-items: center; gap: 10px;
+    color: #1A1A1A;
+    font-size: 20px; font-weight: 700;
+    letter-spacing: -0.2px;
+  }
+  .page-title svg.title-icon-svg {
+    width: 22px; height: 22px;
+    color: #1A1A1A;
+  }
+  .page-subtitle {
+    color: #6D7175;
+    font-size: 13px;
+    font-weight: 400;
+    margin-left: 6px;
+  }
+  .topbar-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .store-pill {
+    display: flex; align-items: center; gap: 6px;
+    background: #FFFFFF;
+    border: 1px solid #DCDCDC;
+    padding: 0 8px;
+    border-radius: 8px;
+    height: 32px;
+    box-shadow: 0 1px 0 rgba(0,0,0,0.04);
+  }
+  .store-pill select {
+    border: none; background: transparent;
+    font-size: 13px; font-weight: 600;
+    color: #1A1A1A;
+    padding: 4px 16px 4px 4px;
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'><path fill='black' d='M5 8l5 5 5-5z'/></svg>");
+    background-repeat: no-repeat;
+    background-position: right 0 center;
+    background-size: 14px;
+  }
+  .btn {
+    padding: 0 14px;
+    height: 32px;
+    border-radius: 8px;
+    font-size: 13px; font-weight: 600;
+    border: 1px solid #DCDCDC;
+    background: #FFFFFF;
+    color: #1A1A1A;
+    cursor: pointer;
+    transition: background .15s ease;
+    display: inline-flex; align-items: center; gap: 6px;
+    box-shadow: 0 1px 0 rgba(0,0,0,0.04);
+  }
+  .btn:hover { background: #F7F7F7; }
+  .btn-primary {
+    background: #1A1A1A;
+    color: #FFFFFF;
+    border: 1px solid #1A1A1A;
+    box-shadow: 0 1px 0 rgba(0,0,0,0.1);
+  }
+  .btn-primary:hover { background: #303030; }
+  .btn-ghost { border-color: transparent; background: transparent; }
+
+  /* ───────── MULTI STORE PILL ───────── */
+  .store-multi { position: relative; display: inline-block; }
+  .store-trigger {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: #FFFFFF;
+    border: 1px solid #DCDCDC;
+    padding: 0 10px;
+    border-radius: 8px;
+    height: 32px;
+    cursor: pointer;
+    font-size: 13px; font-weight: 600;
+    color: #1A1A1A;
+    box-shadow: 0 1px 0 rgba(0,0,0,0.04);
+  }
+  .store-trigger:hover { background: #F7F7F7; }
+  .store-trigger .ico { font-size: 13px; }
+  .store-trigger .caret { font-size: 10px; opacity: 0.6; }
+  .store-popover {
+    position: absolute; top: calc(100% + 6px); left: 0;
+    background: #EBEBEB;
+    border: 1px solid #DCDCDC;
+    border-radius: 10px;
+    box-shadow: 0 8px 28px rgba(0,0,0,0.12);
+    z-index: 100;
+    min-width: 240px;
+    max-height: 320px;
+    overflow-y: auto;
+    padding: 6px;
+    display: none;
+  }
+  .store-popover.open { display: block; }
+  .store-popover .opt {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 700;
+    color: #1A1A1A;
+    user-select: none;
+  }
+  .store-popover .opt:hover { background: #DCDCDC; }
+  .store-popover .opt input { margin: 0; cursor: pointer; accent-color: #1A1A1A; }
+  .store-popover .opt-all {
+    border-bottom: 1px solid #DCDCDC;
+    margin-bottom: 4px;
+    font-weight: 700;
+    color: #1A1A1A;
+  }
+  .store-badge { background: #F1F1F1; color: #1A1A1A; padding: 1px 7px; border-radius: 999px; font-size: 11px; font-weight: 700; min-width: 18px; text-align: center; }
+
+  /* ───────── FILTER PANEL (matches the React FilterPanel in shipping.html) ───────── */
+  .filter-panel { position: relative; }
+  .fp-trigger {
+    display: flex; align-items: center; gap: 6px;
+    background: #F8FAFC; color: #4A5568;
+    border: 1px solid #E2E8F0; border-radius: 6px;
+    padding: 7px 14px;
+    font-size: 13px; font-weight: 400;
+    cursor: pointer; white-space: nowrap;
+    font-family: inherit;
+  }
+  .fp-trigger.active {
+    background: rgba(8, 102, 255, 0.08); color: #0866FF;
+    border-color: #0866FF;
+    font-weight: 700;
+  }
+  .fp-trigger .fp-badge {
+    background: #0866FF; color: #fff;
+    border-radius: 999px; font-size: 10px; font-weight: 700;
+    min-width: 18px; height: 18px;
+    display: none; align-items: center; justify-content: center;
+    padding: 0 4px;
+  }
+  .fp-trigger.active .fp-badge { display: inline-flex; }
+  .fp-trigger .fp-arrow { font-size: 10px; margin-left: 2px; }
+
+  .fp-popover {
+    position: absolute; top: calc(100% + 6px); left: 0;
+    z-index: 9999;
+    background: #F1F1F1;
+    border-radius: 10px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.2);
+    border: 1px solid #DCDCDC;
+    width: 340px;
+    overflow: hidden;
+    display: none;
+  }
+  .fp-popover.open { display: block; }
+  .fp-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 16px 8px;
+  }
+  .fp-title { font-size: 14px; font-weight: 700; color: #1C1E21; }
+  .fp-close {
+    background: none; border: none; cursor: pointer;
+    color: #65676B; font-size: 18px; line-height: 1; padding: 0;
+  }
+  .fp-search-wrap {
+    margin: 0 12px 8px;
+    display: flex; align-items: center;
+    border: 1.5px solid #CED0D4; border-radius: 6px;
+    background: #fff;
+    overflow: hidden;
+  }
+  .fp-search {
+    flex: 1; border: none; outline: none;
+    padding: 7px 10px; font-size: 13px;
+    color: #1C1E21; background: transparent;
+    font-family: inherit;
+  }
+  .fp-search-wrap > span { padding: 0 10px; color: #65676B; }
+  .fp-all-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 14px;
+    cursor: pointer;
+    border-bottom: 1px solid #E4E6EA;
+    font-size: 13px; color: #1A1A1A; font-weight: 700;
+  }
+  .fp-all-row.all-on { background: #E7F0FD; }
+  .fp-checkbox {
+    width: 16px; height: 16px;
+    border-radius: 3px;
+    border: 2px solid #BCC0C4;
+    background: #fff;
+    flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .fp-checkbox.checked {
+    border-color: #0866FF;
+    background: #0866FF;
+  }
+  .fp-checkbox span { color: #fff; font-size: 10px; font-weight: 700; line-height: 1; visibility: hidden; }
+  .fp-checkbox.checked span { visibility: visible; }
+  .fp-list {
+    max-height: 220px; overflow-y: auto;
+    padding: 0 6px;
+  }
+  .fp-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 10px;
+    cursor: pointer;
+    font-size: 13px; color: #1A1A1A; font-weight: 700;
+    border-radius: 6px;
+  }
+  .fp-item.checked { background: #E7F0FD; }
+  .fp-item .fp-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .fp-empty { padding: 14px; color: #65676B; font-size: 13px; text-align: center; }
+  .fp-foot {
+    display: flex; gap: 8px;
+    padding: 10px 12px;
+    border-top: 1px solid #E4E6EA;
+  }
+  .fp-foot button {
+    flex: 1;
+    padding: 8px;
+    border-radius: 6px;
+    font-size: 13px; font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .fp-clear { border: 1px solid #CED0D4; background: #fff; color: #1C1E21; }
+  .fp-apply { border: none; background: #1A1A1A; color: #fff; }
+
+  /* ───────── PAGE LAYOUT ───────── */
+  .page { padding: 24px 32px; }
+
+  /* ───────── KPI CARDS ───────── */
+  .kpi-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 28px;
+  }
+  .kpi {
+    background: #FFFFFF;
+    border: 1px solid #E1E3E5;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    padding: 16px;
+    min-height: 120px;
+    display: grid;
+    grid-template-columns: 7fr 5fr;
+    column-gap: 8px;
+    align-items: center;
+  }
+  .kpi > div:first-child { min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 8px; }
+  .kpi-label {
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 12px; font-weight: 500;
+    color: #8A8A8A;
+    text-transform: none;
+    letter-spacing: 0;
+    margin: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .kpi-value {
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 20px; font-weight: 700;
+    color: #1A1A1A;
+    letter-spacing: -0.3px;
+    line-height: 1.2;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .kpi-icon, .kpi-sub { display: none; }
+  .kpi-spark { height: 40px; margin: 0; align-self: center; }
+  .kpi-spark svg { width: 100%; height: 40px; display: block; }
+  .kpi-spark > div { height: 40px !important; }
+
+  /* ───────── TOOLBAR ───────── */
+  .toolbar {
+    background: var(--bgCard);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 12px 18px;
+    margin-bottom: 16px;
+    display: flex; align-items: center; gap: 12px;
+    flex-wrap: wrap;
+    position: relative;
+  }
+  .toolbar-group { display: flex; align-items: center; gap: 8px; }
+  .toolbar-group label {
+    font-size: 11px; font-weight: 700;
+    color: var(--textMuted);
+    text-transform: uppercase; letter-spacing: 0.4px;
+  }
+  .toolbar select, .toolbar input {
+    padding: 6px 10px;
+    border: 1px solid var(--border);
+    border-radius: var(--radiusSm);
+    background: var(--bgCard);
+    font-size: 13px;
+  }
+  .toolbar select:focus, .toolbar input:focus {
+    outline: none; border-color: var(--metaBlue);
+  }
+  .toolbar-spacer { flex: 1; }
+
+  /* ───────── DATE TRIGGER ───────── */
+  .date-trigger {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 0 12px;
+    height: 32px;
+    border: 1px solid #DCDCDC;
+    border-radius: 8px;
+    background: #FFFFFF;
+    font-size: 13px; font-weight: 500;
+    color: #1A1A1A;
+    transition: background 0.15s;
+    min-width: 160px;
+    box-shadow: 0 1px 0 rgba(0,0,0,0.04);
+  }
+  .date-trigger:hover { background: #F7F7F7; }
+  .date-trigger.open { background: #F7F7F7; border-color: #BBB; }
+  .date-trigger .icon { font-size: 14px; opacity: 0.7; }
+  .date-trigger .label { flex: 1; text-align: left; color: #1A1A1A; font-weight: 600; }
+  .date-trigger .caret { font-size: 10px; opacity: 0.6; }
+
+  /* ───────── DATE PICKER POPOVER ───────── */
+  .dp-popover {
+    position: fixed;
+    z-index: 200;
+    display: none;
+    background: var(--bgCard);
+    border-radius: 10px;
+    box-shadow: var(--shadowPopover);
+    border: 1px solid var(--border);
+    overflow: hidden;
+    max-width: calc(100vw - 32px);
+  }
+  .dp-popover.open { display: block; }
+
+  .dp {
+    display: grid;
+    grid-template-columns: 180px 1fr;
+    grid-template-rows: 1fr auto;
+  }
+  .dp-presets {
+    border-right: 1px solid var(--borderLight);
+    padding: 8px 0;
+    max-height: 360px;
+    overflow-y: auto;
+    grid-row: 1 / 2;
+  }
+  .dp-preset {
+    width: 100%;
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 16px;
+    font-size: 13px;
+    color: var(--text);
+    transition: background 0.12s;
+    text-align: left;
+  }
+  .dp-preset:hover { background: var(--bgHover); }
+  .dp-preset.active { background: var(--metaBlueBG); font-weight: 600; }
+  .dp-radio {
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    border: 1.5px solid #CBD5E1;
+    flex-shrink: 0;
+    position: relative;
+    transition: border 0.15s;
+  }
+  .dp-preset.active .dp-radio {
+    border-color: var(--metaBlue);
+    border-width: 4.5px;
+  }
+
+  .dp-calendars {
+    display: flex;
+    padding: 16px 20px;
+    gap: 24px;
+    grid-row: 1 / 2;
+  }
+  .dp-calendar { width: 240px; }
+  .dp-cal-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 12px;
+    height: 28px;
+  }
+  .dp-cal-title {
+    font-size: 14px; font-weight: 700;
+    flex: 1; text-align: center;
+    color: var(--text);
+  }
+  .dp-nav {
+    width: 28px; height: 28px;
+    border-radius: var(--radiusXs);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+    color: var(--textSub);
+    transition: background 0.12s;
+  }
+  .dp-nav:hover { background: var(--bgHover); color: var(--text); }
+  .dp-nav.invisible { visibility: hidden; }
+
+  .dp-weekdays {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 2px;
+    margin-bottom: 4px;
+  }
+  .dp-weekday {
+    font-size: 11px;
+    color: var(--textMuted);
+    text-align: center;
+    padding: 6px 0;
+    font-weight: 500;
+  }
+  .dp-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 2px;
+  }
+  .dp-day {
+    height: 32px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px;
+    color: var(--text);
+    cursor: pointer;
+    border-radius: var(--radiusXs);
+    user-select: none;
+    transition: background 0.08s, color 0.08s;
+    position: relative;
+  }
+  .dp-day.outside { color: #CBD5E1; }
+  .dp-day.disabled { color: #E2E8F0; cursor: not-allowed; }
+  .dp-day:hover:not(.disabled) { background: var(--bgHover); }
+  .dp-day.today {
+    font-weight: 700;
+  }
+  .dp-day.today::after {
+    content: '';
+    position: absolute;
+    bottom: 4px;
+    width: 4px; height: 4px;
+    border-radius: 50%;
+    background: var(--metaBlue);
+  }
+  .dp-day.in-range {
+    background: var(--metaBlueLight);
+    border-radius: 0;
+  }
+  .dp-day.range-start {
+    background: var(--metaBlue) !important;
+    color: white;
+    border-top-left-radius: var(--radiusXs);
+    border-bottom-left-radius: var(--radiusXs);
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+  }
+  .dp-day.range-end {
+    background: var(--metaBlue) !important;
+    color: white;
+    border-top-right-radius: var(--radiusXs);
+    border-bottom-right-radius: var(--radiusXs);
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+  }
+  .dp-day.range-start.range-end {
+    border-radius: var(--radiusXs);
+  }
+  .dp-day.range-start.today::after,
+  .dp-day.range-end.today::after { background: white; }
+
+  .dp-footer {
+    grid-column: 1 / 3;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 20px;
+    border-top: 1px solid var(--borderLight);
+    background: var(--bgCard);
+  }
+  .dp-range-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+  }
+  .dp-range-tz {
+    font-size: 11px;
+    color: var(--textMuted);
+    font-weight: 400;
+    margin-top: 2px;
+  }
+  .dp-actions { display: flex; gap: 8px; }
+
+  /* ───────── TABLE CARD ───────── */
+  .card {
+    background: var(--bgCard);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+  .card-head {
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--borderLight);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .card-title { font-size: 15px; font-weight: 800; letter-spacing: -0.2px; }
+  .card-meta { font-size: 12px; color: var(--textMuted); }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead th {
+    background: var(--bgHeader);
+    padding: 11px 18px;
+    font-weight: 800;
+    color: var(--textSub);
+    text-align: left;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  tbody td {
+    padding: 12px 18px;
+    border-bottom: 1px solid var(--borderLight);
+    color: var(--text);
+  }
+  tbody tr:nth-child(even) td { background: var(--bgTableAlt); }
+  tbody tr:hover td { background: var(--bgHover); cursor: pointer; }
+  td.num { font-variant-numeric: tabular-nums; font-weight: 600; }
+
+  /* ───────── BADGES ───────── */
+  .badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 11px; font-weight: 600;
+    border: 1px solid transparent;
+    white-space: nowrap;
+  }
+  .badge .dot { width: 6px; height: 6px; border-radius: 50%; }
+  .b-completed { background: var(--good-bg); color: var(--good-tx); border-color: var(--good-bd); }
+  .b-completed .dot { background: var(--good-dot); }
+  .b-processing { background: var(--info-bg); color: var(--info-tx); border-color: var(--info-bd); }
+  .b-processing .dot { background: var(--info-dot); }
+  .b-pending, .b-onhold { background: var(--warn-bg); color: var(--warn-tx); border-color: var(--warn-bd); }
+  .b-pending .dot, .b-onhold .dot { background: var(--warn-dot); }
+  .b-cancelled, .b-failed, .b-refunded {
+    background: var(--crit-bg); color: var(--crit-tx); border-color: var(--crit-bd);
+  }
+  .b-cancelled .dot, .b-failed .dot, .b-refunded .dot { background: var(--crit-dot); }
+
+  /* ───────── EMPTY / LOADING ───────── */
+  .state {
+    padding: 64px 24px;
+    text-align: center;
+    color: var(--textMuted);
+  }
+  .state-icon { font-size: 32px; margin-bottom: 8px; opacity: 0.5; }
+  .state-title { font-size: 15px; font-weight: 600; color: var(--textSub); margin-bottom: 4px; }
+  .state-sub { font-size: 13px; }
+
+  .spinner {
+    width: 28px; height: 28px;
+    border: 3px solid var(--borderLight);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    margin: 0 auto 12px;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ───────── MODAL ───────── */
+  .modal-backdrop {
+    position: fixed; inset: 0;
+    background: rgba(15, 23, 42, 0.55);
+    display: none;
+    align-items: center; justify-content: center;
+    z-index: 100;
+    padding: 24px;
+  }
+  .modal-backdrop.open { display: flex; }
+  .modal {
+    background: var(--bgCard);
+    border-radius: var(--radius);
+    box-shadow: var(--shadowModal);
+    max-width: 720px; width: 100%;
+    max-height: 90vh;
+    overflow: hidden;
+    display: flex; flex-direction: column;
+  }
+  .modal-head {
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--borderLight);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .modal-title { font-size: 16px; font-weight: 800; letter-spacing: -0.2px; }
+  .modal-body { padding: 20px 24px; overflow-y: auto; }
+  .modal-close {
+    width: 32px; height: 32px;
+    border-radius: var(--radiusSm);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--textMuted); font-size: 18px;
+  }
+  .modal-close:hover { background: var(--bgHover); color: var(--text); }
+
+  .detail-grid {
+    display: grid; grid-template-columns: repeat(2, 1fr);
+    gap: 12px 20px; margin-bottom: 20px;
+  }
+  .detail-item {
+    background: var(--bgTableAlt);
+    border-radius: var(--radiusSm);
+    padding: 10px 14px;
+  }
+  .detail-label {
+    font-size: 11px; color: var(--textMuted);
+    text-transform: uppercase; font-weight: 700;
+    margin-bottom: 4px;
+  }
+  .detail-value { font-size: 14px; font-weight: 600; }
+  .section-title {
+    font-size: 12px; font-weight: 800;
+    color: var(--textSub);
+    text-transform: uppercase; letter-spacing: 0.5px;
+    margin: 16px 0 8px;
+  }
+  .line-items {
+    border: 1px solid var(--borderLight);
+    border-radius: var(--radiusSm);
+    overflow: hidden;
+  }
+  .line-item {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    gap: 12px;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--borderLight);
+    font-size: 13px;
+  }
+  .line-item:last-child { border-bottom: 0; }
+  .line-item .qty { color: var(--textMuted); }
+  .line-item .price { font-weight: 600; }
+  .totals-row {
+    background: var(--bgTotalRow);
+    padding: 12px 14px;
+    display: flex; justify-content: space-between;
+    font-weight: 700;
+    border-radius: var(--radiusSm);
+    margin-top: 10px;
+  }
+
+  /* ───────── PAGINATION ───────── */
+  .pagination {
+    padding: 12px 18px;
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--bgTable);
+    border-top: 1px solid var(--border);
+  }
+  .pagination-info { font-size: 12px; color: var(--textSub); }
+  .pagination-controls { display: flex; gap: 6px; }
+  .page-btn {
+    width: 32px; height: 32px;
+    border-radius: var(--radiusSm);
+    border: 1px solid var(--border);
+    background: var(--bgCard);
+    font-size: 12px; font-weight: 600;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .page-btn:hover:not(:disabled) { background: var(--bgHover); border-color: var(--accent); }
+  .page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* ───────── PERF v2 (Product / City / Orders — City Performance look) ───────── */
+  .perf-card-v2 {
+    background: #FFFFFF;
+    border: 1px solid #E2E8F0;
+    border-radius: 8px;
+    padding: 20px 24px;
+    box-shadow: 0 1px 6px rgba(41,23,94,0.07), 0 0 0 1px rgba(41,23,94,0.04);
+    margin-bottom: 20px;
+  }
+  .perf-card-v2 .perf-head-v2 { margin-bottom: 14px; }
+  .perf-card-v2 .perf-title-v2 { font-size: 16px; font-weight: 700; color: #29175E; margin-bottom: 3px; }
+  .perf-card-v2 .perf-sub-v2 { color: #4A5568; font-size: 13px; }
+  .perf-table-wrap-v2 { overflow-x: auto; }
+  .perf-table-v2 { width: 100%; border-collapse: collapse; }
+  .perf-table-v2 thead th {
+    padding: 12px 16px;
+    text-align: center;
+    background: #DDDDDD;
+    color: #29175E;
+    font-size: 14px;
+    font-weight: 700;
+    border-bottom: 2px solid #E2E8F0;
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+  }
+  .perf-table-v2 thead th.col-name { text-align: left; }
+  .perf-table-v2 thead th .sort-arrow { opacity: 0.4; margin-left: 4px; font-size: 11px; }
+  .perf-table-v2 thead th.sorted-asc .sort-arrow,
+  .perf-table-v2 thead th.sorted-desc .sort-arrow { opacity: 1; color: #29175E; }
+  .perf-table-v2 tbody td {
+    padding: 11px 16px;
+    font-size: 14px;
+    font-weight: 700;
+    color: #29175E;
+    text-align: center;
+    border-bottom: 1px solid #ECECEC;
+    font-family: Inter, system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    transition: background 0.12s;
+  }
+  .perf-table-v2 tbody td.col-name {
+    text-align: left;
+    border-left: 3px solid transparent;
+  }
+  .perf-table-v2 tbody tr.tier-high td.col-name { border-left-color: #16A34A; }
+  .perf-table-v2 tbody tr.tier-warn td.col-name { border-left-color: #F59E0B; }
+  .perf-table-v2 tbody tr.tier-low  td.col-name { border-left-color: #DC2626; }
+  .perf-table-v2 tbody tr:nth-child(even) td { background: #F8F8F8; }
+  .perf-table-v2 tbody tr:hover td { background: #EEF2FF; }
+  .perf-table-v2 .rate-good { color: #16A34A; }
+  .perf-table-v2 .rate-warn { color: #F59E0B; }
+  .perf-table-v2 .rate-bad  { color: #DC2626; }
+  .perf-totals-bar-v2 {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 12px;
+    padding: 12px 16px;
+    background: #1A1A1A;
+    color: #FAF9F5;
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-radius: 6px;
+    font-variant-numeric: tabular-nums;
+  }
+  /* Make the click-row in Orders feel actionable */
+  .perf-table-v2 tbody tr.clickable { cursor: pointer; }
+
+  /* ───────── PRODUCT PERFORMANCE TABLE ───────── */
+  .product-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 13px; }
+  .product-table thead th {
+    background: var(--bgHeader);
+    padding: 11px 18px;
+    font-weight: 800;
+    color: var(--textSub);
+    text-align: left;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    border-bottom: 1px solid var(--border);
+    position: sticky; top: 0;
+  }
+  .product-table thead th.col-orders { text-align: right; }
+  .product-table tbody td {
+    padding: 12px 18px;
+    border-bottom: 1px solid var(--borderLight);
+    color: var(--text);
+    transition: background 0.12s;
+  }
+  .product-table tbody tr:hover td { background: var(--bgHover); }
+  .product-table tbody tr:hover td.heatmap-cell {
+    filter: brightness(1.04);
+  }
+  /* Sticky black totals bar — sits at the bottom of the scrollable table
+     container as a regular block element (not <tfoot>). This avoids the
+     well-known Chrome bug where position:sticky on tfoot/tr sometimes
+     drops out during scroll. */
+  .product-totals-bar {
+    position: sticky;
+    bottom: 0;
+    z-index: 5;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #1A1A1A;
+    color: #FAF9F5;
+    padding: 12px 18px;
+    font-family: system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-size: 12px;
+    line-height: 24px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    border-top: 1px solid rgba(255,255,255,0.15);
+  }
+  .product-name {
+    font-weight: 600;
+    max-width: 640px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .heatmap-cell {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+    width: 220px;
+  }
+  .heatmap-bar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+    width: 100%;
+  }
+  .heatmap-bar .bar {
+    flex: 1;
+    height: 6px;
+    border-radius: 999px;
+    background: var(--borderLight);
+    overflow: hidden;
+    max-width: 140px;
+  }
+  .heatmap-bar .bar-fill {
+    height: 100%;
+    background: var(--metaBlue);
+    border-radius: 999px;
+    transition: width 0.4s ease;
+  }
+  .product-rank {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 22px; height: 22px;
+    border-radius: 999px;
+    background: var(--bgTable);
+    color: var(--textMuted);
+    font-size: 11px;
+    font-weight: 700;
+    margin-right: 10px;
+    font-variant-numeric: tabular-nums;
+  }
+  .product-rank.top { background: var(--metaBlueBG); color: var(--metaBlue); }
+  /* No internal scroll — let the page scroll so the sticky totals bar
+     can stick to the BROWSER viewport bottom (not the internal container
+     which scrolls off-screen with the page). */
+  .product-table-scroll {
+    overflow: visible;
+  }
+  /* The wrapping .card has overflow:hidden which clips position:sticky
+     on its descendants. Open it up only for the card that hosts the
+     totals bar so the bar can stick to the window viewport. */
+  .card:has(.product-totals-bar) {
+    overflow: visible;
+  }
+
+  .hidden { display: none !important; }
+
+  @media (max-width: 768px) {
+    .kpi-row { grid-template-columns: repeat(2, 1fr); }
+    .page { padding: 16px; }
+    .topbar { padding: 12px 16px; }
+    .detail-grid { grid-template-columns: 1fr; }
+    .dp { grid-template-columns: 1fr; }
+    .dp-presets { max-height: 200px; border-right: 0; border-bottom: 1px solid var(--borderLight); }
+    .dp-calendars { flex-direction: column; gap: 16px; }
+  }
+</style>
+</head>
+<body>
+
+<style>
+  .app-shell { display: flex; min-height: 100vh; }
+  .app-sidebar {
+    width: 240px; min-width: 240px;
+    background: #EBEBEB;
+    border-right: 1px solid #DCDCDC;
+    display: flex; flex-direction: column;
+    height: calc(100vh - 48px); position: sticky; top: 48px;
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+  .app-sidebar-logo {
+    padding: 14px 16px;
+    background: #1A1A1A; color: #fff;
+    display: flex; align-items: center; gap: 8px;
+    font-size: 16px; font-style: italic; font-weight: 700;
+  }
+  .app-sidebar-items { padding: 10px 8px; flex: 1; display: flex; flex-direction: column; gap: 2px; overflow-y: auto; }
+  .app-sidebar-item {
+    padding: 7px 12px; border-radius: 8px;
+    font-size: 13px; color: #303030;
+    display: flex; align-items: center; gap: 10px;
+    cursor: pointer; text-decoration: none;
+    font-weight: 800; background: transparent;
+  }
+  .app-sidebar-item.active {
+    background: #FFFFFF; font-weight: 600;
+    box-shadow: 0 0 0 0.5px rgba(0,0,0,0.1), 0 1px 1px rgba(0,0,0,0.05);
+  }
+  .app-sidebar-divider { height: 1px; background: #DCDCDC; margin: 8px 4px; }
+  .app-sidebar-group-header {
+    padding: 7px 12px; border-radius: 8px;
+    font-size: 12px; color: #6D7175; font-weight: 800;
+    display: flex; align-items: center; gap: 10px;
+    user-select: none; background: transparent;
+    text-transform: uppercase; letter-spacing: 0.4px;
+  }
+  .app-sidebar-group-items { display: flex; flex-direction: column; gap: 2px; padding: 2px 0; }
+  .app-sidebar-footer {
+    padding: 10px 8px; border-top: 1px solid #DCDCDC;
+  }
+  .app-sidebar-footer .app-sidebar-item { cursor: pointer; }
+  .app-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+</style>
+
+<!-- ───── TOPBAR (single black row, full width) ───── -->
+<header class="topbar">
+  <div class="topbar-row1">
+    <a href="shipping.html" class="brand-shop">
+      <svg class="logo-icon-svg" viewBox="0 0 109 124" xmlns="http://www.w3.org/2000/svg">
+        <path d="M74.7,14.8c-0.1-0.6-0.6-1-1.1-1c-0.5,0-9.3,0.7-9.3,0.7s-6.2-6.1-6.9-6.8c-0.7-0.7-2-0.5-2.5-0.3 c-0.1,0-1.3,0.4-3.4,1.1c-2-5.8-5.6-11.1-11.8-11.1c-0.2,0-0.3,0-0.5,0C37.3,0.7,36,0,34.5,0C22.9,0,17.4,14.5,15.6,21.9 c-4.5,1.4-7.8,2.4-8.2,2.5c-2.5,0.8-2.6,0.9-2.9,3.2C4.2,29.5,0,67.4,0,67.4l40.4,7.6L80.5,67c0,0-5.7-38.2-5.8-51.5L74.7,14.8z M48.7,11.3l-5.5,1.7c0-0.4,0-0.7,0-1.1c0-3.4-0.5-6.2-1.2-8.4C44.7,4,46.9,7.4,48.7,11.3z M37.7,4.2c0.8,2.1,1.4,5,1.4,9 c0,0.2,0,0.4,0,0.6c-3.6,1.1-7.5,2.3-11.4,3.5C29.9,9.8,33.9,5.7,37.7,4.2z M33.3,1.5c0.7,0,1.4,0.2,2.1,0.7 c-5.1,2.4-10.6,8.5-12.9,20.6c-3.1,1-6.2,1.9-9,2.8C16,18.8,20.6,1.5,33.3,1.5z" fill="#95BF47"/>
+        <path d="M73.6,13.7c-0.5,0-9.3,0.7-9.3,0.7s-6.2-6.1-6.9-6.8c-0.3-0.3-0.6-0.4-1-0.5L54.5,124l40.1-8.7 c0,0-9.7-65.6-9.8-66.1C84.7,48.7,74.2,14.7,73.6,13.7z" fill="#5E8E3E"/>
+        <path d="M48.4,30.5l-4.9,14.6c0,0-4.3-2.3-9.6-2.3c-7.8,0-8.1,4.9-8.1,6.1c0,6.7,17.5,9.3,17.5,25 c0,12.4-7.8,20.3-18.4,20.3c-12.7,0-19.2-7.9-19.2-7.9l3.4-11.3c0,0,6.7,5.7,12.3,5.7c3.7,0,5.2-2.9,5.2-5 c0-8.8-14.4-9.2-14.4-23.5C12.2,40.1,20.9,28.4,38,28.4C44.8,28.4,48.4,30.5,48.4,30.5z" fill="#FFFFFF"/>
+      </svg>
+      <span>shopify</span>
+    </a>
+    <div class="search-wrap">
+      <span class="search-icon">🔍</span>
+      <input class="search-input" type="text" placeholder="Search">
+      <span class="kbd">CTRL K</span>
+    </div>
+    <div class="top-icons">
+      <button class="icon-btn-dark" title="Notifications">
+        🔔
+        <span class="badge-dot">1</span>
+      </button>
+      <div class="avatar" title="Profile">SG</div>
+    </div>
+  </div>
+</header>
+
+<div class="app-shell">
+  <aside class="app-sidebar">
+    <nav class="app-sidebar-items">
+      <a href="index.html" class="app-sidebar-item active">
+        <svg class="app-sidebar-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+        <span>Orders</span>
+      </a>
+      <a href="shipping.html" class="app-sidebar-item">
+        <svg class="app-sidebar-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+        <span>Shipping Analytics</span>
+      </a>
+      <a href="ads.html" class="app-sidebar-item">
+        <svg class="app-sidebar-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+        <span>Ads Analysis</span>
+      </a>
+      <div class="app-sidebar-divider"></div>
+      <div class="app-sidebar-group">
+        <div class="app-sidebar-group-header">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor" aria-hidden="true"><path d="M11.452 0h1.698c.47 0 .85.38.85.85v1.699c0 .469-.38.85-.85.85h-1.699a.85.85 0 0 1-.849-.85v-1.7c0-.469.38-.849.85-.849M13.15 5.301h-1.699a.85.85 0 0 0-.849.85V7.85c0 .469.38.849.85.849h1.698c.47 0 .85-.38.85-.85V6.15a.85.85 0 0 0-.85-.849M.85 10.602h1.699c.469 0 .85.38.85.85v1.698c0 .47-.381.85-.85.85h-1.7A.85.85 0 0 1 0 13.15v-1.699c0-.469.38-.85.85-.85M7.85 10.602h-1.7a.85.85 0 0 0-.85.85v1.698c.001.47.381.85.85.85h1.7c.469 0 .849-.38.849-.85v-1.699a.85.85 0 0 0-.85-.85M13.15 10.602h-1.699a.85.85 0 0 0-.849.85v1.698c0 .47.38.85.85.85h1.698c.47 0 .85-.38.85-.85v-1.699a.85.85 0 0 0-.85-.85M6.15 5.301h1.7c.469 0 .849.38.849.85V7.85c0 .469-.38.849-.85.849H6.15a.85.85 0 0 1-.85-.85V6.15c.001-.469.381-.849.85-.849M2.549 5.301h-1.7a.85.85 0 0 0-.849.85V7.85c0 .469.38.849.85.849h1.699c.469 0 .85-.38.85-.85V6.15a.85.85 0 0 0-.85-.849M7.85 0h-1.7a.85.85 0 0 0-.85.85v1.699c.001.469.381.85.85.85h1.7c.469 0 .849-.381.849-.85v-1.7A.85.85 0 0 0 7.849 0M.85 0h1.699c.469 0 .85.38.85.85v1.699c0 .469-.381.85-.85.85h-1.7A.85.85 0 0 1 0 2.548v-1.7C0 .38.38 0 .85 0"/></svg>
+          <span>All tools</span>
+        </div>
+        <div class="app-sidebar-group-items">
+          <a href="copywriting.html" class="app-sidebar-item">
+            <svg class="app-sidebar-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>
+            <span>Copywriting</span>
+          </a>
+          <a href="landing-page.html" class="app-sidebar-item">
+            <svg class="app-sidebar-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+            <span>Landing page content</span>
+          </a>
+          <a href="headlines.html" class="app-sidebar-item">
+            <svg class="app-sidebar-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4v16"/><path d="M18 4v16"/><path d="M6 12h12"/></svg>
+            <span>Headlines Generator</span>
+          </a>
+        </div>
+      </div>
+      <div class="app-sidebar-divider"></div>
+      <div class="app-sidebar-group">
+        <div class="app-sidebar-group-header">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4"/><path d="M12 18v4"/><path d="m4.93 4.93 2.83 2.83"/><path d="m16.24 16.24 2.83 2.83"/><path d="M2 12h4"/><path d="M18 12h4"/><path d="m4.93 19.07 2.83-2.83"/><path d="m16.24 7.76 2.83-2.83"/></svg>
+          <span>Automation Tools</span>
+        </div>
+        <div class="app-sidebar-group-items">
+          <a href="landing-auto.html" class="app-sidebar-item">
+            <svg class="app-sidebar-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            <span>Landing Page Auto</span>
+          </a>
+        </div>
+      </div>
+    </nav>
+    <div class="app-sidebar-footer">
+      <a href="settings.html" class="app-sidebar-item" style="text-decoration:none;">
+        <svg class="app-sidebar-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        <span>Settings</span>
+      </a>
+    </div>
+  </aside>
+
+  <div class="app-main">
+
+<!-- ───── PAGE HEADER (light, inside app-main) ───── -->
+<div class="page-header">
+  <div class="page-title">
+    <svg class="title-icon-svg" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M3.5 5.5C3.5 4.39543 4.39543 3.5 5.5 3.5H14.5C15.6046 3.5 16.5 4.39543 16.5 5.5V14.5C16.5 15.6046 15.6046 16.5 14.5 16.5H5.5C4.39543 16.5 3.5 15.6046 3.5 14.5V5.5Z" stroke="currentColor" stroke-width="1.5"/>
+      <path d="M7 8.5H13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+      <path d="M7 11.5H10.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+    </svg>
+    <span>Orders</span>
+    <span class="page-subtitle" id="storeUrlLabel">Dashboard</span>
+  </div>
+  <div class="topbar-actions" id="topbarActions">
+    <div class="store-multi">
+      <button class="store-trigger" id="storeTrigger" type="button">
+        <span class="ico">🏬</span>
+        <span id="storeTriggerLabel">All stores</span>
+        <span class="store-badge" id="storeBadge">0</span>
+        <span class="caret">▾</span>
+      </button>
+      <div class="store-popover" id="storePopover"></div>
+    </div>
+    <div class="filter-panel" id="productFilterPanel">
+      <button class="fp-trigger" id="productTrigger" type="button">
+        <span>Products</span>
+        <span class="fp-badge" id="productBadge">0</span>
+        <span class="fp-arrow" id="productArrow">▼</span>
+      </button>
+      <div class="fp-popover" id="productPopover">
+        <div class="fp-head">
+          <span class="fp-title">Products</span>
+          <button class="fp-close" id="productClose" type="button">×</button>
+        </div>
+        <div class="fp-search-wrap">
+          <input class="fp-search" id="productSearch" type="text" placeholder="Search...">
+        </div>
+        <div class="fp-all-row" id="productAllRow">
+          <div class="fp-checkbox" id="productAllCheck"><span>✓</span></div>
+          <span id="productAllLabel">All</span>
+        </div>
+        <div class="fp-list" id="productList"></div>
+        <div class="fp-foot">
+          <button class="fp-clear" id="productClear" type="button">Clear</button>
+          <button class="fp-apply" id="productApply" type="button">Apply</button>
+        </div>
+      </div>
+    </div>
+    <button class="btn" id="refreshBtn" title="Refresh">↻ Refresh</button>
+    <button class="date-trigger" id="dateTrigger" type="button">
+      <span class="icon">📅</span>
+      <span class="label" id="dateTriggerLabel">Maximum</span>
+      <span class="caret">▾</span>
+    </button>
+    <button class="btn">Export</button>
+    <button class="btn btn-primary">Create order</button>
+  </div>
+
+  <!-- Date Picker Popover (anchored to date-trigger) -->
+  <div class="dp-popover" id="dpPopover">
+    <div class="dp">
+      <div class="dp-presets" id="dpPresets"></div>
+      <div class="dp-calendars">
+        <div class="dp-calendar">
+          <div class="dp-cal-header">
+            <button class="dp-nav" id="dpPrev">‹</button>
+            <div class="dp-cal-title" id="dpTitleLeft"></div>
+            <button class="dp-nav invisible">›</button>
+          </div>
+          <div class="dp-weekdays">
+            <div class="dp-weekday">Sun</div><div class="dp-weekday">Mon</div>
+            <div class="dp-weekday">Tue</div><div class="dp-weekday">Wed</div>
+            <div class="dp-weekday">Thu</div><div class="dp-weekday">Fri</div>
+            <div class="dp-weekday">Sat</div>
+          </div>
+          <div class="dp-grid" id="dpGridLeft"></div>
+        </div>
+        <div class="dp-calendar">
+          <div class="dp-cal-header">
+            <button class="dp-nav invisible">‹</button>
+            <div class="dp-cal-title" id="dpTitleRight"></div>
+            <button class="dp-nav" id="dpNext">›</button>
+          </div>
+          <div class="dp-weekdays">
+            <div class="dp-weekday">Sun</div><div class="dp-weekday">Mon</div>
+            <div class="dp-weekday">Tue</div><div class="dp-weekday">Wed</div>
+            <div class="dp-weekday">Thu</div><div class="dp-weekday">Fri</div>
+            <div class="dp-weekday">Sat</div>
+          </div>
+          <div class="dp-grid" id="dpGridRight"></div>
+        </div>
+      </div>
+      <div class="dp-footer">
+        <div>
+          <div class="dp-range-label" id="dpRangeLabel">Maximum</div>
+          <div class="dp-range-tz">Dates are shown in Cairo Time</div>
+        </div>
+        <div class="dp-actions">
+          <button class="btn" id="dpCancel">Cancel</button>
+          <button class="btn btn-primary" id="dpUpdate">Update</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div><!-- /.page-header -->
+
+<!-- ───── DASHBOARD ───── -->
+<main id="dashboard" class="page hidden">
+  <div class="kpi-row">
+    <div class="kpi">
+      <div>
+        <div class="kpi-label">Total Orders</div>
+        <div class="kpi-value" id="kpiOrders">—</div>
+      </div>
+      <div class="kpi-spark" id="kpiOrdersSpark"></div>
+    </div>
+    <div class="kpi">
+      <div>
+        <div class="kpi-label">Total Revenue</div>
+        <div class="kpi-value" id="kpiRevenue">—</div>
+      </div>
+      <div class="kpi-spark" id="kpiRevenueSpark"></div>
+    </div>
+    <div class="kpi">
+      <div>
+        <div class="kpi-label">Average Order Value</div>
+        <div class="kpi-value" id="kpiAov">—</div>
+      </div>
+      <div class="kpi-spark" id="kpiAovSpark"></div>
+    </div>
+    <div class="kpi">
+      <div>
+        <div class="kpi-label">Pending Orders</div>
+        <div class="kpi-value" id="kpiPending">—</div>
+      </div>
+      <div class="kpi-spark" id="kpiPendingSpark"></div>
+    </div>
+  </div>
+
+  <!-- Product Performance -->
+  <div class="perf-card-v2">
+    <div class="perf-head-v2">
+      <div class="perf-title-v2">Product Performance</div>
+    </div>
+    <div id="productStatsBody">
+      <div class="state">
+        <div class="spinner"></div>
+        <div class="state-title">Aggregating products...</div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- Toolbar (above Orders) -->
+  <div class="toolbar">
+    <div class="toolbar-group">
+      <label>Search:</label>
+      <input type="text" id="filterSearch" placeholder="Order # / customer name" style="min-width:260px;" />
+    </div>
+    <div class="toolbar-spacer"></div>
+    <button class="btn btn-primary" id="applyFilters">Apply</button>
+  </div>
+
+  <!-- Orders table -->
+  <div class="perf-card-v2">
+    <div class="perf-head-v2">
+      <div class="perf-title-v2">Orders</div>
+    </div>
+    <div id="ordersBody">
+      <div class="state">
+        <div class="spinner"></div>
+        <div class="state-title">Loading data...</div>
+      </div>
+    </div>
+    <div class="pagination hidden" id="pagination">
+      <div class="pagination-info" id="paginationInfo">—</div>
+      <div class="pagination-controls">
+        <button class="page-btn" id="prevPage">‹</button>
+        <span class="page-btn" id="currentPage" style="background: var(--accent); color: white; border-color: var(--accent);">1</span>
+        <button class="page-btn" id="nextPage">›</button>
+      </div>
+    </div>
+  </div>
+</main>
+
+<!-- ───── ORDER DETAILS MODAL ───── -->
+<div class="modal-backdrop" id="modalBackdrop">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-title" id="modalTitle">Order Details</div>
+      <button class="modal-close" id="modalClose">✕</button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+  </div>
+</div>
+
+<script>
+  // ═══════════════════════════════════════════════════════════════
+  // API CONFIG
+  // ═══════════════════════════════════════════════════════════════
+  const API_BASE = "https://indigo-dog-836598.hostingersite.com/api";
+  const API_TOKEN = "tk_4d2b9f7a8c6e1530a4f2d9b7e8c6a1f5";
+
+  // STORES are loaded dynamically from /api/connectors.php?type=cms
+  // Add stores via Settings > CMS instead of editing this file.
+  let STORES = [];
+
+  const SELECTED_STORE_KEY = 'woo_dashboard_selected_store_v1';
+  const SELECTED_STORES_KEY = 'woo_dashboard_selected_stores_v1';
+
+  let state = {
+    creds: null,
+    selectedStoreIds: [],
+    orders: [],
+    page: 1,
+    perPage: 20,
+    totalPages: 1,
+    totalOrders: 0,
+    filters: { status: 'any', search: '' },
+    dateRange: { from: null, to: null, presetId: 'today' },
+    productStats: [],
+    productStatsLoading: false,
+    productStatsRequestId: 0,
+    sparklineData: [],
+  };
+
+  // Date picker draft state (while popover is open)
+  let dpDraft = {
+    from: null, to: null,
+    presetId: 'today',
+    leftMonth: null, // Date set to first day of left calendar month
+    hover: null, // hovered day during selection
+  };
+
+  const STATUS_LABELS = {
+    'pending': 'Pending', 'processing': 'Processing', 'on-hold': 'On-hold',
+    'completed': 'Completed', 'cancelled': 'Cancelled', 'refunded': 'Refunded',
+    'failed': 'Failed', 'trash': 'Trash',
+  };
+
+  const PRESETS = [
+    { id: 'max', label: 'Maximum' },
+    { id: 'today', label: 'Today' },
+    { id: 'yesterday', label: 'Yesterday' },
+    { id: 'last7', label: 'Last 7 days' },
+    { id: 'last14', label: 'Last 14 days' },
+    { id: 'last28', label: 'Last 28 days' },
+    { id: 'last30', label: 'Last 30 days' },
+    { id: 'thisweek', label: 'This week' },
+    { id: 'lastweek', label: 'Last week' },
+    { id: 'thismonth', label: 'This month' },
+    { id: 'lastmonth', label: 'Last month' },
+    { id: 'thisquarter', label: 'This quarter' },
+    { id: 'lastquarter', label: 'Last quarter' },
+    { id: 'thisyear', label: 'This year' },
+    { id: 'lastyear', label: 'Last year' },
+    { id: 'custom', label: 'Custom' },
+  ];
+
+  // ═══════════════════════════════════════════════════════════════
+  // HELPERS
+  // ═══════════════════════════════════════════════════════════════
+  const $ = (id) => document.getElementById(id);
+
+  const fmtMoney = (n, currency = '') => {
+    const v = Number(n || 0);
+    return v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + (currency ? ' ' + currency : '');
+  };
+  const fmtDateTime = (iso) => {
+    if (!iso) return '—';
+    const d = new Date(iso);
+    return d.toLocaleDateString('en-GB') + ' ' + d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+  };
+  const escapeHtml = (s) => String(s ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+
+  const statusBadge = (status) => {
+    const cls = 'b-' + status.replace('-', '');
+    return `<span class="badge ${cls}"><span class="dot"></span>${STATUS_LABELS[status] || status}</span>`;
+  };
+
+  // Date helpers (date-only, no time)
+  const startOfDay = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const addDays = (d, n) => { const r = new Date(d); r.setDate(r.getDate() + n); return r; };
+  const addMonths = (d, n) => new Date(d.getFullYear(), d.getMonth() + n, 1);
+  const sameDay = (a, b) => a && b && a.getTime() === b.getTime();
+  const fmtISODate = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  const fmtPretty = (d) => d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+
+  function fmtRangeLabel(from, to) {
+    if (!from && !to) return 'Maximum';
+    if (from && to) {
+      if (sameDay(from, to)) return fmtPretty(from);
+      return `${fmtPretty(from)} – ${fmtPretty(to)}`;
+    }
+    if (from) return `From ${fmtPretty(from)}`;
+    return `Until ${fmtPretty(to)}`;
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // STORAGE (safe — falls back when localStorage is blocked)
+  // ═══════════════════════════════════════════════════════════════
+  const safeGet = (k) => { try { return localStorage.getItem(k); } catch { return null; } };
+  const safeSet = (k, v) => { try { localStorage.setItem(k, v); } catch {} };
+
+  function getSelectedStoreId() {
+    const saved = safeGet(SELECTED_STORE_KEY);
+    if (saved && STORES.find(s => s.id === saved)) return saved;
+    return STORES[0]?.id || null;
+  }
+  const setSelectedStoreId = (id) => safeSet(SELECTED_STORE_KEY, id);
+  const getStoreById = (id) => STORES.find(s => s.id === id);
+
+  function getSelectedStoreIds() {
+    try {
+      const saved = JSON.parse(safeGet(SELECTED_STORES_KEY) || '[]');
+      const valid = saved.filter(id => STORES.find(s => s.id === id));
+      if (valid.length) return valid;
+    } catch {}
+    return STORES.length ? [STORES[0].id] : [];
+  }
+  const setSelectedStoreIds = (ids) => safeSet(SELECTED_STORES_KEY, JSON.stringify(ids));
+  const getSelectedStores = () => STORES.filter(s => state.selectedStoreIds.includes(s.id));
+
+  // ═══════════════════════════════════════════════════════════════
+  // PRESET → DATE RANGE
+  // ═══════════════════════════════════════════════════════════════
+  function getPresetRange(id, today = new Date()) {
+    const d = startOfDay(today);
+    switch (id) {
+      case 'max': return { from: null, to: null };
+      case 'today': return { from: d, to: d };
+      case 'yesterday': { const y = addDays(d, -1); return { from: y, to: y }; }
+      case 'last7':  return { from: addDays(d, -6),  to: d };
+      case 'last14': return { from: addDays(d, -13), to: d };
+      case 'last28': return { from: addDays(d, -27), to: d };
+      case 'last30': return { from: addDays(d, -29), to: d };
+      case 'thisweek': {
+        const f = addDays(d, -d.getDay()); return { from: f, to: d };
+      }
+      case 'lastweek': {
+        const end = addDays(d, -d.getDay() - 1);
+        const start = addDays(end, -6);
+        return { from: start, to: end };
+      }
+      case 'thismonth': {
+        return { from: new Date(d.getFullYear(), d.getMonth(), 1), to: d };
+      }
+      case 'lastmonth': {
+        const f = new Date(d.getFullYear(), d.getMonth() - 1, 1);
+        const t = new Date(d.getFullYear(), d.getMonth(), 0);
+        return { from: f, to: t };
+      }
+      case 'thisquarter': {
+        const q = Math.floor(d.getMonth() / 3);
+        return { from: new Date(d.getFullYear(), q * 3, 1), to: d };
+      }
+      case 'lastquarter': {
+        const currentQ = Math.floor(d.getMonth() / 3);
+        const lastQ = currentQ - 1;
+        const year = lastQ < 0 ? d.getFullYear() - 1 : d.getFullYear();
+        const qq = (lastQ + 4) % 4;
+        const f = new Date(year, qq * 3, 1);
+        const t = new Date(year, qq * 3 + 3, 0);
+        return { from: f, to: t };
+      }
+      case 'thisyear':
+        return { from: new Date(d.getFullYear(), 0, 1), to: d };
+      case 'lastyear': {
+        return {
+          from: new Date(d.getFullYear() - 1, 0, 1),
+          to: new Date(d.getFullYear() - 1, 11, 31),
+        };
+      }
+      case 'custom':
+      default:
+        return null;
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // API
+  // ═══════════════════════════════════════════════════════════════
+  async function wooFetchStore(store, endpoint, params = {}) {
+    const { storeUrl, consumerKey, consumerSecret, name: storeName, id: storeId } = store;
+    const base = storeUrl.replace(/\/$/, '');
+    const url = new URL(`${base}/wp-json/wc/v3/${endpoint}`);
+    Object.entries(params).forEach(([k, v]) => {
+      if (v !== undefined && v !== null && v !== '') url.searchParams.set(k, v);
+    });
+    const auth = btoa(`${consumerKey}:${consumerSecret}`);
+    const res = await fetch(url.toString(), {
+      headers: { 'Authorization': `Basic ${auth}`, 'Accept': 'application/json' },
+    });
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`${storeName}: HTTP ${res.status}: ${text.slice(0, 200)}`);
+    }
+    const data = await res.json();
+    if (Array.isArray(data)) data.forEach(o => { o._store = storeName; o._storeId = storeId; });
+    return {
+      data,
+      total: parseInt(res.headers.get('X-WP-Total') || '0', 10),
+      totalPages: parseInt(res.headers.get('X-WP-TotalPages') || '1', 10),
+    };
+  }
+
+  async function wooFetch(endpoint, params = {}) {
+    return wooFetchStore(state.creds, endpoint, params);
+  }
+
+  // Fetch from all selected stores in parallel and merge orders by date_created desc.
+  async function wooFetchMulti(endpoint, params = {}) {
+    const stores = getSelectedStores();
+    if (!stores.length) return { data: [], total: 0, totalPages: 1, byStore: {} };
+    const results = await Promise.allSettled(stores.map(s => wooFetchStore(s, endpoint, params)));
+    let merged = [], total = 0, byStore = {}, errors = [];
+    results.forEach((r, i) => {
+      if (r.status === 'fulfilled') {
+        merged = merged.concat(r.value.data || []);
+        total += r.value.total || 0;
+        byStore[stores[i].id] = r.value;
+      } else {
+        errors.push(stores[i].name + ': ' + r.reason.message);
+      }
+    });
+    merged.sort((a, b) => new Date(b.date_created || 0) - new Date(a.date_created || 0));
+    return { data: merged, total, totalPages: 1, byStore, errors };
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // RENDER — SHELL
+  // ═══════════════════════════════════════════════════════════════
+  function showDashboard() {
+    $('dashboard').classList.remove('hidden');
+    $('topbarActions').classList.remove('hidden');
+  }
+  function renderStoreDropdown() {
+    const trigger = $('storeTrigger');
+    const popover = $('storePopover');
+    const label = $('storeTriggerLabel');
+    const badge = $('storeBadge');
+    const sel = state.selectedStoreIds;
+
+    if (STORES.length === 0) {
+      label.textContent = 'No stores';
+      badge.style.display = 'none';
+      trigger.disabled = true;
+      return;
+    }
+
+    if (sel.length === 0) label.textContent = 'Select stores';
+    else if (sel.length === 1) label.textContent = STORES.find(s => s.id === sel[0])?.name || 'Store';
+    else if (sel.length === STORES.length) label.textContent = 'All stores';
+    else label.textContent = sel.length + ' stores';
+    badge.textContent = sel.length;
+    badge.style.display = (sel.length > 1 || STORES.length > 1) ? 'inline-block' : 'none';
+
+    const allSelected = sel.length === STORES.length && STORES.length > 0;
+    popover.innerHTML = `
+      <div class="opt opt-all">
+        <input type="checkbox" id="storeOptAll" ${allSelected ? 'checked' : ''}>
+        <span>${allSelected ? 'Clear all' : 'Select all'}</span>
+      </div>
+      ${STORES.map(s => `
+        <label class="opt">
+          <input type="checkbox" value="${s.id}" ${sel.includes(s.id) ? 'checked' : ''}>
+          <span>${escapeHtml(s.name)}</span>
+        </label>`).join('')}
+    `;
+
+    popover.querySelector('#storeOptAll').addEventListener('change', (e) => {
+      state.selectedStoreIds = e.target.checked ? STORES.map(s => s.id) : [];
+      onStoreSelectionChange();
+    });
+    popover.querySelectorAll('.opt input[value]').forEach(input => {
+      input.addEventListener('change', () => {
+        const v = input.value;
+        if (input.checked) {
+          if (!state.selectedStoreIds.includes(v)) state.selectedStoreIds = [...state.selectedStoreIds, v];
+        } else {
+          state.selectedStoreIds = state.selectedStoreIds.filter(x => x !== v);
+        }
+        onStoreSelectionChange();
+      });
+    });
+  }
+
+  function onStoreSelectionChange() {
+    setSelectedStoreIds(state.selectedStoreIds);
+    state.creds = STORES.find(s => s.id === state.selectedStoreIds[0]) || STORES[0] || null;
+    state.page = 1;
+    renderStoreDropdown();
+    if (state.creds) {
+      $('storeUrlLabel').textContent =
+        state.selectedStoreIds.length > 1
+          ? state.selectedStoreIds.length + ' stores connected'
+          : state.creds.storeUrl.replace(/^https?:\/\//, '');
+    }
+    if (state.selectedStoreIds.length > 0) {
+      loadOrders();
+      loadProductStats();
+    } else {
+      state.orders = [];
+      state.totalOrders = 0;
+      renderOrders();
+      renderKPIs();
+    }
+  }
+  function renderLoading() {
+    $('ordersBody').innerHTML = `<div class="state"><div class="spinner"></div><div class="state-title">Loading orders...</div></div>`;
+    $('pagination').classList.add('hidden');
+  }
+  function renderError(msg) {
+    $('ordersBody').innerHTML = `
+      <div class="state">
+        <div class="state-icon">⚠</div>
+        <div class="state-title">Failed to load data</div>
+        <div class="state-sub" style="max-width:600px;margin:8px auto;">${escapeHtml(msg)}</div>
+        <div class="state-sub" style="margin-top:12px;">Check your API keys and the store's CORS configuration.</div>
+      </div>`;
+    $('pagination').classList.add('hidden');
+  }
+  function renderEmpty() {
+    $('ordersBody').innerHTML = `
+      <div class="state">
+        <div class="state-icon">📭</div>
+        <div class="state-title">No orders found</div>
+        <div class="state-sub">Try changing the filters</div>
+      </div>`;
+    $('pagination').classList.add('hidden');
+  }
+
+  // Sort state for orders table.
+  state.ordersSort = state.ordersSort || { col: null, dir: 'desc' };
+
+  function renderOrders() {
+    if (!state.orders.length) return renderEmpty();
+    const sortS = state.ordersSort;
+    let rowsData = state.orders.slice();
+    if (sortS.col) {
+      const accessors = {
+        order:    o => parseInt(o.number || o.id, 10) || 0,
+        customer: o => `${o.billing?.first_name || ''} ${o.billing?.last_name || ''}`.trim().toLowerCase(),
+        city:     o => (o.billing?.city || '').toLowerCase(),
+        qty:      o => (o.line_items || []).reduce((s, li) => s + (li.quantity || 0), 0),
+        total:    o => parseFloat(o.total) || 0,
+        status:   o => (o.status || '').toLowerCase(),
+        date:     o => new Date(o.date_created).getTime() || 0,
+      };
+      const fn = accessors[sortS.col];
+      if (fn) rowsData.sort((a,b) => {
+        const av = fn(a), bv = fn(b);
+        if (av < bv) return sortS.dir === 'asc' ? -1 : 1;
+        if (av > bv) return sortS.dir === 'asc' ? 1 : -1;
+        return 0;
+      });
+    }
+    const rows = rowsData.map(o => {
+      const customer = `${o.billing?.first_name || ''} ${o.billing?.last_name || ''}`.trim() || '—';
+      const itemsCount = (o.line_items || []).reduce((s, li) => s + (li.quantity || 0), 0);
+      // Tier border: completed=green, pending/processing=warn, cancelled/failed/refunded=bad
+      const st = (o.status || '').toLowerCase();
+      const tier = (st === 'completed') ? 'tier-high'
+                 : (['cancelled','failed','refunded','trash'].includes(st)) ? 'tier-low'
+                 : (['pending','processing','on-hold'].includes(st)) ? 'tier-warn' : '';
+      return `
+        <tr class="${tier} clickable" data-id="${o.id}">
+          <td class="col-name">#${o.number || o.id}</td>
+          <td>${escapeHtml(customer)}</td>
+          <td>${escapeHtml(o.billing?.city || '—')}</td>
+          <td>${itemsCount}</td>
+          <td>${fmtMoney(o.total, o.currency)}</td>
+          <td>${escapeHtml(o.payment_method_title || '—')}</td>
+          <td>${statusBadge(o.status)}</td>
+          <td>${fmtDateTime(o.date_created)}</td>
+        </tr>`;
+    }).join('');
+    const arrow = (col) => col === sortS.col ? (sortS.dir === 'asc' ? '<span class="sort-arrow">▲</span>' : '<span class="sort-arrow">▼</span>') : '<span class="sort-arrow">⇅</span>';
+    $('ordersBody').innerHTML = `
+      <div class="perf-table-wrap-v2">
+        <table class="perf-table-v2">
+          <thead><tr>
+            <th class="col-name" data-sort="order">Order ${arrow('order')}</th>
+            <th data-sort="customer">Customer ${arrow('customer')}</th>
+            <th data-sort="city">City ${arrow('city')}</th>
+            <th data-sort="qty">Qty ${arrow('qty')}</th>
+            <th data-sort="total">Total ${arrow('total')}</th>
+            <th>Payment</th>
+            <th data-sort="status">Status ${arrow('status')}</th>
+            <th data-sort="date">Date ${arrow('date')}</th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>`;
+    $('ordersBody').querySelectorAll('tbody tr').forEach(tr => {
+      tr.addEventListener('click', () => openOrderDetails(parseInt(tr.dataset.id, 10)));
+    });
+    $('ordersBody').querySelectorAll('th[data-sort]').forEach(th => {
+      th.addEventListener('click', () => {
+        const col = th.dataset.sort;
+        if (sortS.col === col) sortS.dir = sortS.dir === 'asc' ? 'desc' : 'asc';
+        else { sortS.col = col; sortS.dir = (col === 'customer' || col === 'city' || col === 'status') ? 'asc' : 'desc'; }
+        renderOrders();
+      });
+    });
+    $('pagination').classList.remove('hidden');
+    const start = (state.page - 1) * state.perPage + 1;
+    const end = Math.min(state.page * state.perPage, state.totalOrders);
+    $('paginationInfo').textContent = `Showing ${start}–${end} of ${state.totalOrders}`;
+    $('currentPage').textContent = state.page;
+    $('prevPage').disabled = state.page <= 1;
+    $('nextPage').disabled = state.page >= state.totalPages;
+    if ($('ordersMeta')) $('ordersMeta').textContent = `${state.totalOrders} orders · Page ${state.page} of ${state.totalPages}`;
+  }
+
+  function buildKpiChartData(orders) {
+    const m = {};
+    orders.forEach(o => {
+      const d = (o.date_created || '').slice(0, 10);
+      if (!d) return;
+      if (!m[d]) m[d] = { sortKey: d, key: d.slice(5), orders: 0, revenue: 0, pending: 0 };
+      m[d].orders++;
+      m[d].revenue += parseFloat(o.total || 0);
+      if (o.status === 'pending' || o.status === 'on-hold') m[d].pending++;
+    });
+    const data = Object.values(m).sort((a, b) => a.sortKey.localeCompare(b.sortKey));
+    data.forEach(d => d.aov = d.orders ? d.revenue / d.orders : 0);
+    return data;
+  }
+  function downsample(data, maxPoints) {
+    if (data.length <= maxPoints) return data;
+    const out = [];
+    const step = data.length / maxPoints;
+    for (let i = 0; i < maxPoints; i++) {
+      const idx = Math.min(Math.floor(i * step), data.length - 1);
+      out.push(data[idx]);
+    }
+    if (out[out.length - 1] !== data[data.length - 1]) out.push(data[data.length - 1]);
+    return out;
+  }
+  function smoothPath(pts) {
+    if (pts.length < 2) return '';
+    let d = `M${pts[0][0]},${pts[0][1]}`;
+    for (let i = 0; i < pts.length - 1; i++) {
+      const p0 = pts[i - 1] || pts[i];
+      const p1 = pts[i];
+      const p2 = pts[i + 1];
+      const p3 = pts[i + 2] || p2;
+      const cp1x = p1[0] + (p2[0] - p0[0]) / 6;
+      const cp1y = p1[1] + (p2[1] - p0[1]) / 6;
+      const cp2x = p2[0] - (p3[0] - p1[0]) / 6;
+      const cp2y = p2[1] - (p3[1] - p1[1]) / 6;
+      d += ` C${cp1x.toFixed(1)},${cp1y.toFixed(1)} ${cp2x.toFixed(1)},${cp2y.toFixed(1)} ${p2[0].toFixed(1)},${p2[1].toFixed(1)}`;
+    }
+    return d;
+  }
+  function renderSparkline(elId, data, key) {
+    const el = $(elId);
+    if (!el) return;
+    if (!data || data.length < 2) {
+      el.innerHTML = `<div style="height:40px;display:flex;align-items:center;justify-content:center;"><div style="height:2px;width:100%;background:#EEF2F7;border-radius:2px;"></div></div>`;
+      return;
+    }
+    const sample = downsample(data, 60);
+    const W = 200, H = 40, P = 2;
+    const vals = sample.map(d => Number(d[key]) || 0);
+    const rawMn = Math.min.apply(null, vals), rawMx = Math.max.apply(null, vals);
+    const pad = (rawMx - rawMn) * 0.1 || 1;
+    const mn = rawMn - pad, mx = rawMx + pad, rng = mx - mn || 1;
+    const pts = sample.map((d, i) => {
+      const x = P + (i / (sample.length - 1)) * (W - 2 * P);
+      const y = 4 + (H - 8) - (((Number(d[key]) || 0) - mn) / rng) * (H - 8);
+      return [x, y];
+    });
+    const polyPts = pts.map(p => p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' ');
+    el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"><polyline points="${polyPts}" fill="none" stroke="#3B82F6" stroke-width="2" stroke-linejoin="miter" stroke-linecap="butt" vector-effect="non-scaling-stroke"/></svg>`;
+  }
+
+  function renderKPIs() {
+    const orders = state.orders;
+    // For revenue + AOV, use the FULL paginated dataset (sparklineData)
+    // when available — state.orders is just the current visible page so
+    // summing it would only show ~20 orders' revenue, not the real total.
+    const revSrc = (state.sparklineData && state.sparklineData.length > orders.length)
+      ? state.sparklineData
+      : orders;
+    const revenue = revSrc.reduce((s, o) => s + Number(o.total || 0), 0);
+    const aov = revSrc.length ? revenue / revSrc.length : 0;
+    const pending = orders.filter(o => o.status === 'pending' || o.status === 'on-hold').length;
+    const currency = orders[0]?.currency || '';
+    $('kpiOrders').textContent = state.totalOrders.toLocaleString('en-US');
+    $('kpiRevenue').textContent = fmtMoney(revenue, currency);
+    $('kpiAov').textContent = fmtMoney(aov, currency);
+    $('kpiPending').textContent = pending.toLocaleString('en-US');
+    const sparkSrc = (state.sparklineData && state.sparklineData.length > orders.length) ? state.sparklineData : orders;
+    const chartData = buildKpiChartData(sparkSrc);
+    renderSparkline('kpiOrdersSpark', chartData, 'orders');
+    renderSparkline('kpiRevenueSpark', chartData, 'revenue');
+    renderSparkline('kpiAovSpark', chartData, 'aov');
+    renderSparkline('kpiPendingSpark', chartData, 'pending');
+  }
+
+  function openOrderDetails(id) {
+    const o = state.orders.find(x => x.id === id);
+    if (!o) return;
+    const customer = `${o.billing?.first_name || ''} ${o.billing?.last_name || ''}`.trim() || '—';
+    const addr = [o.shipping?.address_1, o.shipping?.city, o.shipping?.state, o.shipping?.country]
+      .filter(Boolean).join(', ') || '—';
+    const lineItems = (o.line_items || []).map(li => `
+      <div class="line-item">
+        <div>${escapeHtml(li.name)}</div>
+        <div class="qty">×${li.quantity}</div>
+        <div class="price">${fmtMoney(li.total, o.currency)}</div>
+      </div>`).join('');
+    $('modalTitle').textContent = `Order #${o.number || o.id}`;
+    $('modalBody').innerHTML = `
+      <div class="detail-grid">
+        <div class="detail-item"><div class="detail-label">Customer</div><div class="detail-value">${escapeHtml(customer)}</div></div>
+        <div class="detail-item"><div class="detail-label">Status</div><div class="detail-value">${statusBadge(o.status)}</div></div>
+        <div class="detail-item"><div class="detail-label">Phone</div><div class="detail-value">${escapeHtml(o.billing?.phone || '—')}</div></div>
+        <div class="detail-item"><div class="detail-label">Email</div><div class="detail-value">${escapeHtml(o.billing?.email || '—')}</div></div>
+        <div class="detail-item" style="grid-column:1/-1;"><div class="detail-label">Shipping address</div><div class="detail-value">${escapeHtml(addr)}</div></div>
+        <div class="detail-item"><div class="detail-label">Payment</div><div class="detail-value">${escapeHtml(o.payment_method_title || '—')}</div></div>
+        <div class="detail-item"><div class="detail-label">Date</div><div class="detail-value">${fmtDateTime(o.date_created)}</div></div>
+      </div>
+      <div class="section-title">Items</div>
+      <div class="line-items">${lineItems || '<div class="line-item">No items</div>'}</div>
+      <div class="totals-row"><span>Total</span><span>${fmtMoney(o.total, o.currency)}</span></div>
+      ${o.customer_note ? `
+        <div class="section-title">Customer note</div>
+        <div style="background:var(--warn-bg);border:1px solid var(--warn-bd);padding:10px 14px;border-radius:var(--radiusSm);font-size:13px;color:var(--warn-tx);">
+          ${escapeHtml(o.customer_note)}
+        </div>` : ''}`;
+    $('modalBackdrop').classList.add('open');
+  }
+  const closeModal = () => $('modalBackdrop').classList.remove('open');
+
+  // ═══════════════════════════════════════════════════════════════
+  // DATE PICKER
+  // ═══════════════════════════════════════════════════════════════
+  function renderDateTrigger() {
+    $('dateTriggerLabel').textContent = fmtRangeLabel(state.dateRange.from, state.dateRange.to);
+  }
+
+  function renderPresets() {
+    $('dpPresets').innerHTML = PRESETS.map(p => `
+      <button class="dp-preset ${p.id === dpDraft.presetId ? 'active' : ''}" data-id="${p.id}" type="button">
+        <span class="dp-radio"></span>
+        <span>${p.label}</span>
+      </button>`).join('');
+    $('dpPresets').querySelectorAll('.dp-preset').forEach(el => {
+      el.addEventListener('click', () => onPresetClick(el.dataset.id));
+    });
+  }
+
+  function onPresetClick(id) {
+    if (id === 'custom') {
+      dpDraft.presetId = 'custom';
+      // keep current selection
+    } else {
+      const range = getPresetRange(id);
+      dpDraft.presetId = id;
+      dpDraft.from = range ? range.from : null;
+      dpDraft.to = range ? range.to : null;
+      // Adjust calendar view to show selection
+      if (dpDraft.from) {
+        dpDraft.leftMonth = new Date(dpDraft.from.getFullYear(), dpDraft.from.getMonth(), 1);
+      }
+    }
+    renderPicker();
+  }
+
+  function renderCalendar(gridEl, titleEl, monthDate) {
+    titleEl.textContent = monthDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    const year = monthDate.getFullYear();
+    const month = monthDate.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const startDay = firstDay.getDay(); // 0=Sun
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const today = startOfDay(new Date());
+
+    const cells = [];
+    // Leading days (previous month tail)
+    const prevMonthLast = new Date(year, month, 0).getDate();
+    for (let i = startDay - 1; i >= 0; i--) {
+      const d = new Date(year, month - 1, prevMonthLast - i);
+      cells.push({ d, outside: true });
+    }
+    // Current month
+    for (let i = 1; i <= daysInMonth; i++) {
+      cells.push({ d: new Date(year, month, i), outside: false });
+    }
+    // Trailing to fill 6 rows of 7 = 42
+    while (cells.length < 42) {
+      const last = cells[cells.length - 1].d;
+      cells.push({ d: addDays(last, 1), outside: true });
+    }
+
+    const { from, to, hover } = dpDraft;
+    let rangeEnd = to;
+    let rangeStart = from;
+    if (from && !to && hover) {
+      if (hover < from) { rangeStart = hover; rangeEnd = from; }
+      else { rangeStart = from; rangeEnd = hover; }
+    }
+
+    gridEl.innerHTML = cells.map(({ d, outside }) => {
+      const time = d.getTime();
+      let cls = 'dp-day';
+      if (outside) cls += ' outside';
+      if (sameDay(d, today)) cls += ' today';
+      if (rangeStart && rangeEnd) {
+        const s = startOfDay(rangeStart).getTime();
+        const e = startOfDay(rangeEnd).getTime();
+        if (time >= s && time <= e) cls += ' in-range';
+        if (time === s) cls += ' range-start';
+        if (time === e) cls += ' range-end';
+      } else if (rangeStart && sameDay(d, rangeStart)) {
+        cls += ' range-start range-end';
+      }
+      return `<div class="${cls}" data-time="${time}">${d.getDate()}</div>`;
+    }).join('');
+
+    gridEl.querySelectorAll('.dp-day').forEach(el => {
+      el.addEventListener('click', () => onDayClick(new Date(parseInt(el.dataset.time, 10))));
+      el.addEventListener('mouseenter', () => onDayHover(new Date(parseInt(el.dataset.time, 10))));
+    });
+  }
+
+  function onDayClick(d) {
+    const day = startOfDay(d);
+    const { from, to } = dpDraft;
+    if (!from || (from && to)) {
+      // Start new selection
+      dpDraft.from = day;
+      dpDraft.to = null;
+    } else {
+      // Complete the range
+      if (day < from) {
+        dpDraft.to = from;
+        dpDraft.from = day;
+      } else {
+        dpDraft.to = day;
+      }
+    }
+    dpDraft.presetId = matchPreset(dpDraft.from, dpDraft.to) || 'custom';
+    renderPicker();
+  }
+
+  function onDayHover(d) {
+    if (dpDraft.from && !dpDraft.to) {
+      dpDraft.hover = startOfDay(d);
+      renderCalendars();
+    }
+  }
+
+  function matchPreset(from, to) {
+    if (!from && !to) return 'max';
+    for (const p of PRESETS) {
+      if (p.id === 'custom' || p.id === 'max') continue;
+      const r = getPresetRange(p.id);
+      if (!r) continue;
+      if (sameDay(r.from, from) && sameDay(r.to, to)) return p.id;
+    }
+    return null;
+  }
+
+  function renderCalendars() {
+    const left = dpDraft.leftMonth || new Date();
+    renderCalendar($('dpGridLeft'), $('dpTitleLeft'), left);
+    renderCalendar($('dpGridRight'), $('dpTitleRight'), addMonths(left, 1));
+  }
+
+  function renderRangeLabel() {
+    $('dpRangeLabel').textContent = fmtRangeLabel(dpDraft.from, dpDraft.to);
+  }
+
+  function renderPicker() {
+    renderPresets();
+    renderCalendars();
+    renderRangeLabel();
+  }
+
+  function positionPicker() {
+    const popover = $('dpPopover');
+    const trigger = $('dateTrigger');
+    if (!popover.classList.contains('open')) return;
+
+    const triggerRect = trigger.getBoundingClientRect();
+    const margin = 16;
+    const gap = 8;
+    const vw = document.documentElement.clientWidth;
+    const vh = document.documentElement.clientHeight;
+    const popW = popover.offsetWidth;
+    const popH = popover.offsetHeight;
+
+    // Horizontal: prefer aligning to trigger's left edge.
+    // If overflowing right, align to trigger's right edge.
+    // Always clamp inside viewport with margin.
+    let left = triggerRect.left;
+    if (left + popW + margin > vw) {
+      left = triggerRect.right - popW;
+    }
+    left = Math.max(margin, Math.min(left, vw - popW - margin));
+
+    // Vertical: prefer below the trigger; flip above if it would overflow.
+    let top = triggerRect.bottom + gap;
+    if (top + popH + margin > vh) {
+      const topAbove = triggerRect.top - popH - gap;
+      top = topAbove >= margin ? topAbove : Math.max(margin, vh - popH - margin);
+    }
+
+    popover.style.left = left + 'px';
+    popover.style.top = top + 'px';
+  }
+
+  function openPicker() {
+    // Initialize draft from current state
+    dpDraft.from = state.dateRange.from;
+    dpDraft.to = state.dateRange.to;
+    dpDraft.presetId = state.dateRange.presetId;
+    dpDraft.hover = null;
+    const anchor = dpDraft.from || new Date();
+    dpDraft.leftMonth = new Date(anchor.getFullYear(), anchor.getMonth(), 1);
+
+    const popover = $('dpPopover');
+    const trigger = $('dateTrigger');
+    popover.classList.add('open');
+    trigger.classList.add('open');
+    renderPicker();
+    // Measure after content is rendered, then position inside the viewport.
+    requestAnimationFrame(positionPicker);
+  }
+
+  function closePicker() {
+    $('dpPopover').classList.remove('open');
+    $('dateTrigger').classList.remove('open');
+  }
+
+  function commitPicker() {
+    state.dateRange = {
+      from: dpDraft.from,
+      to: dpDraft.to,
+      presetId: dpDraft.presetId,
+    };
+    renderDateTrigger();
+    closePicker();
+    state.page = 1;
+    loadOrders();
+    loadProductStats();
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // PRODUCT PERFORMANCE
+  // ═══════════════════════════════════════════════════════════════
+  // Sort state for the perf-v2 tables (persists across re-renders).
+  state.productStatsSort = state.productStatsSort || { col: 'orders', dir: 'desc' };
+
+  function sortArrowFor(curCol, sortState){
+    if (curCol !== sortState.col) return '<span class="sort-arrow">⇅</span>';
+    return sortState.dir === 'asc' ? '<span class="sort-arrow">▲</span>' : '<span class="sort-arrow">▼</span>';
+  }
+
+  function renderProductStats() {
+    const body = $('productStatsBody');
+    const meta = $('productStatsMeta') || { textContent: '' };
+
+    if (state.productStatsLoading) {
+      body.innerHTML = `
+        <div class="state">
+          <div class="spinner"></div>
+          <div class="state-title">Aggregating products...</div>
+          <div class="state-sub" id="productStatsProgress">Fetching orders…</div>
+        </div>`;
+      meta.textContent = 'Click column to sort';
+      return;
+    }
+
+    if (!state.productStats.length) {
+      body.innerHTML = `
+        <div class="state">
+          <div class="state-icon">📊</div>
+          <div class="state-title">No products to display</div>
+          <div class="state-sub">Try changing the filters or date range</div>
+        </div>`;
+      meta.textContent = '0 products';
+      return;
+    }
+
+    // Sort copy for display (don't mutate originals)
+    const sortS = state.productStatsSort;
+    const sorted = state.productStats.slice().sort((a,b) => {
+      const av = sortS.col === 'name' ? String(a.name).toLowerCase() : a.orders;
+      const bv = sortS.col === 'name' ? String(b.name).toLowerCase() : b.orders;
+      if (av < bv) return sortS.dir === 'asc' ? -1 : 1;
+      if (av > bv) return sortS.dir === 'asc' ? 1 : -1;
+      return 0;
+    });
+    const totalOrders = (typeof state.productStatsTotalOrders === 'number')
+      ? state.productStatsTotalOrders
+      : sorted.reduce((s, p) => s + p.orders, 0);
+    const max = sorted.length ? Math.max(...sorted.map(p => p.orders)) : 0;
+    // Tier classification: top 30% = high (green), bottom 20% = warn (orange).
+    const sortedByOrdersDesc = state.productStats.slice().sort((a,b) => b.orders - a.orders);
+    const highCutoff = sortedByOrdersDesc[Math.floor(state.productStats.length * 0.3)]?.orders ?? 0;
+    const warnCutoff = sortedByOrdersDesc[Math.floor(state.productStats.length * 0.8)]?.orders ?? 0;
+    const tierFor = (o) => o >= highCutoff ? 'tier-high' : (o <= warnCutoff ? 'tier-warn' : '');
+
+    const rows = sorted.map(p => `
+        <tr class="${tierFor(p.orders)}">
+          <td class="col-name" title="${escapeHtml(p.name)}">${escapeHtml(p.name)}</td>
+          <td>${p.orders.toLocaleString('en-US')}</td>
+        </tr>`).join('');
+
+    body.innerHTML = `
+      <div class="perf-table-wrap-v2">
+        <table class="perf-table-v2">
+          <thead>
+            <tr>
+              <th class="col-name ${sortS.col==='name'?'sorted-'+sortS.dir:''}" data-sort="name">Product Name ${sortArrowFor('name', sortS)}</th>
+              <th class="${sortS.col==='orders'?'sorted-'+sortS.dir:''}" data-sort="orders">Orders Count ${sortArrowFor('orders', sortS)}</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+      <div class="perf-totals-bar-v2">
+        <span>Totals</span>
+        <span>${totalOrders.toLocaleString('en-US')} orders</span>
+      </div>`;
+
+    body.querySelectorAll('th[data-sort]').forEach(th => {
+      th.addEventListener('click', () => {
+        const col = th.dataset.sort;
+        if (sortS.col === col) sortS.dir = sortS.dir === 'asc' ? 'desc' : 'asc';
+        else { sortS.col = col; sortS.dir = col === 'name' ? 'asc' : 'desc'; }
+        renderProductStats();
+      });
+    });
+
+    meta.textContent = `${state.productStats.length} products · ${totalOrders.toLocaleString('en-US')} orders · click column to sort`;
+  }
+
+  async function loadProductStats() {
+    const requestId = ++state.productStatsRequestId;
+    state.productStatsLoading = true;
+    state.productStats = [];
+    renderProductStats();
+
+    try {
+      const stores = getSelectedStores();
+      if (stores.length === 0) {
+        state.productStatsLoading = false;
+        renderProductStats();
+        return;
+      }
+
+      const baseParams = {
+        per_page: 100,
+        orderby: 'date',
+        order: 'desc',
+      };
+      if (state.filters.status !== 'any') baseParams.status = state.filters.status;
+      if (state.dateRange.from) baseParams.after = fmtISODate(state.dateRange.from) + 'T00:00:00';
+      if (state.dateRange.to) baseParams.before = fmtISODate(state.dateRange.to) + 'T23:59:59';
+      if (state.filters.search) baseParams.search = state.filters.search;
+
+      // Brand-aware filter — same word-boundary regex as loadOrders.
+      // Lets the KPIs / sparklines / Product Performance card honor the
+      // active brand AND the Store dropdown (via the owning brand's prefix).
+      let brandRe = null;
+      try {
+        const selectedRaw = stores.map(s => s.rawId);
+        if (window.getEffectivePrefixesAsync && window.buildPrefixRegex) {
+          brandRe = window.buildPrefixRegex(
+            await window.getEffectivePrefixesAsync({ selectedStoreRawIds: selectedRaw })
+          );
+        }
+      } catch (e) {}
+      const orderMatchesBrand = (o) => {
+        if (!brandRe) return true;
+        return (o.line_items || []).some(li => {
+          const text = [li.sku, li.name, li.product_name, li.product_id]
+            .filter(Boolean).map(String).join(' ').toLowerCase();
+          return brandRe.test(text);
+        });
+      };
+
+      // Count UNIQUE orders per product (not pieces). One order containing the
+      // same product twice still counts as 1 order for that product.
+      const aggregated      = new Map();   // product → orders count
+      const sparklineOrders = [];
+      let   totalUniqueOrders = 0;         // distinct orders total (for footer)
+      const MAX_PAGES = 15; // up to 1500 orders per store
+
+      for (const store of stores) {
+        let page = 1;
+        let totalPages = 1;
+        while (page <= MAX_PAGES) {
+          if (requestId !== state.productStatsRequestId) return;
+          const result = await wooFetchStore(store, 'orders', { ...baseParams, page });
+          totalPages = result.totalPages || 1;
+          result.data.forEach(o => {
+            // Skip orders that don't belong to the active brand
+            if (!orderMatchesBrand(o)) return;
+            sparklineOrders.push({ date_created: o.date_created, total: o.total, status: o.status });
+            totalUniqueOrders++;
+            const seen = new Set();
+            (o.line_items || []).forEach(li => {
+              const name = (li.name || 'Unknown').trim();
+              if (seen.has(name)) return;
+              seen.add(name);
+              aggregated.set(name, (aggregated.get(name) || 0) + 1);
+            });
+          });
+          const progress = $('productStatsProgress');
+          if (progress) progress.textContent = `Fetching ${store.name}: page ${page}/${Math.min(totalPages, MAX_PAGES)}…`;
+          if (page >= totalPages || !result.data.length) break;
+          page++;
+        }
+      }
+
+      if (requestId !== state.productStatsRequestId) return;
+
+      state.productStats = Array.from(aggregated.entries())
+        .map(([name, orders]) => ({ name, orders }))
+        .sort((a, b) => b.orders - a.orders);
+      state.productStatsTotalOrders = totalUniqueOrders;
+      state.sparklineData = sparklineOrders;
+      renderKPIs();
+    } catch (err) {
+      console.error('product stats error', err);
+      state.productStats = [];
+    } finally {
+      if (requestId === state.productStatsRequestId) {
+        state.productStatsLoading = false;
+        renderProductStats();
+      }
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // LOAD ORDERS
+  // ═══════════════════════════════════════════════════════════════
+  async function loadOrders() {
+    renderLoading();
+    try {
+      const stores = getSelectedStores();
+      if (stores.length === 0) { renderEmpty(); return; }
+
+      const baseParams = {
+        per_page: state.perPage,
+        orderby: 'date',
+        order: 'desc',
+      };
+      if (state.filters.status !== 'any') baseParams.status = state.filters.status;
+      if (state.dateRange.from) baseParams.after = fmtISODate(state.dateRange.from) + 'T00:00:00';
+      if (state.dateRange.to) baseParams.before = fmtISODate(state.dateRange.to) + 'T23:59:59';
+      if (state.filters.search) baseParams.search = state.filters.search;
+
+      if (stores.length === 1) {
+        const params = { ...baseParams, page: state.page };
+        const { data, total, totalPages } = await wooFetchStore(stores[0], 'orders', params);
+        state.orders = data;
+        state.totalOrders = total;
+        state.totalPages = totalPages || 1;
+      } else {
+        const { data, total, errors } = await wooFetchMulti('orders', { ...baseParams, page: 1 });
+        state.orders = data.slice(0, state.perPage);
+        state.totalOrders = total;
+        state.totalPages = 1;
+        state.page = 1;
+        if (errors?.length) console.warn('Multi-store fetch errors:', errors);
+      }
+      // Brand-aware filter — keep orders whose line items carry the prefix
+      // of the active brand (topbar) OR of the brand(s) owning the
+      // currently-selected stores. Examples that should match for prefix
+      // "re": "re-gm-001" (sku), "حمام سباحة (re-gm)" (name).
+      try {
+        const selectedRaw = stores.map(s => s.rawId);
+        const re = window.getEffectivePrefixesAsync && window.buildPrefixRegex
+          ? window.buildPrefixRegex(await window.getEffectivePrefixesAsync({ selectedStoreRawIds: selectedRaw }))
+          : null;
+        if (re) {
+          const orig = state.orders.length;
+          state.orders = state.orders.filter(o => {
+            const items = o.line_items || [];
+            return items.some(it => {
+              const text = [it.sku, it.name, it.product_name, it.product_id]
+                .filter(Boolean).map(String).join(' ').toLowerCase();
+              return re.test(text);
+            });
+          });
+          // Adjust the visible total — pagination becomes per-filtered count.
+          state.totalOrders = Math.max(0, state.totalOrders - (orig - state.orders.length));
+        }
+      } catch (e) {}
+      renderOrders();
+      renderKPIs();
+    } catch (err) {
+      console.error(err);
+      renderError(err.message);
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // EVENTS
+  // ═══════════════════════════════════════════════════════════════
+  // Multi-store dropdown toggle
+  $('storeTrigger').addEventListener('click', (e) => {
+    e.stopPropagation();
+    $('productPopover').classList.remove('open');
+    $('storePopover').classList.toggle('open');
+  });
+  $('storePopover').addEventListener('click', (e) => e.stopPropagation());
+  document.addEventListener('click', () => {
+    $('storePopover').classList.remove('open');
+    if ($('productPopover').classList.contains('open')) {
+      $('productPopover').classList.remove('open');
+      $('productArrow').textContent = '▼';
+    }
+  });
+
+  // ── Product filter panel — multi-select with Apply/Clear, Search, "All"
+  // (mirrors the FilterPanel React component in shipping.html). Filters every
+  // metric on the page (KPIs, Orders table, Totals bar) by the picked product
+  // names.
+  state.productFilter = [];      // committed selection (array of names)
+  let _productPending = [];      // staging selection while popover is open
+  let _productSearch  = '';
+
+  function _allProducts() {
+    return (state.productStats || []).slice().sort((a, b) => b.orders - a.orders);
+  }
+
+  function renderProductList() {
+    const all = _allProducts();
+    const term = _productSearch.toLowerCase();
+    const filtered = term ? all.filter(p => p.name.toLowerCase().includes(term)) : all;
+    const list = $('productList');
+    list.innerHTML = filtered.length === 0
+      ? '<div class="fp-empty">No results</div>'
+      : filtered.map(p => {
+          const ck = _productPending.includes(p.name);
+          return `<div class="fp-item ${ck ? 'checked' : ''}" data-name="${escapeHtml(p.name)}">
+            <div class="fp-checkbox ${ck ? 'checked' : ''}"><span>✓</span></div>
+            <span class="fp-name">${escapeHtml(p.name)}</span>
+          </div>`;
+        }).join('');
+    list.querySelectorAll('.fp-item').forEach(row => {
+      row.addEventListener('click', () => {
+        const n = row.dataset.name;
+        const i = _productPending.indexOf(n);
+        if (i >= 0) _productPending.splice(i, 1); else _productPending.push(n);
+        renderProductList();
+        renderProductAllRow();
+      });
+    });
+  }
+
+  function renderProductAllRow() {
+    const all = _allProducts();
+    const term = _productSearch.toLowerCase();
+    const filtered = term ? all.filter(p => p.name.toLowerCase().includes(term)) : all;
+    const allOn = term
+      ? filtered.length > 0 && filtered.every(p => _productPending.includes(p.name))
+      : _productPending.length === all.length && all.length > 0;
+    $('productAllRow').classList.toggle('all-on', allOn);
+    $('productAllCheck').classList.toggle('checked', allOn);
+    $('productAllLabel').textContent = term ? 'Select all results' : 'All';
+  }
+
+  function openProductPanel() {
+    _productPending = state.productFilter.slice();
+    _productSearch = '';
+    $('productSearch').value = '';
+    renderProductList();
+    renderProductAllRow();
+    $('productPopover').classList.add('open');
+    $('productArrow').textContent = '▲';
+    setTimeout(() => $('productSearch').focus(), 50);
+  }
+  function closeProductPanel() {
+    $('productPopover').classList.remove('open');
+    $('productArrow').textContent = '▼';
+  }
+
+  function applyProductFilter() {
+    state.productFilter = _productPending.slice();
+    // Trigger label
+    const trig = $('productTrigger');
+    const bdg  = $('productBadge');
+    if (state.productFilter.length === 0) {
+      trig.classList.remove('active');
+    } else {
+      trig.classList.add('active');
+      bdg.textContent = state.productFilter.length;
+    }
+    // Apply to data
+    const f = state.productFilter;
+    if (f.length === 0) {
+      if (state._origOrders)              state.orders        = state._origOrders;
+      if (state._origSparkline)           state.sparklineData = state._origSparkline;
+      if (state._origTotalOrders != null) state.totalOrders   = state._origTotalOrders;
+      if (state._origProductStats)        state.productStats  = state._origProductStats;
+    } else {
+      if (!state._origOrders)             state._origOrders        = state.orders;
+      if (!state._origSparkline)          state._origSparkline     = state.sparklineData;
+      if (state._origTotalOrders == null) state._origTotalOrders   = state.totalOrders;
+      if (!state._origProductStats)       state._origProductStats  = state.productStats;
+      const set = new Set(f);
+      const matchOrder = (o) => (o.line_items || []).some(li => set.has((li.name || '').trim()));
+      state.orders = (state._origOrders || state.orders).filter(matchOrder);
+      const base = state._origOrders || state.orders;
+      state.sparklineData = base.filter(matchOrder).map(o => ({ date_created: o.date_created, total: o.total, status: o.status }));
+      state.totalOrders = state.sparklineData.length;
+      // Filter Product Performance table to only the picked products
+      state.productStats = (state._origProductStats || []).filter(p => set.has(p.name));
+    }
+    renderOrders();
+    renderKPIs();
+    renderProductStats();
+  }
+
+  // Wire events
+  $('productTrigger').addEventListener('click', (e) => {
+    e.stopPropagation();
+    $('storePopover').classList.remove('open');
+    if ($('productPopover').classList.contains('open')) closeProductPanel();
+    else openProductPanel();
+  });
+  $('productPopover').addEventListener('click', (e) => e.stopPropagation());
+  $('productClose').addEventListener('click', closeProductPanel);
+  $('productSearch').addEventListener('input', (e) => {
+    _productSearch = e.target.value;
+    renderProductList();
+    renderProductAllRow();
+  });
+  $('productAllRow').addEventListener('click', () => {
+    const all = _allProducts();
+    const term = _productSearch.toLowerCase();
+    const filtered = term ? all.filter(p => p.name.toLowerCase().includes(term)) : all;
+    if (term) {
+      const allOn = filtered.every(p => _productPending.includes(p.name));
+      if (allOn) {
+        _productPending = _productPending.filter(n => !filtered.some(p => p.name === n));
+      } else {
+        const setPend = new Set(_productPending);
+        filtered.forEach(p => setPend.add(p.name));
+        _productPending = [...setPend];
+      }
+    } else {
+      _productPending = _productPending.length === all.length ? [] : all.map(p => p.name);
+    }
+    renderProductList();
+    renderProductAllRow();
+  });
+  $('productClear').addEventListener('click', () => {
+    _productPending = [];
+    renderProductList();
+    renderProductAllRow();
+  });
+  $('productApply').addEventListener('click', () => {
+    applyProductFilter();
+    closeProductPanel();
+  });
+
+  $('refreshBtn').addEventListener('click', () => {
+    loadOrders();
+    loadProductStats();
+  });
+
+  $('applyFilters').addEventListener('click', () => {
+    state.filters.search = $('filterSearch').value.trim();
+    state.page = 1;
+    loadOrders();
+    loadProductStats();
+  });
+
+  // ── Global date picker (shared across the tool via datepicker.js?v=1777673417 + localStorage) ──
+  // Hide the legacy inline popover; AppDatePicker creates its own.
+  $('dpPopover').style.display = 'none';
+  function applyAppDateRange(s){
+    var f = s && s.from ? new Date(s.from + 'T00:00:00') : null;
+    var t = s && s.to   ? new Date(s.to   + 'T00:00:00') : null;
+    state.dateRange = { from: f, to: t, presetId: (s && s.preset) || 'all' };
+    if ($('dashboard') && $('dashboard').style.display !== 'none') {
+      state.page = 1;
+      if (typeof loadOrders === 'function') loadOrders();
+      if (typeof loadProductStats === 'function') loadProductStats();
+    }
+  }
+  if (window.AppDatePicker) {
+    window.AppDatePicker.attach($('dateTrigger'), { onChange: applyAppDateRange });
+  }
+
+  window.addEventListener('resize', positionPicker);
+  window.addEventListener('scroll', positionPicker, { passive: true });
+
+  $('prevPage').addEventListener('click', () => { if (state.page > 1) { state.page--; loadOrders(); } });
+  $('nextPage').addEventListener('click', () => { if (state.page < state.totalPages) { state.page++; loadOrders(); } });
+
+  $('modalClose').addEventListener('click', closeModal);
+  $('modalBackdrop').addEventListener('click', (e) => { if (e.target.id === 'modalBackdrop') closeModal(); });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      closeModal();
+      closePicker();
+    }
+  });
+
+  // ═══════════════════════════════════════════════════════════════
+  // INIT
+  // ═══════════════════════════════════════════════════════════════
+  async function loadStoresFromAPI() {
+    try {
+      const r = await fetch(API_BASE + '/connectors.php?type=cms', {
+        headers: { Authorization: 'Bearer ' + API_TOKEN }
+      });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const data = await r.json();
+      STORES = (data.rows || [])
+        .filter(c => c.url && c.consumer_key && c.consumer_secret)
+        .map(c => ({
+          id: 'c' + c.id,
+          rawId: c.id,
+          name: c.name,
+          storeUrl: c.url,
+          consumerKey: c.consumer_key,
+          consumerSecret: c.consumer_secret,
+        }));
+      // Brand-aware store filter — when a brand is active in the topbar,
+      // restrict the visible stores to the ones linked in brand.meta.assets.cms.
+      // Uses the async variant so we wait for the brands cache to finish loading
+      // (the topbar fetches brands lazily and may not have populated yet).
+      try {
+        const ab = window.getActiveBrandAsync ? await window.getActiveBrandAsync() : null;
+        const allowed = ab && ab.meta && ab.meta.assets && Array.isArray(ab.meta.assets.cms) ? ab.meta.assets.cms : null;
+        if (allowed && allowed.length) {
+          const set = new Set(allowed.map(Number));
+          STORES = STORES.filter(s => set.has(Number(s.rawId)));
+        }
+      } catch (e) {}
+    } catch (err) {
+      console.warn('Failed to load stores from API:', err);
+    }
+  }
+
+  // Re-load stores + orders when the user switches brand from the topbar.
+  window.addEventListener('app:brandChanged', async () => {
+    await loadStoresFromAPI();
+    if (!STORES.length) { renderNoStores(); return; }
+    // Reset selection to all stores in the new brand context
+    state.selectedStoreIds = STORES.map(s => s.id);
+    setSelectedStoreIds(state.selectedStoreIds);
+    state.creds = STORES[0];
+    if (typeof renderStorePopover === 'function') renderStorePopover();
+    if (typeof updateStoreTriggerLabel === 'function') updateStoreTriggerLabel();
+    if (typeof loadOrders === 'function') loadOrders();
+  });
+
+  function renderNoStores() {
+    $('dashboard').classList.remove('hidden');
+    $('dashboard').innerHTML = `
+      <div style="background:#FFF;border:1px solid #E1E3E5;border-radius:14px;padding:48px 32px;text-align:center;max-width:560px;margin:60px auto;">
+        <div style="font-size:42px;margin-bottom:12px;">🛒</div>
+        <h2 style="font-size:20px;font-weight:700;margin-bottom:8px;color:#1A1A1A;">No stores connected</h2>
+        <p style="font-size:14px;color:#6D7175;margin-bottom:20px;">Connect a WordPress / Shopify store to start viewing orders.</p>
+        <a href="settings.html" style="display:inline-block;padding:10px 20px;background:#1A1A1A;color:#fff;text-decoration:none;border-radius:8px;font-weight:600;font-size:13px;">Connect a store →</a>
+      </div>
+    `;
+    $('storeUrlLabel').textContent = '';
+    $('topbarActions').style.visibility = 'hidden';
+  }
+
+  async function init() {
+    try {
+      await loadStoresFromAPI();
+      if (!STORES.length) {
+        renderNoStores();
+        return;
+      }
+      state.selectedStoreIds = getSelectedStoreIds();
+      state.creds = STORES.find(s => s.id === state.selectedStoreIds[0]) || STORES[0];
+      // Date range now comes from the global AppDatePicker (synced via localStorage).
+      // applyAppDateRange() was already called once when AppDatePicker.attach() ran
+      // and re-fires whenever the user changes the range from any page of the tool.
+      if (window.AppDatePicker) {
+        const s = window.AppDatePicker.getRange();
+        const f = s && s.from ? new Date(s.from + 'T00:00:00') : null;
+        const t = s && s.to   ? new Date(s.to   + 'T00:00:00') : null;
+        state.dateRange = { from: f, to: t, presetId: (s && s.preset) || 'all' };
+      } else {
+        state.dateRange = { from: null, to: null, presetId: 'all' };
+      }
+      renderStoreDropdown();
+      $('storeUrlLabel').textContent =
+        state.selectedStoreIds.length > 1
+          ? state.selectedStoreIds.length + ' stores connected'
+          : (state.creds?.storeUrl || '').replace(/^https?:\/\//, '');
+      showDashboard();
+      loadOrders();
+      loadProductStats();
+    } catch (err) {
+      console.error('[init error]', err);
+      document.body.innerHTML = `<div style="padding:32px;font-family:monospace;color:#DC2626;background:#FEF2F2;"><h2>JS Error during init:</h2><pre>${err.message}\n\n${err.stack}</pre></div>`;
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+</script>
+
+  </div><!-- /.app-main -->
+</div><!-- /.app-shell -->
+
+<script type="module">
+import React from "react";
+import { createRoot } from "react-dom/client";
+import { ResponsiveContainer, LineChart, XAxis, YAxis, Tooltip, CartesianGrid, Line } from "recharts";
+
+function ChartCard(props){
+  var title=props.title,value=props.value,subtitle=props.subtitle;
+  var data=props.data,dataKey=props.dataKey,fmt=props.fmt,yFmt=props.yFmt;
+  var customTooltip=function(p){
+    if(!p.active||!p.payload||!p.payload.length)return null;
+    return React.createElement("div",{style:{background:"#FFFFFF",border:"1px solid #E2E8F0",borderRadius:8,padding:"10px 14px",boxShadow:"0 1px 6px rgba(41,23,94,0.07)",fontFamily:"system-ui,sans-serif"}},
+      React.createElement("div",{style:{fontSize:12,color:"#94A3B8",marginBottom:4,fontWeight:600}},p.label),
+      React.createElement("div",{style:{fontSize:16,fontWeight:700,color:"#29175E"}},fmt?fmt(p.payload[0].value):p.payload[0].value)
+    );
+  };
+  return React.createElement("div",{style:{background:"#FFFFFF",border:"1px solid #E2E8F0",borderRadius:14,boxShadow:"0 1px 6px rgba(41,23,94,0.07)",padding:"20px 24px"}},
+    React.createElement("div",{style:{marginBottom:20}},
+      React.createElement("div",{style:{fontFamily:"system-ui,sans-serif",fontSize:13,fontWeight:500,lineHeight:"20px",color:"#000000",textTransform:"uppercase",marginBottom:8}},title),
+      value!=null&&React.createElement("div",{style:{fontFamily:"system-ui,sans-serif",fontSize:26,fontWeight:700,color:"#29175E",letterSpacing:"-0.03em",lineHeight:1,fontVariantNumeric:"tabular-nums"}},value),
+      subtitle&&React.createElement("div",{style:{fontFamily:"system-ui,sans-serif",fontSize:13,color:"#94A3B8",marginTop:5}},subtitle)
+    ),
+    React.createElement("div",{style:{height:1,background:"#E2E8F0",marginBottom:20}}),
+    data&&data.length>1
+      ?React.createElement(ResponsiveContainer,{width:"100%",height:220},
+          React.createElement(LineChart,{data:data,margin:{top:4,right:8,bottom:0,left:0}},
+            React.createElement(CartesianGrid,{strokeDasharray:"3 3",stroke:"#EEF2F7",vertical:false}),
+            React.createElement(XAxis,{dataKey:"key",tick:{fontFamily:"system-ui,sans-serif",fontSize:12,fill:"#94A3B8"},tickLine:false,axisLine:{stroke:"#EEF2F7"},tickFormatter:function(v){return v.length>9?v.slice(0,9)+"…":v;},interval:"preserveStartEnd"}),
+            React.createElement(YAxis,{tick:{fontFamily:"system-ui,sans-serif",fontSize:12,fill:"#94A3B8"},tickLine:false,axisLine:false,tickFormatter:yFmt||fmt,width:56}),
+            React.createElement(Tooltip,{content:customTooltip,cursor:{stroke:"#1877F2",strokeWidth:1,strokeDasharray:"4 3"}}),
+            React.createElement(Line,{type:"monotone",dataKey:dataKey,stroke:"#1877F2",strokeWidth:2.5,dot:false,activeDot:{r:5,fill:"#1877F2",stroke:"#FFFFFF",strokeWidth:2.5}})
+          )
+        )
+      :React.createElement("div",{style:{height:220,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:8}},
+          React.createElement("div",{style:{fontSize:28,opacity:0.25}},"📈"),
+          React.createElement("div",{style:{fontFamily:"system-ui,sans-serif",fontSize:13,color:"#94A3B8"}},"Not enough data points")
+        )
+  );
+}
+
+function KpiGrid(props){
+  var kpis=props.kpis||[],chartData=props.chartData||[];
+  return React.createElement("div",{style:{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:16,marginBottom:28}},
+    kpis.map(function(k){
+      return React.createElement(ChartCard,{
+        key:k.dataKey,
+        title:k.title,
+        value:k.value,
+        subtitle:k.subtitle,
+        data:chartData,
+        dataKey:k.dataKey,
+        fmt:k.fmt,
+        yFmt:k.yFmt
+      });
+    })
+  );
+}
+
+var rootEl=document.getElementById("kpiCardsRoot");
+var kpiRoot=rootEl?createRoot(rootEl):null;
+window.__renderKpiCards=function(data){
+  if(!kpiRoot||!data)return;
+  kpiRoot.render(React.createElement(KpiGrid,data));
+};
+if(window.__kpiData)window.__renderKpiCards(window.__kpiData);
+</script>
+
+</body>
+</html>

@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Financial Updater</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html,body{min-height:100vh;background:#F1F1F1;font-family:'Inter',system-ui,sans-serif;color:#1A1A1A;font-size:14px;}
+  .app-shell{display:flex;min-height:100vh;}
+  .app-sidebar{width:240px;min-width:240px;background:#EBEBEB;border-right:1px solid #DCDCDC;display:flex;flex-direction:column;height:calc(100vh - 48px);position:sticky;top:48px;}
+  .app-sidebar-items{padding:10px 8px;flex:1;display:flex;flex-direction:column;gap:2px;overflow-y:auto;}
+  .app-sidebar-item{padding:7px 12px;border-radius:8px;font-size:13px;color:#303030;display:flex;align-items:center;gap:10px;cursor:pointer;text-decoration:none;font-weight:800;}
+  .app-sidebar-item:hover{background:#E2E2E2;}
+  .app-sidebar-divider{height:1px;background:#DCDCDC;margin:8px 4px;}
+  .app-main{flex:1;min-width:0;}
+  .page{padding:24px 32px;width:100%;max-width:none;}
+  .page h1{font-size:22px;font-weight:700;margin-bottom:4px;}
+  .page .sub{color:#6D7175;font-size:13px;margin-bottom:18px;line-height:1.6;}
+  .ctx-card{background:#FFFFFF;border:1px solid #E1E3E5;border-radius:12px;padding:18px 22px;margin-bottom:16px;display:flex;align-items:center;gap:18px;flex-wrap:wrap;}
+  .ctx-pill{display:inline-flex;align-items:center;gap:8px;background:#F1F1F1;border:1px solid #DCDCDC;border-radius:999px;padding:6px 14px;font-size:13px;font-weight:600;}
+  .ctx-pill .lbl{color:#6D7175;font-weight:500;}
+  .ctx-pill .val{color:#1A1A1A;}
+  .run-btn{display:inline-flex;align-items:center;gap:10px;padding:0 22px;height:42px;border-radius:10px;border:1px solid #1A1A1A;background:#1A1A1A;color:#FFFFFF;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;}
+  .run-btn:disabled{opacity:0.55;cursor:not-allowed;}
+  .run-btn:hover:not(:disabled){background:#303030;}
+  .status{display:flex;flex-direction:column;gap:10px;}
+  .brand-card{background:#FFFFFF;border:1px solid #E1E3E5;border-radius:12px;padding:14px 18px;}
+  .brand-card .head{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
+  .brand-card .head .name{font-weight:700;font-size:14px;}
+  .brand-card .head .pill{font-size:11px;font-weight:700;padding:2px 10px;border-radius:999px;}
+  .brand-card .head .pill.ok{background:#D1FAE5;color:#065F46;}
+  .brand-card .head .pill.warn{background:#FEF3C7;color:#92400E;}
+  .brand-card .head .pill.err{background:#FEE2E2;color:#991B1B;}
+  .brand-card .head .pill.skip{background:#F1F1F1;color:#6D7175;}
+  .brand-card .stat{font-size:12px;color:#4A5568;margin-bottom:4px;}
+  .brand-card .miss{font-size:12px;color:#92400E;background:#FFFBEB;border:1px solid #FDE68A;border-radius:6px;padding:6px 10px;margin-top:6px;}
+  .brand-card .miss li{margin-left:18px;}
+  /* Preview table — same look as Orders → Product Performance v2.
+     Light-gray header (#DDDDDD) + navy text (#29175E), white rows, hover #F5F5F5.
+     Centered cells, tabular numerals so percentages line up. */
+  .preview-wrap{overflow-x:auto;margin-top:10px;border:1px solid #E2E8F0;border-radius:8px;}
+  .preview-table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;}
+  .preview-table thead th{padding:12px 16px;text-align:center;background:#DDDDDD;color:#29175E;font-size:13px;font-weight:700;border-bottom:2px solid #E2E8F0;white-space:nowrap;}
+  .preview-table tbody td{padding:10px 14px;text-align:center;font-size:13px;color:#1A1A1A;border-bottom:1px solid #ECECEC;background:#FFFFFF;}
+  .preview-table tbody tr:nth-child(even) td{background:#F8F8F8;}
+  .preview-table tbody tr:hover td{background:#F5F5F5;}
+  .preview-table td.ar{text-align:right;font-family:'Almarai','Inter',sans-serif;}
+  .preview-table td.en{text-align:left;color:#4A5568;}
+  .preview-table .muted{color:#9CA3AF;}
+  .confirm-bar{position:sticky;bottom:0;background:rgba(255,255,255,0.96);backdrop-filter:blur(6px);border-top:1px solid #E1E3E5;padding:14px 22px;display:flex;align-items:center;gap:14px;margin-top:18px;border-radius:0 0 12px 12px;}
+  .confirm-bar .summary{flex:1;color:#4A5568;font-size:13px;}
+  .confirm-bar .summary b{color:#1A1A1A;}
+  .confirm-bar .cancel-btn{height:38px;padding:0 16px;border:1px solid #DCDCDC;background:#FFFFFF;color:#1A1A1A;border-radius:8px;font-weight:600;cursor:pointer;font-family:inherit;font-size:13px;}
+  .confirm-bar .confirm-btn{height:38px;padding:0 20px;border:1px solid #1A1A1A;background:#1A1A1A;color:#FFFFFF;border-radius:8px;font-weight:700;cursor:pointer;font-family:inherit;font-size:13px;}
+  .confirm-bar .confirm-btn:disabled{opacity:0.55;cursor:not-allowed;}
+  .err-box{background:#FEF2F2;border:1px solid #FECACA;color:#991B1B;border-radius:8px;padding:10px 12px;font-size:13px;margin-bottom:14px;}
+  .spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,0.3);border-top-color:#FFFFFF;border-radius:50%;animation:spin .7s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+</style>
+<link rel="stylesheet" href="app-shared.css?v=1778014240">
+<script src="topbar.js?v=1778014240"></script>
+<script src="datepicker.js?v=1778014240"></script>
+<script src="sidebar-tools.js?v=1778014240"></script>
+<script src="app-ui.js?v=1778014240"></script>
+</head>
+<body>
+<div class="app-shell">
+  <aside class="app-sidebar">
+    <nav class="app-sidebar-items">
+      <a href="index.html" class="app-sidebar-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/></svg><span>Orders</span></a>
+      <a href="shipping.html" class="app-sidebar-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg><span>Shipping Analytics</span></a>
+      <a href="ads.html" class="app-sidebar-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg><span>Ads Analysis</span></a>
+    </nav>
+  </aside>
+  <div class="app-main">
+    <div class="page">
+      <h1 style="margin-bottom:18px;">Financial Updater</h1>
+
+      <div class="ctx-card">
+        <div class="ctx-pill"><span class="lbl">Brand:</span><span class="val" id="brandLabel">…</span></div>
+        <button id="dateBtn" type="button" data-app-date-trigger style="background:#FFFFFF;border:1px solid #DCDCDC;border-radius:8px;padding:8px 14px;font-size:13px;cursor:pointer;font-family:inherit;">Change date…</button>
+        <div style="margin-left:auto;">
+          <button id="runBtn" class="run-btn">Preview Update</button>
+        </div>
+      </div>
+
+      <div id="errBox"></div>
+      <div id="status" class="status"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const API_BASE  = 'https://indigo-dog-836598.hostingersite.com/api';
+const API_TOKEN = 'tk_4d2b9f7a8c6e1530a4f2d9b7e8c6a1f5';
+
+async function api(path, opts){
+  opts = opts || {};
+  const headers = Object.assign({ 'Authorization': 'Bearer ' + API_TOKEN }, opts.headers || {});
+  if (opts.body && !headers['Content-Type']) headers['Content-Type'] = 'application/json';
+  const r = await fetch(API_BASE + path, Object.assign({}, opts, { headers }));
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error((d && d.error) || ('HTTP ' + r.status));
+  return d;
+}
+function escapeHtml(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+function showErr(msg){ $('errBox').innerHTML = msg ? '<div class="err-box">⚠ ' + escapeHtml(msg) + '</div>' : ''; }
+
+// ── Shared math copied 1:1 from shipping.html (normalizeAr/normalizeProd/drPct).
+//    Source of truth: shipping.html lines 200-243. Kept identical so the
+//    same name in shipping data and the FM sheet maps to the same key.
+function normalizeAr(s){return String(s||'').replace(/[ةه]/g,'ه').replace(/[أإآا]/g,'ا').replace(/ى/g,'ي').replace(/\s+/g,' ').toLowerCase().trim();}
+function normalizeProd(name){
+  // Drop trailing "(prefix-mkt)" pattern that shipping rows use, leaving only the clean product name.
+  let s = String(name||'').trim();
+  s = s.replace(/\s*\([a-z0-9]{1,3}-[a-z0-9]{1,3}\)\s*$/i, '');
+  return s.replace(/\s+/g,' ').trim();
+}
+function nKey(name){ return normalizeAr(normalizeProd(name)); }
+function drPct(d, r){ const t = d + r; return t > 0 ? d / t : 0; }
+
+// ── Fuzzy product matching (Word Overlap) ──
+// The sheet uses long descriptive names ("5×1 شاحن سريع للسياره مع معطر للجو")
+// while DB products may be shortened ("شاحن السياره") and shipping rows
+// can vary. Exact normalize-then-equal misses these. We tokenize both,
+// strip common Arabic prefixes (ال/ل/ب/ك/و/ف), then count overlapping
+// tokens. Best score wins; minimum 2 overlapping words required to avoid
+// false positives ("شاحن" alone could match many products).
+function tokenize(name){
+  return normalizeAr(normalizeProd(name))
+    .split(/[\s \-_,،×x×]+/)
+    .map(t => t.replace(/^(ال|ل|ب|ك|و|ف)/, ''))
+    .filter(t => t.length >= 2);
+}
+function wordOverlap(a, b){
+  const aw = tokenize(a), bw = tokenize(b);
+  if (!aw.length || !bw.length) return 0;
+  let score = 0;
+  aw.forEach(at => {
+    const hit = bw.some(bt => at === bt
+      || (at.length >= 3 && bt.length >= 3 && (at.startsWith(bt) || bt.startsWith(at))));
+    if (hit) score++;
+  });
+  return score;
+}
+// Find the best match in `candidates` (array of {name, ...}) for `query`.
+// Returns the candidate or null.
+function fuzzyFind(query, candidates, minOverlap){
+  if (minOverlap === undefined) minOverlap = 2;
+  let best = null, bestScore = 0;
+  candidates.forEach(c => {
+    const s = wordOverlap(query, c.name);
+    if (s > bestScore) { bestScore = s; best = c; }
+  });
+  return bestScore >= minOverlap ? best : null;
+}
+
+// ── Same product extraction as ads.html line 187 ──
+const PRODUCT_BL = new Set(['OFFER','CREATIVE','PROSPECTING','RETARGETING','BC','CATALOG','CBO','ABO','TOFU','TESTING']);
+function extractProduct(campaignName){
+  const parts = (campaignName||'').split('|');
+  if (parts.length < 2) return null;
+  let best = null;
+  for (let i=0;i<parts.length;i++){
+    const seg = parts[i].trim().replace(/\s+/g,' ');
+    if (!seg || seg.length <= 3) continue;
+    if (PRODUCT_BL.has(seg.toUpperCase())) continue;
+    if (!best || seg.length > best.length) best = seg;
+  }
+  return best;
+}
+
+// ── A1 cell helpers ──
+function colLetter(idx){ // 0 → A, 1 → B, 26 → AA …
+  let s = '', n = idx;
+  while (n >= 0) { s = String.fromCharCode(65 + (n % 26)) + s; n = Math.floor(n/26) - 1; }
+  return s;
+}
+function a1(rowIdx /* 0-based */, colIdx /* 0-based */){ return colLetter(colIdx) + (rowIdx + 1); }
+
+// ── Header detection ──
+// Scan first 30 rows for one that contains both "Return %" and "tROAS" headers.
+// Also captures Cancelation %, COGS, OVERHEADCOST columns.
+// Returns { headerRow, colName, colCancel, colReturn, coltROAS, colCogs, colOverhead } or null on miss.
+// COGS + OVERHEADCOST are READ-ONLY — used by reports/profit-analysis.html to
+// pull per-product unit cost + per-piece overhead share. Never written to.
+function detectLayout(rows){
+  const max = Math.min(30, rows.length);
+  for (let r = 0; r < max; r++){
+    const row = rows[r] || [];
+    let colReturn = -1, coltROAS = -1, colName = -1, colCancel = -1, colCogs = -1, colOverhead = -1;
+    for (let c = 0; c < row.length; c++){
+      const cell = String(row[c] || '').trim();
+      if (cell === '') continue;
+      if (colReturn < 0 && /return\s*%/i.test(cell) && /from\s*total/i.test(cell)) colReturn = c;
+      else if (colReturn < 0 && /^return\s*%$/i.test(cell)) colReturn = c;       // tolerant fallback
+      if (coltROAS < 0 && /^t?roas$/i.test(cell)) coltROAS = c;
+      // Cancelation %  /  Cancellation %  /  نسبة الإلغاء
+      if (colCancel < 0 && (/cancel+ation\s*%/i.test(cell) || /cancel+ed?\s*%/i.test(cell) || /نسبة\s*ال?إلغاء/i.test(cell))) colCancel = c;
+      // COGS — per-product unit cost. Tolerant: matches "COGS", "Cost",
+      // "Unit cost", "تكلفة المنتج". Used by Profit Analysis report.
+      if (colCogs < 0 && (/\bCOGS\b/i.test(cell) || /unit\s*cost/i.test(cell) || /تكلفة\s*المنتج/i.test(cell) || /^cost$/i.test(cell))) colCogs = c;
+      // OVERHEADCOST — per-product overhead share (already calculated in
+      // FM sheet as `rate × pieces`). Tolerant: matches "OVERHEADCOST",
+      // "Overhead Cost", "مصاريف نثرية".
+      if (colOverhead < 0 && (/overhead\s*cost/i.test(cell) || /^overhead$/i.test(cell) || /مصاريف\s*نثرية/i.test(cell))) colOverhead = c;
+      if (colName < 0 && (/المنتج|product|name/i.test(cell))) colName = c;
+    }
+    if (colReturn >= 0 && coltROAS >= 0) {
+      if (colName < 0) colName = 0;
+      // colCancel + colCogs + colOverhead optional — if not found we skip them.
+      return { headerRow: r, colReturn, coltROAS, colName, colCancel, colCogs, colOverhead };
+    }
+  }
+  return null;
+}
+
+// ── ROAS aggregation ──
+// For a given brand + a list of product keywords (each = product.meta.campaign_name),
+// fetches Meta insights and SUMS spend + revenue across EVERY campaign whose
+// name contains the keyword (case-insensitive substring). The user's
+// campaigns have long names like "PROSPECTING | DRYING RACK | CBO" or
+// "PROSPECTING | ORGANIZER | CBO | 1" — we just look for the keyword
+// anywhere in the string, so multiple campaigns under the same product all
+// roll up. Returns Map<keyword, { spend, revenue, roas }>.
+async function computeProductROAS(brand, from, to, keywords){
+  const result = new Map();
+  const cleanKeys = (keywords || [])
+    .map(k => String(k || '').trim())
+    .filter(k => k.length >= 2);
+  cleanKeys.forEach(k => result.set(k, { spend: 0, revenue: 0, roas: 0 }));
+  if (!cleanKeys.length) return result;
+  // 1. Find Meta connectors
+  const conns = await api('/connectors.php?type=ads&provider=meta');
+  const list = (conns && conns.rows) ? conns.rows : [];
+  if (!list.length) return result;
+  // 2. Resolve allowed accounts for this brand (brand.meta.ad_account_ids)
+  const allowed = (brand && brand.meta && Array.isArray(brand.meta.ad_account_ids))
+    ? new Set(brand.meta.ad_account_ids.map(String))
+    : null; // null → no scope filter
+  // 3. List accounts per connector
+  const accountTasks = list.map(c =>
+    api('/meta.php?action=accounts&connector_id=' + c.id)
+      .then(r => ({ connId: c.id, accounts: (r && r.rows) || [] }))
+      .catch(() => ({ connId: c.id, accounts: [] }))
+  );
+  const perConn = await Promise.all(accountTasks);
+  const calls = [];
+  perConn.forEach(({ connId, accounts }) => {
+    accounts.forEach(a => {
+      // Brand stores account_ids without the "act_" prefix (e.g. "676120531980901")
+      // but the Meta insights endpoint REQUIRES the prefix. Normalize: keep
+      // the bare numeric id for matching against brand.meta.ad_account_ids,
+      // but always send the prefixed form to /meta.php.
+      const numericId = String(a.account_id || (a.id || '').replace(/^act_/, '') || '');
+      if (!numericId) return;
+      if (allowed && !allowed.has(numericId)) return;
+      calls.push({ connId, accId: 'act_' + numericId });
+    });
+  });
+  if (!calls.length) return result;
+  // 4. Fetch insights for each (connId, accId) for the date range.
+  //    On per-account failure, capture the error so we can surface it
+  //    instead of silently returning 0 rows (the previous catch-all hid
+  //    the "Invalid account_id" / scope errors that made tROAS empty).
+  const insightTasks = calls.map(({ connId, accId }) =>
+    api('/meta.php?action=insights&connector_id=' + connId + '&account_id=' + encodeURIComponent(accId) + '&since=' + from + '&until=' + to)
+      .then(r => (r && r.rows) || [])
+      .catch(e => { console.warn('Meta insights failed for', accId, e.message); return []; })
+  );
+  const allRowsArrs = await Promise.all(insightTasks);
+  // 5. Aggregate — substring match against EACH keyword. A campaign that
+  //    matches multiple keywords contributes to all of them (rare; users
+  //    pick distinct keywords). Case-insensitive.
+  const lowerKeys = cleanKeys.map(k => ({ orig: k, lc: k.toLowerCase() }));
+  allRowsArrs.forEach(rows => {
+    rows.forEach(row => {
+      const cn = String(row['Campaign name'] || row.campaignName || row.campaign_name || '').toLowerCase();
+      if (!cn) return;
+      const spend   = parseFloat(row['Amount spent (EGP)'] || row.spend || 0) || 0;
+      const revenue = parseFloat(row['Purchases conversion value'] || row.revenue || 0) || 0;
+      lowerKeys.forEach(({ orig, lc }) => {
+        if (cn.indexOf(lc) === -1) return;
+        const slot = result.get(orig);
+        slot.spend   += spend;
+        slot.revenue += revenue;
+      });
+    });
+  });
+  // 6. Compute ROAS per keyword
+  result.forEach(v => { v.roas = v.spend > 0 ? v.revenue / v.spend : 0; });
+  return result;
+}
+
+// ── Shipping aggregation ──
+// Pulls /orders.php?brand_id=N&from=...&to=... and computes delivery rate
+// per Arabic product key (same normalization as shipping.html → same map).
+// Returns { rates: Map<key,dr>, rows } so callers can also use the rows
+// to derive the actual data span (used by "Maximum" preset handling).
+async function computeDeliveryRates(brandId, from, to){
+  const out = new Map();
+  const cancelOut = new Map();
+  if (!brandId) return { rates: out, cancelRates: cancelOut, rows: [] };
+  const qs = '?limit=20000&brand_id=' + brandId + (from ? '&from=' + from : '') + (to ? '&to=' + to : '');
+  let rows = [];
+  try {
+    const r = await api('/orders.php' + qs);
+    rows = (r && r.rows) || [];
+  } catch (e) { return { rates: out, cancelRates: cancelOut, rows: [] }; }
+  // Two parallel aggregations, one pass:
+  //   - delivery (shipping rows): DELIVERED vs RETURNED
+  //   - cancellation (confirmation rows uploaded via Confirmation page):
+  //     CONFIRMED vs CANCELED. The Arabic product name matching reuses
+  //     the same nKey() pipeline as the return rate, so a sheet entry
+  //     "حامل تجفيف الاطباق" maps to confirmation rows for that product
+  //     exactly the same way it maps to shipping rows.
+  const m = {}, cm = {};
+  // Dedup'd display-name lists per stream → fed to fuzzyFind so a sheet
+  // entry like "لعبة القط الإسفنجي سكوشي" still matches a shipping row
+  // named "لعبة القط الإسفنجي سكوشي المضادة للتوتر (re-gm)".
+  const shipNames = [], confNames = [];
+  const seenShip = new Set(), seenConf = new Set();
+  rows.forEach(r => {
+    const k = nKey(r.product);
+    const st = String(r.status || '').toUpperCase();
+    if (st === 'DELIVERED' || st === 'RETURNED') {
+      if (!m[k]) m[k] = { del: 0, ret: 0, t: 0 };
+      m[k].t++;
+      if (st === 'DELIVERED') m[k].del++;
+      else                    m[k].ret++;
+      if (r.product && !seenShip.has(k)) { seenShip.add(k); shipNames.push({ name: r.product, nkey: k }); }
+    } else if (st === 'CONFIRMED' || st === 'CANCELED') {
+      if (!cm[k]) cm[k] = { conf: 0, canc: 0, t: 0 };
+      cm[k].t++;
+      if (st === 'CANCELED') cm[k].canc++;
+      else                   cm[k].conf++;
+      if (r.product && !seenConf.has(k)) { seenConf.add(k); confNames.push({ name: r.product, nkey: k }); }
+    }
+  });
+  Object.keys(m).forEach(k => out.set(k, drPct(m[k].del, m[k].ret)));
+  // Cancellation rate = canceled / (confirmed + canceled). Same shape
+  // as drPct so the preview / sheet write code can treat them uniformly.
+  Object.keys(cm).forEach(k => {
+    const t = cm[k].conf + cm[k].canc;
+    cancelOut.set(k, t > 0 ? cm[k].canc / t : 0);
+  });
+  return { rates: out, cancelRates: cancelOut, rows, shipNames, confNames };
+}
+
+// ── Render helpers ──
+function renderStatusPill(status, text){
+  const cls = status === 'ok' ? 'ok' : status === 'warn' ? 'warn' : status === 'err' ? 'err' : 'skip';
+  return '<span class="pill ' + cls + '">' + escapeHtml(text) + '</span>';
+}
+function renderBrandHead(brand, status, text){
+  return '<div class="head">'
+    + '<span class="name">' + escapeHtml(brand.name) + '</span>'
+    + renderStatusPill(status, text)
+    + '</div>';
+}
+// Preview row shape: { ar, en, ret, roas, willWriteReturn, willWriteRoas }
+function renderPreviewTable(rows){
+  const body = rows.map(r => {
+    const cancelCell = (r.cancel != null) ? (r.cancel.toFixed(1) + '%') : '<span class="muted">—</span>';
+    const retCell    = (r.ret    != null) ? (r.ret.toFixed(1) + '%')    : '<span class="muted">—</span>';
+    const roasCell   = (r.roas   != null) ? r.roas.toFixed(2)           : '<span class="muted">—</span>';
+    return '<tr>'
+      + '<td class="ar">' + escapeHtml(r.ar) + '</td>'
+      + '<td class="en">' + (r.en ? escapeHtml(r.en) : '<span class="muted">— not set —</span>') + '</td>'
+      + '<td>' + cancelCell + '</td>'
+      + '<td>' + retCell + '</td>'
+      + '<td>' + roasCell + '</td>'
+      + '</tr>';
+  }).join('');
+  return '<div class="preview-wrap"><table class="preview-table">'
+    + '<thead><tr>'
+    +   '<th style="text-align:right;">Product (Arabic)</th>'
+    +   '<th style="text-align:left;">Campaign (English)</th>'
+    +   '<th>Cancelation %</th>'
+    +   '<th>Return %</th>'
+    +   '<th>tROAS</th>'
+    + '</tr></thead>'
+    + '<tbody>' + body + '</tbody>'
+    + '</table></div>';
+}
+
+// ── Phase A: build the plan (read sheet + compute metrics) without writing ──
+// Returns { brand, status, statusText, plan?, previewRows?, missList? }
+//   status === 'ready'   → previewRows + plan are ready, can be confirmed
+//   status === 'skip'    → no FM sheet, brand skipped
+//   status === 'err'     → something went wrong, no plan
+async function buildPlanForBrand(brand, range){
+  const out = { brand, missList: [] };
+  const linked = (brand.meta && brand.meta.linked_sheets) || [];
+  const fm = linked.find(s => /Financial Modeling.*Monetization/i.test(s.name));
+  if (!fm) return Object.assign(out, { status: 'skip', statusText: 'no FM sheet linked' });
+  const conns = await api('/connectors.php?type=storage&provider=google_drive');
+  const conn = (conns && conns.rows && conns.rows[0]) || null;
+  if (!conn) return Object.assign(out, { status: 'err', statusText: 'no Drive connector' });
+  let rows, tabName = '';
+  try {
+    // Sheets API v4 read — preserves cell positions even when headers
+    // contain newlines (e.g. "Return %\nFrom Total"). The legacy CSV
+    // reader split those into separate rows and corrupted indices.
+    const r = await api('/sheets-write.php?action=read&connector_id=' + conn.id + '&file_id=' + encodeURIComponent(fm.id));
+    rows = (r && r.rows) || [];
+    tabName = (r && r.tab) || '';
+  } catch (e) {
+    return Object.assign(out, { status: 'err', statusText: 'sheet read failed: ' + e.message });
+  }
+  if (!rows.length) return Object.assign(out, { status: 'err', statusText: 'sheet is empty' });
+  let layout = (brand.meta && brand.meta.fm_sheet_map) || null;
+  // Re-detect when:
+  //   - no cache yet, OR
+  //   - cache predates the Cancelation column (layout.colCancel undefined),
+  //   - cache predates COGS / OVERHEAD columns (added for Profit Analysis),
+  //     so old caches don't silently skip the new columns.
+  if (!layout
+      || typeof layout.headerRow !== 'number'
+      || typeof layout.colCancel !== 'number'
+      || typeof layout.colCogs !== 'number'
+      || typeof layout.colOverhead !== 'number') {
+    const fresh = detectLayout(rows);
+    if (fresh) layout = fresh;
+  }
+  if (!layout) return Object.assign(out, { status: 'err', statusText: 'header row not found (need "Return % From Total" + "tROAS")' });
+  // Cache layout for next time
+  if (!brand.meta.fm_sheet_map ||
+      brand.meta.fm_sheet_map.headerRow !== layout.headerRow ||
+      brand.meta.fm_sheet_map.colReturn !== layout.colReturn ||
+      brand.meta.fm_sheet_map.coltROAS !== layout.coltROAS ||
+      brand.meta.fm_sheet_map.colCancel !== layout.colCancel ||
+      brand.meta.fm_sheet_map.colCogs !== layout.colCogs ||
+      brand.meta.fm_sheet_map.colOverhead !== layout.colOverhead) {
+    try {
+      const meta2 = Object.assign({}, brand.meta, { fm_sheet_map: layout });
+      await api('/brands.php', { method: 'PATCH', body: JSON.stringify({ id: brand.id, meta: meta2 }) });
+      brand.meta = meta2;
+    } catch (e) { /* non-fatal */ }
+  }
+  // Products first — we need their campaign_name keywords to feed ROAS aggregation.
+  const productsResp = await api('/products.php?brand_id=' + brand.id).catch(() => ({ rows: [] }));
+  const products = (productsResp && productsResp.rows) || [];
+  const productsByKey = new Map();
+  const keywords = [];
+  products.forEach(p => {
+    productsByKey.set(nKey(p.name), p);
+    const kw = p && p.meta && p.meta.campaign_name;
+    if (kw && String(kw).trim()) keywords.push(String(kw).trim());
+  });
+  // "Maximum" preset → from/to are empty. Pull all shipping for the brand
+  // first so we can derive the actual data span and use the same span for
+  // ads (otherwise Meta API needs concrete since/until — empty 400s out).
+  const isMaximum = !range.from || !range.to;
+  const deliveryFirst = await computeDeliveryRates(brand.id, isMaximum ? '' : range.from, isMaximum ? '' : range.to);
+  let effFrom = range.from, effTo = range.to;
+  if (isMaximum) {
+    const dates = (deliveryFirst.rows || [])
+      .map(r => String(r.date || '').slice(0, 10))
+      .filter(d => /^\d{4}-\d{2}-\d{2}$/.test(d))
+      .sort();
+    if (dates.length) {
+      effFrom = dates[0];
+      effTo   = dates[dates.length - 1];
+    } else {
+      // No shipping → fall back to last 365 days so ads still pulls something
+      const today = new Date();
+      const past  = new Date(today.getTime() - 365 * 86400000);
+      const ymd = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+      effFrom = ymd(past); effTo = ymd(today);
+    }
+  }
+  const delivery = deliveryFirst;
+  const roas = await computeProductROAS(brand, effFrom, effTo, keywords);
+  const previewRows = [];
+  const updates = [];
+  let blankStreak = 0;
+  for (let r = layout.headerRow + 1; r < rows.length && blankStreak < 3; r++){
+    const row = rows[r] || [];
+    const rawName = String(row[layout.colName] || '').trim();
+    if (!rawName) { blankStreak++; continue; }
+    blankStreak = 0;
+    const key = nKey(rawName);
+    // Sheet → DB product matching:
+    //   1. Exact normalized match (fast path — works when names are identical).
+    //   2. Fuzzy fallback: word-overlap scoring. Lets "5×1 شاحن سريع للسياره
+    //      مع معطر للجو" in the sheet match a DB product named just "شاحن
+    //      السياره" — same product, shorter DB name.
+    // Resolution: exact normalized match first, then fuzzy fallback.
+    // BUT — if the exact match finds something AND a fuzzy match finds a
+    // LONGER, more-specific name whose tokens fully include the sheet
+    // tokens, prefer the longer one. This handles the common case where
+    // the user kept the old short product alive in the DB and added a
+    // new "X المضادة للتوتر" product — exact match would otherwise lock
+    // onto the stale short row instead of the renamed one.
+    let dbProd = productsByKey.get(key) || null;
+    const fuzzy = fuzzyFind(rawName, products);
+    if (fuzzy && (!dbProd || (
+      String(fuzzy.name || '').length > String(dbProd.name || '').length
+      && wordOverlap(rawName, fuzzy.name) >= tokenize(rawName).length
+    ))) {
+      dbProd = fuzzy;
+    }
+    const campaignName = (dbProd && dbProd.meta && dbProd.meta.campaign_name) || '';
+    // Live name from DB — when the user renames a product in clients.html
+    // we want the FM sheet's "Product (Arabic)" cell + the preview to
+    // reflect that. Falls back to whatever the sheet currently has when
+    // there's no DB match.
+    const liveName = (dbProd && dbProd.name) ? String(dbProd.name).trim() : rawName;
+    console.log('[fm-update] row', r, '|sheet:', JSON.stringify(rawName), '|dbProd:', dbProd ? JSON.stringify(dbProd.name) : '(no match)', '|live:', JSON.stringify(liveName));
+    if (dbProd && liveName && liveName !== rawName) {
+      updates.push({ a1: a1(r, layout.colName), value: liveName });
+    }
+    // Cancellation % — pulled from confirmation rows (CONFIRMED/CANCELED
+    // saved by the Confirmation page) for the same Arabic product key.
+    // Only writes when the FM sheet has a "Cancelation %" column AND we
+    // have at least one confirmation row for this product.
+    let cancelVal = null;
+    let cr = delivery.cancelRates && delivery.cancelRates.get(key);
+    // Fuzzy fallback — sheet name shorter/longer than confirmation row name.
+    if (typeof cr !== 'number' && delivery.confNames && delivery.confNames.length) {
+      const m = fuzzyFind(rawName, delivery.confNames);
+      if (m) cr = delivery.cancelRates.get(m.nkey);
+    }
+    if (typeof cr === 'number') {
+      cancelVal = cr * 100;
+      if (typeof layout.colCancel === 'number' && layout.colCancel >= 0) {
+        updates.push({ a1: a1(r, layout.colCancel), value: cancelVal.toFixed(1) + '%' });
+      }
+    } else {
+      out.missList.push(rawName + ' — no confirmation data → Cancelation % left as-is');
+    }
+    let dr = delivery.rates.get(key);
+    // Same fuzzy fallback for the shipping (delivered/returned) lookup.
+    if (typeof dr !== 'number' && delivery.shipNames && delivery.shipNames.length) {
+      const m = fuzzyFind(rawName, delivery.shipNames);
+      if (m) dr = delivery.rates.get(m.nkey);
+    }
+    let retVal = null;
+    if (typeof dr === 'number') {
+      retVal = (1 - dr) * 100;
+      updates.push({ a1: a1(r, layout.colReturn), value: retVal.toFixed(1) + '%' });
+    } else {
+      out.missList.push(rawName + ' — no shipping data → Return % left as-is');
+    }
+    let roasVal = null;
+    if (campaignName) {
+      const slot = roas.get(campaignName);
+      if (slot && slot.spend > 0) {
+        roasVal = slot.roas;
+        updates.push({ a1: a1(r, layout.coltROAS), value: roasVal.toFixed(2) });
+      } else {
+        out.missList.push(rawName + ' — no ads data for "' + campaignName + '" → tROAS left as-is');
+      }
+    } else {
+      out.missList.push(rawName + ' — no campaign_name set on product → tROAS left as-is');
+    }
+    previewRows.push({ ar: liveName, en: campaignName, cancel: cancelVal, ret: retVal, roas: roasVal });
+  }
+  return Object.assign(out, {
+    status: updates.length ? 'ready' : 'warn',
+    statusText: updates.length ? ('preview · ' + updates.length + ' cells to write') : 'nothing to write',
+    plan: { connectorId: conn.id, fileId: fm.id, sheetName: tabName, updates },
+    previewRows
+  });
+}
+
+// ── Phase B: actually write a single brand's plan ──
+async function writePlan(card){
+  try {
+    const res = await api('/sheets-write.php', {
+      method: 'POST',
+      body: JSON.stringify({
+        connector_id: card.plan.connectorId,
+        file_id:      card.plan.fileId,
+        sheet_name:   card.plan.sheetName || '',
+        updates:      card.plan.updates
+      })
+    });
+    card.status = 'ok';
+    card.statusText = 'wrote ' + ((res && res.updated_cells) || card.plan.updates.length) + ' cells';
+  } catch (e) {
+    card.status = 'err';
+    card.statusText = 'write failed: ' + e.message;
+  }
+}
+
+// ── State across the two phases ──
+let currentCards = [];
+
+function renderAll(){
+  let html = '';
+  currentCards.forEach(c => {
+    html += '<div class="brand-card">'
+      + renderBrandHead(c.brand, c.status === 'ready' ? 'warn' : c.status, c.statusText);
+    if (c.previewRows && c.previewRows.length) {
+      html += renderPreviewTable(c.previewRows);
+    }
+    if (c.missList && c.missList.length) {
+      html += '<div class="miss"><div style="font-weight:700;margin-bottom:4px;">Notes:</div><ul>'
+        + c.missList.map(m => '<li>' + escapeHtml(m) + '</li>').join('')
+        + '</ul></div>';
+    }
+    html += '</div>';
+  });
+  $('status').innerHTML = html;
+
+  // Confirm bar — only if at least one card is in 'ready' state with a plan
+  const ready = currentCards.filter(c => c.status === 'ready' && c.plan && c.plan.updates.length);
+  let bar = $('confirmBar');
+  if (ready.length) {
+    const total = ready.reduce((s, c) => s + c.plan.updates.length, 0);
+    if (!bar) {
+      bar = document.createElement('div');
+      bar.id = 'confirmBar';
+      bar.className = 'confirm-bar';
+      $('status').parentElement.appendChild(bar);
+    }
+    bar.innerHTML = ''
+      + '<div class="summary">Ready to write <b>' + total + '</b> cells across <b>' + ready.length + '</b> brand' + (ready.length === 1 ? '' : 's') + '. Review the table above first.</div>'
+      + '<button class="cancel-btn" id="cancelBtn">Cancel</button>'
+      + '<button class="confirm-btn" id="confirmBtn">Confirm &amp; Write</button>';
+    $('cancelBtn').onclick = () => { currentCards = []; renderAll(); };
+    $('confirmBtn').onclick = doConfirm;
+  } else if (bar) {
+    bar.remove();
+  }
+}
+
+async function doConfirm(){
+  const btn = $('confirmBtn');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Writing…'; }
+  for (const c of currentCards) {
+    if (c.status !== 'ready' || !c.plan || !c.plan.updates.length) continue;
+    c.status = 'warn'; c.statusText = 'writing…';
+    renderAll();
+    await writePlan(c);
+    renderAll();
+  }
+  appToast('Done.', { type: 'success' });
+}
+
+// ── Top-level: builds previews, then waits for Confirm ──
+async function run(){
+  showErr('');
+  const btn = $('runBtn');
+  btn.disabled = true;
+  const orig = btn.innerHTML;
+  btn.innerHTML = '<span class="spinner"></span> Reading data…';
+  currentCards = [];
+  renderAll();
+  try {
+    const range = window.AppDatePicker ? window.AppDatePicker.getRange() : { from: '', to: '' };
+    // Empty from/to is valid — it means "Maximum" (all available data).
+    // buildPlanForBrand expands it to the actual data span per brand.
+    const activeId = window.getActiveBrandId ? window.getActiveBrandId() : 0;
+    const allBrands = await window.getAllBrandsAsync();
+    const targets = activeId ? allBrands.filter(b => b.id === activeId) : allBrands;
+    if (!targets.length) throw new Error('No brands to update.');
+    for (const brand of targets) {
+      const placeholder = { brand, status: 'warn', statusText: 'reading…', missList: [] };
+      currentCards.push(placeholder);
+      renderAll();
+      const built = await buildPlanForBrand(brand, range);
+      Object.assign(placeholder, built);
+      renderAll();
+    }
+  } catch (e) {
+    showErr(e.message);
+    appToast(e.message, { type: 'error', title: 'Failed' });
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = orig;
+  }
+}
+
+// ── Wire context labels ──
+function refreshLabels(){
+  const ab = window.getActiveBrand ? window.getActiveBrand() : null;
+  $('brandLabel').textContent = ab ? ab.name : 'All brands';
+  // Date range is shown by the AppDatePicker button itself — no need for a
+  // duplicate pill here.
+}
+// On brand switch: refresh the brand label AND auto-re-run preview so the
+// table immediately reflects the new brand's data (no stale view, no need
+// to manually click Preview again).
+window.addEventListener('app:brandChanged', () => {
+  refreshLabels();
+  currentCards = [];
+  renderAll();
+  // Auto-trigger a fresh preview if a date range is set (or Maximum mode).
+  // Catches the case where the user already had data shown for brand A and
+  // expects to immediately see brand B's data.
+  if ($('runBtn') && !$('runBtn').disabled) run();
+});
+if (window.AppDatePicker) {
+  window.AppDatePicker.subscribe(refreshLabels);
+  // Also wire the inline button so the user can change the range from this page.
+  const btn = $('dateBtn');
+  if (btn && window.AppDatePicker.attach) window.AppDatePicker.attach(btn);
+}
+$('runBtn').addEventListener('click', run);
+setTimeout(refreshLabels, 50);
+</script>
+</body>
+</html>

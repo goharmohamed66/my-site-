@@ -1,0 +1,13 @@
+# Force revalidation on JS / CSS / HTML so browsers always pick up the latest
+# deploy without users having to hard-refresh. Long-cache fonts and the plugin
+# zip (we cache-bust those at the URL level when they change).
+<IfModule mod_headers.c>
+  <FilesMatch "\.(html|js|css)$">
+    Header set Cache-Control "no-cache, no-store, must-revalidate"
+    Header set Pragma "no-cache"
+    Header set Expires "0"
+  </FilesMatch>
+  <FilesMatch "\.(woff2?|ttf|otf|eot|png|jpg|jpeg|gif|svg|webp)$">
+    Header set Cache-Control "public, max-age=2592000"
+  </FilesMatch>
+</IfModule>

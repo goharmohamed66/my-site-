@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Product</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html,body{min-height:100vh;background:#F1F1F1;font-family:'Inter',system-ui,sans-serif;color:#1A1A1A;font-size:14px;}
+  .app-shell{display:flex;min-height:100vh;}
+  .app-sidebar{width:240px;min-width:240px;background:#EBEBEB;border-right:1px solid #DCDCDC;display:flex;flex-direction:column;height:calc(100vh - 48px);position:sticky;top:48px;}
+  .app-sidebar-items{padding:10px 8px;flex:1;display:flex;flex-direction:column;gap:2px;overflow-y:auto;}
+  .app-sidebar-item{padding:7px 12px;border-radius:8px;font-size:13px;color:#303030;display:flex;align-items:center;gap:10px;cursor:pointer;text-decoration:none;font-weight:800;}
+  .app-sidebar-item:hover{background:#E2E2E2;}
+  .app-main{flex:1;min-width:0;}
+  .page{padding:18px 28px;width:100%;}
+  .page-bread{font-size:12px;color:#6D7175;margin-bottom:6px;}
+  .page-bread a{color:#6D7175;text-decoration:none;}
+  .page-bread a:hover{color:#1A1A1A;text-decoration:underline;}
+  .page-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:12px;flex-wrap:wrap;}
+  .page h1{font-size:22px;font-weight:700;}
+  .btn{display:inline-flex;align-items:center;gap:8px;padding:0 14px;height:36px;border-radius:8px;border:1px solid #1A1A1A;background:#1A1A1A;color:#FFFFFF;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;text-decoration:none;}
+  .btn:disabled{opacity:0.5;cursor:not-allowed;}
+  .btn-ghost{background:#FFFFFF;color:#1A1A1A;border-color:#DCDCDC;}
+  .btn-ghost:hover{background:#FAFAFA;border-color:#1A1A1A;}
+  .actions-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+
+  /* Drive-style toolbar */
+  .drive-toolbar{display:flex;align-items:center;gap:10px;background:#FFFFFF;border:1px solid #E1E3E5;border-radius:12px;padding:10px 14px;margin-bottom:12px;flex-wrap:wrap;}
+  .drive-toolbar .crumbs{flex:1;min-width:0;display:flex;align-items:center;gap:6px;font-size:14px;color:#1A1A1A;font-weight:600;flex-wrap:wrap;}
+  .drive-toolbar .crumbs a{color:#6D7175;text-decoration:none;cursor:pointer;font-weight:500;}
+  .drive-toolbar .crumbs a:hover{color:#1A1A1A;text-decoration:underline;}
+  .drive-toolbar .crumbs .sep{color:#9CA3AF;}
+  .drive-toolbar .crumbs .here{color:#1A1A1A;font-weight:700;}
+
+  /* Drop zone */
+  .drop-zone{position:relative;background:transparent;border:2px dashed transparent;border-radius:12px;min-height:300px;padding:0;transition:border-color .15s,background .15s;}
+  .drop-zone.drag-over{border-color:#1A1A1A;background:#F8FAFC;}
+  .drop-zone .drop-hint{position:absolute;inset:0;display:none;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:#1A1A1A;background:rgba(248,250,252,0.95);border-radius:12px;pointer-events:none;z-index:10;}
+  .drop-zone.drag-over .drop-hint{display:flex;}
+
+  /* Drive grid */
+  .drive-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;}
+  .drive-section-label{font-size:11px;font-weight:700;color:#6D7175;text-transform:uppercase;letter-spacing:0.06em;margin:14px 4px 8px;}
+  .drive-section-label:first-child{margin-top:0;}
+  .drive-card{background:#FFFFFF;border:1px solid #E1E3E5;border-radius:10px;padding:12px;cursor:pointer;transition:border-color .12s,box-shadow .12s,transform .12s;display:flex;flex-direction:column;gap:8px;text-align:left;font-family:inherit;color:#1A1A1A;text-decoration:none;}
+  .drive-card:hover{border-color:#1A1A1A;box-shadow:0 4px 12px rgba(0,0,0,0.06);}
+  .drive-card.folder{background:#FAFAFA;}
+  .drive-card .thumb{height:100px;background:#F8FAFC;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:42px;color:#6D7175;overflow:hidden;}
+  .drive-card .thumb img{max-width:100%;max-height:100%;object-fit:cover;width:100%;height:100%;}
+  .drive-card .name{font-size:12px;font-weight:600;color:#1A1A1A;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;word-break:break-word;}
+  .drive-card .meta{font-size:10px;color:#9CA3AF;}
+  /* Multi-select checkboxes (visible on hover or when any item selected) */
+  .drive-card{position:relative;}
+  .drive-card .pick{position:absolute;top:8px;left:8px;width:20px;height:20px;border-radius:6px;border:1.5px solid #DCDCDC;background:#FFFFFF;display:flex;align-items:center;justify-content:center;font-size:13px;color:transparent;cursor:pointer;opacity:0;transition:opacity .12s,background .12s,color .12s,border-color .12s;z-index:5;}
+  .drive-card:hover .pick,.drive-card.selected .pick,body.has-selection .drive-card .pick{opacity:1;}
+  .drive-card.selected{border-color:#1A1A1A !important;box-shadow:0 0 0 2px #1A1A1A inset,0 4px 12px rgba(0,0,0,0.06);}
+  .drive-card.selected .pick{background:#1A1A1A;color:#FFFFFF;border-color:#1A1A1A;}
+  /* Bulk-action bar pinned to bottom-center — uses the brand's light
+     palette (#EBEBEB sidebar bg, navy text) instead of the dark default. */
+  .sel-bar{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#EBEBEB;color:#1A1A1A;border:1px solid #DCDCDC;border-radius:12px;padding:10px 14px 10px 16px;display:none;align-items:center;gap:14px;box-shadow:0 12px 30px rgba(41,23,94,0.18),0 0 0 1px rgba(0,0,0,0.04);z-index:50000;font-family:inherit;animation:sel-in .18s ease;}
+  .sel-bar.show{display:flex;}
+  .sel-bar .sel-count{font-size:13px;font-weight:700;color:#1A1A1A;}
+  .sel-bar .sel-btn{background:#1A1A1A;color:#FFFFFF;border:1px solid #1A1A1A;border-radius:8px;padding:0 14px;height:34px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px;transition:background .12s,border-color .12s;}
+  .sel-bar .sel-btn:hover{background:#333333;border-color:#333333;}
+  .sel-bar .sel-btn.danger{background:#DC2626;color:#FFFFFF;border-color:#DC2626;}
+  .sel-bar .sel-btn.danger:hover{background:#B91C1C;border-color:#B91C1C;}
+  .sel-bar .sel-clear{background:transparent;border:none;color:#6D7175;cursor:pointer;font-size:13px;font-weight:600;padding:4px 8px;border-radius:6px;font-family:inherit;}
+  .sel-bar .sel-clear:hover{color:#1A1A1A;background:#DCDCDC;}
+  @keyframes sel-in{from{transform:translate(-50%,16px);opacity:0;}to{transform:translate(-50%,0);opacity:1;}}
+
+  .err{background:#FEF2F2;border:1px solid #FECACA;color:#991B1B;border-radius:8px;padding:10px 12px;font-size:13px;margin-bottom:14px;}
+  .spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(0,0,0,0.15);border-top-color:#1A1A1A;border-radius:50%;animation:spin .7s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+
+  .upload-toast{position:fixed;bottom:18px;right:18px;background:#FFFFFF;border:1px solid #E1E3E5;border-radius:12px;padding:14px 18px;font-size:13px;box-shadow:0 8px 24px rgba(0,0,0,0.12);z-index:9000;display:none;min-width:280px;max-width:360px;}
+  .upload-toast.show{display:block;}
+  .upload-toast .ut-title{font-weight:700;margin-bottom:4px;}
+  .upload-toast .ut-meta{font-size:11px;color:#6D7175;}
+  .upload-toast .ut-bar{height:4px;background:#E1E3E5;border-radius:2px;margin-top:8px;overflow:hidden;}
+  .upload-toast .ut-fill{height:100%;background:#1A1A1A;width:0%;transition:width .2s;}
+</style>
+<link rel="stylesheet" href="app-shared.css?v=1777854724">
+<script src="topbar.js?v=1777854724"></script>
+<script src="sidebar-tools.js?v=1777854724"></script>
+<script src="drive-viewer.js?v=1777854724"></script>
+<script src="app-ui.js?v=1777854724"></script>
+</head>
+<body>
+<div class="app-shell">
+  <aside class="app-sidebar">
+    <nav class="app-sidebar-items">
+      <a href="index.html" class="app-sidebar-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/></svg><span>Orders</span></a>
+      <a href="shipping.html" class="app-sidebar-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg><span>Shipping Analytics</span></a>
+      <a href="ads.html" class="app-sidebar-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg><span>Ads Analysis</span></a>
+    </nav>
+  </aside>
+  <div class="app-main">
+    <div class="page">
+      <div class="page-bread"><a href="clients.html">Products</a> › <span id="bcProduct">…</span></div>
+      <div class="page-head">
+        <h1 id="title">Product</h1>
+        <div class="actions-bar">
+          <input type="file" id="fileInput" multiple style="display:none;">
+          <button class="btn btn-ghost" id="uploadBtn">⬆ Upload files</button>
+        </div>
+      </div>
+      <div id="errBox"></div>
+
+      <!-- crumbs hidden — product name already shown in page header -->
+      <div id="crumbs" style="display:none;"></div>
+
+      <div class="drop-zone" id="dropZone">
+        <div class="drop-hint">⬇ Drop to upload here</div>
+        <div id="driveBody"><div class="empty"><span class="spinner"></span> Loading…</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="upload-toast" id="upToast">
+  <div class="ut-title" id="utTitle">Uploading…</div>
+  <div class="ut-meta" id="utMeta"></div>
+  <div class="ut-bar"><div class="ut-fill" id="utFill"></div></div>
+</div>
+
+<!-- Multi-select action bar (Drive-style) -->
+<div class="sel-bar" id="selBar">
+  <span class="sel-count" id="selCount">0 selected</span>
+  <button class="sel-btn" id="selDownload" type="button">⬇ Download</button>
+  <button class="sel-btn danger" id="selDelete" type="button">🗑 Delete</button>
+  <button class="sel-clear" id="selClear" type="button">Clear</button>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const API_BASE  = 'https://indigo-dog-836598.hostingersite.com/api';
+const API_TOKEN = 'tk_4d2b9f7a8c6e1530a4f2d9b7e8c6a1f5';
+const productId = parseInt(new URLSearchParams(location.search).get('id') || '0', 10);
+async function api(path, opts = {}) {
+  const headers = Object.assign({ 'Authorization': 'Bearer ' + API_TOKEN }, opts.headers || {});
+  if (opts.body && !headers['Content-Type']) headers['Content-Type'] = 'application/json';
+  const r = await fetch(API_BASE + path, { ...opts, headers });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(d.error || ('HTTP ' + r.status));
+  return d;
+}
+function escapeHtml(s){return String(s ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
+function showErr(msg){ $('errBox').innerHTML = msg ? '<div class="err">⚠ ' + escapeHtml(msg) + '</div>' : ''; }
+
+let connectorId = null, product = null;
+const breadcrumbs = []; // [{id, name}]
+
+async function loadConnectorId() {
+  if (connectorId) return connectorId;
+  const d = await api('/connectors.php?type=storage&provider=google_drive');
+  const c = (d.rows || [])[0];
+  if (c) connectorId = c.id;
+  return connectorId;
+}
+
+async function loadProduct() {
+  product = await api('/products.php?id=' + productId);
+  $('title').textContent = product.name;
+  document.title = product.name;
+  $('bcProduct').textContent = product.name;
+  // openInDrive button removed — folders open inside the in-app viewer.
+  // Seed breadcrumbs with the root
+  breadcrumbs.length = 0;
+  breadcrumbs.push({ id: product.drive_folder_id, name: product.name });
+}
+
+// Icon picker for files (Drive-like)
+function fileIconLarge(mime, name) {
+  if (mime && mime.startsWith('image/'))               return '🖼';
+  if (mime && mime.startsWith('video/'))               return '🎬';
+  if (mime === 'application/vnd.google-apps.spreadsheet' || /\.(xlsx?|csv)$/i.test(name)) return '📊';
+  if (mime === 'application/vnd.google-apps.document'    || /\.docx?$/i.test(name))       return '📝';
+  if (mime === 'application/vnd.google-apps.presentation'|| /\.pptx?$/i.test(name))       return '📽';
+  if (mime === 'application/pdf' || /\.pdf$/i.test(name)) return '📕';
+  return '📄';
+}
+
+function thumbForFile(f){
+  // Drive's CDN thumbnail endpoint serves a JPEG preview for almost any
+  // file type — image, video, PDF, Sheet, Doc, Slides, etc. Falls back
+  // to the emoji icon if the request 404s.
+  const m = f.mimeType || '';
+  const supportsThumb =
+    m.startsWith('image/') ||
+    m.startsWith('video/') ||
+    m === 'application/pdf' ||
+    m.startsWith('application/vnd.google-apps.') ||
+    m.startsWith('application/vnd.openxmlformats-officedocument.') ||
+    m === 'application/msword' ||
+    m === 'application/vnd.ms-excel' ||
+    m === 'application/vnd.ms-powerpoint';
+  if (supportsThumb) {
+    const fallback = fileIconLarge(f.mimeType, f.name).replace(/'/g, "&#39;");
+    return `<img src="https://drive.google.com/thumbnail?id=${encodeURIComponent(f.id)}&sz=w400" loading="lazy" alt="" onerror="this.outerHTML='${fallback}'">`;
+  }
+  return fileIconLarge(f.mimeType, f.name);
+}
+
+function renderCrumbs(){
+  const wrap = $('crumbs');
+  const parts = breadcrumbs.map((c, i) => {
+    const last = i === breadcrumbs.length - 1;
+    if (last) return `<span class="here">${escapeHtml(c.name)}</span>`;
+    return `<a data-i="${i}">${escapeHtml(c.name)}</a><span class="sep">›</span>`;
+  });
+  wrap.innerHTML = parts.join(' ');
+  wrap.querySelectorAll('a[data-i]').forEach(a => {
+    a.addEventListener('click', () => {
+      const i = parseInt(a.dataset.i, 10);
+      breadcrumbs.splice(i + 1); // pop deeper crumbs
+      loadFolder(breadcrumbs[breadcrumbs.length - 1].id);
+    });
+  });
+}
+
+async function loadFolder(folderId){
+  $('driveBody').innerHTML = '<div class="empty"><span class="spinner"></span> Loading…</div>';
+  await loadConnectorId();
+  if (!connectorId) { $('driveBody').innerHTML = '<div class="empty">No Drive connector configured.</div>'; return; }
+  try {
+    const d = await api('/google-drive.php?action=list&connector_id=' + connectorId + '&folder_id=' + encodeURIComponent(folderId));
+    renderEntries(d.files || [], folderId);
+  } catch (e) { $('driveBody').innerHTML = '<div class="empty">' + escapeHtml(e.message) + '</div>'; }
+  renderCrumbs();
+}
+
+// ── Selection state for files (videos, images, anything non-folder) ──
+const selection = new Map(); // fid → {id, name, mimeType}
+function refreshSelectionUI(){
+  const n = selection.size;
+  const bar = $('selBar');
+  if (n > 0) {
+    bar.classList.add('show');
+    document.body.classList.add('has-selection');
+    $('selCount').textContent = n + ' selected';
+  } else {
+    bar.classList.remove('show');
+    document.body.classList.remove('has-selection');
+  }
+}
+function toggleSelect(card, file){
+  if (selection.has(file.id)) { selection.delete(file.id); card.classList.remove('selected'); }
+  else { selection.set(file.id, file); card.classList.add('selected'); }
+  refreshSelectionUI();
+}
+function clearSelection(){
+  selection.clear();
+  document.querySelectorAll('.drive-card.selected').forEach(c => c.classList.remove('selected'));
+  refreshSelectionUI();
+}
+
+function renderEntries(entries, folderId){
+  // Reset selection whenever the folder changes — selection is per-view.
+  clearSelection();
+  const folders = entries.filter(e => e.mimeType === 'application/vnd.google-apps.folder');
+  const files   = entries.filter(e => e.mimeType !== 'application/vnd.google-apps.folder');
+  if (!entries.length) {
+    $('driveBody').innerHTML = '<div class="empty">Empty folder — drag &amp; drop files here or click <b>Upload files</b>.</div>';
+    return;
+  }
+  let html = '';
+  if (folders.length) {
+    html += '<div class="drive-section-label">Folders</div><div class="drive-grid">';
+    html += folders.map(f => `
+      <button class="drive-card folder" data-fid="${f.id}" data-fname="${escapeHtml(f.name)}" data-type="folder">
+        <span class="thumb">📁</span>
+        <span class="name">${escapeHtml(f.name)}</span>
+      </button>`).join('');
+    html += '</div>';
+  }
+  if (files.length) {
+    html += '<div class="drive-section-label">Files</div><div class="drive-grid">';
+    html += files.map(f => `
+      <button class="drive-card file" data-fid="${f.id}" data-fname="${escapeHtml(f.name)}" data-mime="${escapeHtml(f.mimeType||'')}" data-type="file">
+        <span class="pick" data-pick="${f.id}" title="Select">✓</span>
+        <span class="thumb">${thumbForFile(f)}</span>
+        <span class="name">${escapeHtml(f.name)}</span>
+      </button>`).join('');
+    html += '</div>';
+  }
+  $('driveBody').innerHTML = html;
+  $('driveBody').querySelectorAll('.drive-card').forEach(card => {
+    card.addEventListener('click', (e) => {
+      // Click on the checkbox toggles selection only.
+      if (e.target.closest('.pick')) {
+        e.stopPropagation();
+        if (card.dataset.type !== 'file') return;
+        toggleSelect(card, { id: card.dataset.fid, name: card.dataset.fname, mimeType: card.dataset.mime });
+        return;
+      }
+      // If something is already selected, plain clicks toggle too (Drive-style).
+      if (selection.size > 0 && card.dataset.type === 'file') {
+        e.stopPropagation();
+        toggleSelect(card, { id: card.dataset.fid, name: card.dataset.fname, mimeType: card.dataset.mime });
+        return;
+      }
+      // Otherwise behave normally — open folder or file viewer.
+      if (card.dataset.type === 'folder') {
+        breadcrumbs.push({ id: card.dataset.fid, name: card.dataset.fname });
+        loadFolder(card.dataset.fid);
+      } else {
+        window.openDriveViewer({ id: card.dataset.fid, name: card.dataset.fname, mimeType: card.dataset.mime });
+      }
+    });
+  });
+}
+
+// ── Bulk action wiring ────────────────────────────────────────────
+$('selClear').addEventListener('click', clearSelection);
+$('selDownload').addEventListener('click', async () => {
+  if (!selection.size) return;
+  // Pull each file through OUR backend proxy so the browser sees an
+  // attachment response → straight to disk, no Drive tab opens.
+  await loadConnectorId();
+  if (!connectorId) { appToast('No Drive connector configured.', { type: 'error' }); return; }
+  const files = Array.from(selection.values());
+  appToast('Downloading ' + files.length + ' file' + (files.length===1?'':'s') + '…', { type: 'info' });
+  let okCount = 0, fail = 0;
+  for (const f of files) {
+    try {
+      const url = API_BASE + '/google-drive.php?action=download&attachment=1'
+        + '&connector_id=' + connectorId
+        + '&file_id=' + encodeURIComponent(f.id);
+      const r = await fetch(url, { headers: { 'Authorization': 'Bearer ' + API_TOKEN } });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const blob = await r.blob();
+      const obj = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = obj; a.download = f.name; a.style.display = 'none';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      // Free the blob URL after the click handler picks it up
+      setTimeout(() => URL.revokeObjectURL(obj), 4000);
+      okCount++;
+    } catch (e) { fail++; console.warn('download failed for', f.name, e); }
+  }
+  appToast(
+    okCount + ' downloaded' + (fail ? ' · ' + fail + ' failed' : ''),
+    { type: fail ? 'warn' : 'success' }
+  );
+});
+$('selDelete').addEventListener('click', async () => {
+  if (!selection.size) return;
+  const n = selection.size;
+  const ok = await appConfirm(
+    n + ' file' + (n===1?'':'s') + ' will be moved to Drive Trash (recoverable for 30 days).',
+    { title: 'Delete ' + n + ' selected file' + (n===1?'':'s') + '?', okText: 'Delete', danger: true }
+  );
+  if (!ok) return;
+  let okCount = 0;
+  const failures = []; // [{ name, error }]
+  for (const f of Array.from(selection.values())) {
+    try {
+      await api('/google-drive.php?action=trash&file_id=' + encodeURIComponent(f.id), { method: 'POST' });
+      okCount++;
+    } catch (e) {
+      failures.push({ name: f.name, error: (e && e.message) || String(e) });
+      console.warn('trash failed for', f.name, e);
+    }
+  }
+  clearSelection();
+  loadFolder(breadcrumbs[breadcrumbs.length - 1].id);
+  if (!failures.length) {
+    appToast(okCount + ' file' + (okCount===1?'':'s') + ' moved to Drive Trash.', { type: 'success' });
+  } else {
+    // Show the actual Drive error so the user can act on it.
+    const first = failures[0];
+    appToast(
+      okCount + ' deleted · ' + failures.length + ' failed · "' + first.name + '": ' + first.error,
+      { type: 'warn', title: 'Drive sync failed', duration: 12000 }
+    );
+  }
+});
+
+// ── Upload (drag & drop OR Upload files button) ──────────────────
+async function uploadFiles(fileList){
+  if (!fileList || !fileList.length) return;
+  await loadConnectorId();
+  if (!connectorId) { showErr('No Drive connector configured.'); return; }
+  const parent = breadcrumbs[breadcrumbs.length - 1].id;
+  const total = fileList.length;
+  $('upToast').classList.add('show');
+  for (let i = 0; i < total; i++) {
+    const f = fileList[i];
+    $('utTitle').textContent = 'Uploading ' + (i + 1) + '/' + total;
+    $('utMeta').textContent  = f.name;
+    $('utFill').style.width  = ((i / total) * 100) + '%';
+    try {
+      const fd = new FormData();
+      fd.append('connector_id', connectorId);
+      fd.append('parent_id', parent);
+      fd.append('name', f.name);
+      fd.append('file', f, f.name);
+      const up = await fetch(API_BASE + '/google-drive.php?action=upload_file', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + API_TOKEN },
+        body: fd
+      });
+      if (!up.ok) {
+        const d = await up.json().catch(() => ({}));
+        throw new Error(d.error || ('HTTP ' + up.status));
+      }
+    } catch (e) {
+      showErr('Upload failed for ' + f.name + ': ' + e.message);
+    }
+  }
+  $('utFill').style.width = '100%';
+  $('utTitle').textContent = 'Done';
+  $('utMeta').textContent  = total + ' file' + (total === 1 ? '' : 's') + ' uploaded';
+  setTimeout(() => $('upToast').classList.remove('show'), 2000);
+  loadFolder(parent);
+}
+
+$('uploadBtn').addEventListener('click', () => $('fileInput').click());
+$('fileInput').addEventListener('change', e => uploadFiles(e.target.files));
+
+// Drag & drop
+const dz = $('dropZone');
+['dragenter', 'dragover'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.add('drag-over'); }));
+['dragleave', 'drop'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); if (ev === 'drop' || !dz.contains(e.relatedTarget)) dz.classList.remove('drag-over'); }));
+dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('drag-over'); if (e.dataTransfer && e.dataTransfer.files) uploadFiles(e.dataTransfer.files); });
+
+
+(async () => {
+  if (!productId) { showErr('Missing product id'); return; }
+  try {
+    await loadProduct();
+    loadFolder(product.drive_folder_id);
+  } catch (e) { showErr(e.message); }
+})();
+
+// Switching brand from the topbar while inside a product page → leave the
+// deep-dive and bounce to the products list of the newly-selected brand.
+// (The current product belongs to whatever brand owned it; staying here
+// would show stale context.)
+window.addEventListener('app:brandChanged', () => {
+  window.location.href = 'clients.html';
+});
+</script>
+</body>
+</html>

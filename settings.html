@@ -1,0 +1,3239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Settings</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Almarai:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html,body{min-height:100vh;background:#F1F1F1;font-family:'Inter','Almarai',system-ui,sans-serif;color:#1A1A1A;font-size:14px;}
+
+  .settings-shell{display:flex;justify-content:center;padding:24px 16px;gap:16px;align-items:flex-start;}
+  .settings-card{background:#FFFFFF;border:1px solid #E1E3E5;border-radius:12px;box-shadow:0 1px 0 rgba(0,0,0,0.05);}
+
+  .settings-sidebar{width:260px;flex-shrink:0;padding:8px;display:flex;flex-direction:column;}
+  .settings-store{display:flex;align-items:center;gap:10px;padding:12px;border-radius:10px;}
+  .settings-store .avatar-pill{width:32px;height:32px;border-radius:8px;background:#FF3B8F;color:#FFFFFF;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:11px;flex-shrink:0;overflow:hidden;}
+  .settings-store .avatar-pill img{width:100%;height:100%;object-fit:cover;display:block;}
+  .settings-store .name{font-weight:600;font-size:14px;color:#1A1A1A;line-height:18px;}
+  .logo-uploader{display:flex;align-items:center;gap:14px;}
+  .logo-preview{width:64px;height:64px;border-radius:12px;background:#FF3B8F;color:#FFFFFF;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:18px;overflow:hidden;flex-shrink:0;border:1px solid #E1E3E5;}
+  .logo-preview img{width:100%;height:100%;object-fit:cover;display:block;}
+  .logo-actions{display:flex;flex-direction:column;gap:6px;}
+
+  /* Shopify-style two-column section layout */
+  .gen-section{display:grid;grid-template-columns:220px 1fr;gap:24px;padding:24px 0;border-bottom:1px solid #E1E3E5;}
+  .gen-section:last-of-type{border-bottom:none;}
+  .gen-section-label{font-size:14px;font-weight:600;color:#1A1A1A;padding-top:4px;}
+  .gen-section-help{font-size:12px;color:#6D7175;margin-top:4px;}
+  .gen-card{background:#FFFFFF;border:1px solid #E1E3E5;border-radius:12px;overflow:hidden;}
+  .gen-card-block{padding:16px;border-bottom:1px solid #F1F1F1;}
+  .gen-card-block:last-child{border-bottom:none;}
+  .gen-photo-row{display:flex;align-items:center;gap:12px;}
+  .gen-photo{width:40px;height:40px;border-radius:50%;background:#5BC986;color:#FFFFFF;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;overflow:hidden;flex-shrink:0;}
+  .gen-photo img{width:100%;height:100%;object-fit:cover;display:block;}
+  .gen-fields{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+  .gen-field-label{display:block;font-size:13px;color:#1A1A1A;font-weight:500;margin-bottom:6px;}
+  .gen-input-row{display:flex;align-items:center;justify-content:space-between;gap:10px;}
+  .gen-input-row .left{flex:1;min-width:0;}
+  .gen-input-row .label{font-size:11px;color:#6D7175;font-weight:500;}
+  .gen-input-row .value{font-size:14px;color:#1A1A1A;margin-top:2px;}
+  .gen-link{color:#005BD3;font-size:13px;font-weight:500;cursor:pointer;background:none;border:none;padding:0;font-family:inherit;}
+  .gen-link:hover{text-decoration:underline;}
+  .verified-badge{display:inline-flex;align-items:center;gap:6px;color:#0E8345;font-size:13px;font-weight:500;}
+  .verified-badge svg{width:18px;height:18px;}
+  .settings-search{padding:0 8px 8px;}
+  .settings-search input{width:100%;height:32px;border:1px solid #DCDCDC;border-radius:8px;padding:0 10px 0 30px;font-size:13px;background:#F7F7F7 url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%236D7175'><path d='M11.5 6.5a5 5 0 11-10 0 5 5 0 0110 0zm-1 0a4 4 0 10-8 0 4 4 0 008 0zM10.5 9.5l4 4-1 1-4-4 1-1z'/></svg>") 10px center/14px no-repeat;}
+  .settings-search input:focus{outline:none;border-color:#1A1A1A;}
+  .settings-nav{flex:1;overflow-y:auto;padding:4px 0;}
+  .nav-item{display:flex;align-items:center;gap:10px;padding:7px 12px;border-radius:8px;cursor:pointer;color:#1A1A1A;font-size:13px;font-weight:500;}
+  .nav-item:hover{background:#F1F1F1;}
+  .nav-item.active{background:#F1F1F1;font-weight:600;}
+  .nav-item .nav-ico{width:18px;height:18px;color:#1A1A1A;flex-shrink:0;display:flex;align-items:center;justify-content:center;}
+  .nav-item .nav-ico svg{width:18px;height:18px;display:block;}
+  .nav-section-label{padding:14px 12px 6px;font-size:11px;font-weight:600;color:#6D7175;text-transform:uppercase;letter-spacing:0.4px;}
+  .settings-user{padding:10px 12px;border-top:1px solid #F1F1F1;display:flex;align-items:center;gap:10px;cursor:pointer;border-radius:8px;transition:background .12s;}
+  .settings-user:hover{background:#F1F1F1;}
+  .settings-user.active{background:#F1F1F1;}
+  .settings-user .avatar-pill{width:28px;height:28px;border-radius:6px;background:#7E36CC;color:#FFFFFF;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:11px;flex-shrink:0;overflow:hidden;}
+  .settings-user .avatar-pill img{width:100%;height:100%;object-fit:cover;display:block;}
+  .settings-user .name{font-size:13px;font-weight:600;color:#1A1A1A;line-height:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .settings-user .email{font-size:12px;color:#6D7175;line-height:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .role-badge{flex-shrink:0;font-size:10px;font-weight:600;color:#0A4275;background:#E7F0FD;padding:2px 7px;border-radius:10px;letter-spacing:0.2px;}
+
+  .settings-content{flex:1;max-width:880px;min-width:0;padding:28px 32px;min-height:600px;}
+  .settings-bread{display:flex;align-items:center;gap:6px;color:#6D7175;font-size:13px;margin-bottom:8px;}
+  .settings-bread a{color:#6D7175;text-decoration:none;}
+  .settings-title{font-size:22px;font-weight:700;color:#1A1A1A;letter-spacing:-0.3px;margin-bottom:4px;}
+  .settings-subtitle{font-size:13px;color:#6D7175;margin-bottom:20px;}
+
+  .info-banner{background:#EBF3FF;border:1px solid #B4D5FE;border-radius:10px;padding:12px 16px;display:flex;align-items:flex-start;gap:10px;margin-bottom:16px;font-size:13px;color:#0A4275;}
+  .info-banner .ico{flex-shrink:0;color:#1877F2;font-size:14px;line-height:20px;}
+  .info-banner.error{background:#FFEFEF;border-color:#FFB4B4;color:#7A1818;}
+  .info-banner.error .ico{color:#D72C0D;}
+
+  .panel{background:#FFFFFF;border:1px solid #E1E3E5;border-radius:12px;padding:20px;margin-bottom:16px;}
+  .panel-title{font-size:15px;font-weight:600;margin-bottom:4px;}
+  .panel-desc{font-size:13px;color:#6D7175;margin-bottom:16px;}
+
+  .form-row{display:grid;grid-template-columns:160px 1fr;gap:16px;margin-bottom:14px;align-items:start;}
+  .form-label{font-size:13px;color:#1A1A1A;font-weight:500;padding-top:8px;}
+  .form-input,.form-select,.form-textarea{width:100%;padding:8px 12px;border:1px solid #DCDCDC;border-radius:8px;font-size:13px;font-family:inherit;color:#1A1A1A;background:#FFFFFF;}
+  .form-input:focus,.form-select:focus,.form-textarea:focus{outline:none;border-color:#1A1A1A;box-shadow:0 0 0 1px #1A1A1A;}
+  .form-textarea{min-height:60px;resize:vertical;font-family:'SF Mono','Monaco',monospace;font-size:12px;}
+  .form-help{font-size:12px;color:#6D7175;margin-top:4px;}
+
+  .btn{display:inline-flex;align-items:center;gap:6px;padding:0 14px;height:32px;border-radius:8px;border:1px solid #DCDCDC;background:#FFFFFF;color:#1A1A1A;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;box-shadow:0 1px 0 rgba(0,0,0,0.04);}
+  .btn:hover{background:#F7F7F7;}
+  .btn:disabled{opacity:0.5;cursor:not-allowed;}
+  .btn-primary{background:#1A1A1A;color:#FFFFFF;border-color:#1A1A1A;}
+  .btn-primary:hover{background:#303030;}
+  .btn-danger{color:#D72C0D;border-color:#FFA396;}
+  .btn-danger:hover{background:#FFF1ED;}
+
+  .item-list{display:flex;flex-direction:column;gap:8px;}
+  .item-row{display:flex;align-items:center;gap:14px;padding:14px 16px;border:1px solid #E1E3E5;border-radius:10px;background:#FFFFFF;}
+  .item-row .item-ico{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;background:#F1F1F1;}
+  .item-row .item-main{flex:1;min-width:0;}
+  .item-row .item-title{font-size:14px;font-weight:600;color:#1A1A1A;}
+  .item-row .item-meta{font-size:12px;color:#6D7175;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .item-row .item-actions{display:flex;gap:6px;}
+  .empty-state{text-align:center;padding:40px 20px;color:#6D7175;font-size:13px;}
+  .loading-state{text-align:center;padding:40px 20px;color:#6D7175;font-size:13px;}
+
+  .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,0.45);display:none;align-items:center;justify-content:center;z-index:200;padding:20px;}
+  .modal-backdrop.open{display:flex;}
+  .modal{background:#FFFFFF;border-radius:14px;width:100%;max-width:560px;max-height:90vh;overflow:auto;}
+  .modal-head{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid #F1F1F1;}
+  .modal-title{font-size:16px;font-weight:700;}
+  .modal-close{background:none;border:none;cursor:pointer;font-size:18px;color:#6D7175;padding:4px;border-radius:6px;}
+  .modal-close:hover{background:#F1F1F1;}
+  .modal-body{padding:20px;}
+  .modal-foot{display:flex;justify-content:flex-end;gap:8px;padding:14px 20px;border-top:1px solid #F1F1F1;}
+
+  /* Connection guide — WhatsApp-style numbered steps with vertical line */
+  .guide-card{background:#FFFFFF;border:1px solid #E1E3E5;border-radius:12px;padding:18px 20px;margin-bottom:18px;}
+  .guide-title{display:flex;align-items:center;gap:8px;margin-bottom:16px;font-size:14px;font-weight:700;color:#1A1A1A;}
+  .guide-title-icon{width:18px;height:18px;color:#1A1A1A;}
+  .guide-step{display:grid;grid-template-columns:28px 1fr;gap:14px;align-items:flex-start;margin-bottom:16px;position:relative;}
+  .guide-step:last-child{margin-bottom:0;}
+  .guide-step-num{width:28px;height:28px;border-radius:50%;border:1.5px solid #1A1A1A;background:#FFFFFF;color:#1A1A1A;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;position:relative;z-index:1;flex-shrink:0;font-variant-numeric:tabular-nums;}
+  .guide-step:not(:last-child)::before{content:"";position:absolute;left:13px;top:28px;width:2px;height:calc(100% + 4px - 28px);background:#1A1A1A;opacity:0.18;z-index:0;}
+  .guide-step-text{padding-top:5px;font-size:13px;color:#1A1A1A;line-height:1.55;}
+  .guide-step-text a{color:#005BD3;}
+  .guide-step-text code{background:#F1F1F1;padding:1px 5px;border-radius:4px;font-size:12px;}
+  .guide-note{margin-top:14px;padding:10px 12px;background:#FFF8E1;border:1px solid #F5E6A6;border-radius:8px;font-size:12px;color:#7A5500;line-height:1.5;}
+
+  .provider-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-bottom:16px;}
+  .provider-chip{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:14px 8px;border:1px solid #E1E3E5;border-radius:10px;cursor:pointer;background:#FFFFFF;text-align:center;}
+  .provider-chip:hover{border-color:#1A1A1A;}
+  .provider-chip.selected{border-color:#1A1A1A;box-shadow:0 0 0 1px #1A1A1A;}
+  .provider-chip .ico{font-size:22px;}
+  .provider-chip .name{font-size:12px;font-weight:600;}
+
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1A1A1A;color:#FFFFFF;padding:10px 18px;border-radius:8px;font-size:13px;z-index:300;opacity:0;transition:opacity .2s;}
+  .toast.show{opacity:1;}
+  .toast.error{background:#D72C0D;}
+
+  @media (max-width: 900px) {
+    .settings-shell{flex-direction:column;align-items:stretch;}
+    .settings-sidebar{width:100%;}
+    .form-row{grid-template-columns:1fr;}
+    .form-label{padding-top:0;}
+  }
+</style>
+<script src="topbar.js?v=1777930552"></script>
+<script src="sidebar-tools.js?v=1777930552"></script>
+<script src="google-picker.js?v=1777930552"></script>
+<script src="drive-viewer.js?v=1777930552"></script>
+<script src="app-ui.js?v=1777930552"></script>
+</head>
+<body>
+
+<div class="settings-shell">
+  <aside class="settings-card settings-sidebar">
+    <div class="settings-store" id="storeHeader">
+      <div class="avatar-pill" id="storePill">SG</div>
+      <div>
+        <div class="name" id="storeName">Sila Gallery</div>
+      </div>
+    </div>
+    <div class="settings-search">
+      <input type="text" placeholder="Search">
+    </div>
+    <nav class="settings-nav" id="navList"></nav>
+    <div class="settings-user" id="userBox">
+      <div class="avatar-pill" id="userPill">TO</div>
+      <div style="min-width:0;flex:1;">
+        <div class="name" id="userName">Tech Operation</div>
+        <div class="email" id="userEmail">techopration72@gmail.com</div>
+      </div>
+      <span class="role-badge" id="userRoleBadge">Admin</span>
+    </div>
+  </aside>
+  <main class="settings-content" id="content"></main>
+</div>
+
+<div class="modal-backdrop" id="modalBackdrop">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-title" id="modalTitle">Add</div>
+      <button class="modal-close" id="modalClose">✕</button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+    <div class="modal-foot">
+      <button class="btn" id="modalCancel">Cancel</button>
+      <button class="btn btn-primary" id="modalSave">Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── API CONFIG ───────────────────────────────────────────────────────
+const API_BASE = "https://indigo-dog-836598.hostingersite.com/api";
+const API_TOKEN = "tk_4d2b9f7a8c6e1530a4f2d9b7e8c6a1f5";
+
+async function api(path, opts = {}) {
+  const headers = Object.assign({"Authorization": "Bearer " + API_TOKEN}, opts.headers || {});
+  if (opts.method && opts.method !== 'GET') headers['Content-Type'] = 'application/json';
+  const r = await fetch(API_BASE + path, {...opts, headers});
+  const text = await r.text();
+  let data; try { data = JSON.parse(text); } catch { data = {raw: text}; }
+  if (!r.ok) throw new Error(data.error || ('HTTP ' + r.status));
+  return data;
+}
+
+const $ = id => document.getElementById(id);
+
+const NAV_SVGS = {
+  general: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>',
+  cms: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>',
+  shipping: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>',
+  ads: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>',
+  confirmation: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>',
+  ai: '<svg viewBox="0 0 14 14" fill="currentColor" stroke="none"><path d="M11.452 0h1.698c.47 0 .85.38.85.85v1.699c0 .469-.38.85-.85.85h-1.699a.85.85 0 0 1-.849-.85v-1.7c0-.469.38-.849.85-.849M13.15 5.301h-1.699a.85.85 0 0 0-.849.85V7.85c0 .469.38.849.85.849h1.698c.47 0 .85-.38.85-.85V6.15a.85.85 0 0 0-.85-.849M.85 10.602h1.699c.469 0 .85.38.85.85v1.698c0 .47-.381.85-.85.85h-1.7A.85.85 0 0 1 0 13.15v-1.699c0-.469.38-.85.85-.85M7.85 10.602h-1.7a.85.85 0 0 0-.85.85v1.698c.001.47.381.85.85.85h1.7c.469 0 .849-.38.849-.85v-1.699a.85.85 0 0 0-.85-.85M13.15 10.602h-1.699a.85.85 0 0 0-.849.85v1.698c0 .47.38.85.85.85h1.698c.47 0 .85-.38.85-.85v-1.699a.85.85 0 0 0-.85-.85M6.15 5.301h1.7c.469 0 .849.38.849.85V7.85c0 .469-.38.849-.85.849H6.15a.85.85 0 0 1-.85-.85V6.15c.001-.469.381-.849.85-.849M2.549 5.301h-1.7a.85.85 0 0 0-.849.85V7.85c0 .469.38.849.85.849h1.699c.469 0 .85-.38.85-.85V6.15a.85.85 0 0 0-.85-.849M7.85 0h-1.7a.85.85 0 0 0-.85.85v1.699c.001.469.381.85.85.85h1.7c.469 0 .849-.381.849-.85v-1.7A.85.85 0 0 0 7.849 0M.85 0h1.699c.469 0 .85.38.85.85v1.699c0 .469-.381.85-.85.85h-1.7A.85.85 0 0 1 0 2.548v-1.7C0 .38.38 0 .85 0"/></svg>',
+  users: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
+  skills: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M9.663 17h4.673M12 3v1M6.343 6.343l.707.707M3 12h1M5.05 19l.707-.707M19.95 19l-.707-.707M21 12h-1M17.657 6.343l-.707.707M12 21a4 4 0 0 0 4-4H8a4 4 0 0 0 4 4Z"/><path d="M8 13a4 4 0 1 1 8 0c0 1.5-1 2.5-1.5 3h-5C9 15.5 8 14.5 8 13Z"/></svg>',
+  'connectors-hub': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2v6m6-6v6M5 8h14a2 2 0 0 1 2 2v2a6 6 0 0 1-12 0v0a6 6 0 0 1-4 0M12 22v-6"/></svg>',
+  brands: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>'
+};
+const NAV = [
+  { id: 'general', label: 'General' },
+  { _section: 'Categories' },
+  { id: 'brands', label: 'Brands & Assets' },
+  { id: 'cms', label: 'CMS' },
+  { id: 'shipping', label: 'Shipping companies' },
+  { _section: 'Brain' },
+  { id: 'skills', label: 'Skills' },
+  { id: 'connectors-hub', label: 'Connectors' },
+  { _section: 'Team' },
+  { id: 'users', label: 'Users' },
+];
+
+// ── STORE PROFILE (name + logo) ──────────────────────────────────────
+const STORE_KEY = 'app.storeProfile.v1';
+function loadStoreProfile() {
+  try { const s = localStorage.getItem(STORE_KEY); if (!s) return {name:'Sila Gallery',logo:''}; const o = JSON.parse(s); return {name:o.name||'Sila Gallery',logo:o.logo||''}; }
+  catch (e) { return {name:'Sila Gallery',logo:''}; }
+}
+function saveStoreProfile(p) { try { localStorage.setItem(STORE_KEY, JSON.stringify(p)); } catch (e) {} }
+function storeInitials(name) { return (name||'').trim().split(/\s+/).map(w=>w[0]||'').join('').slice(0,2).toUpperCase() || 'S'; }
+function renderStoreHeader() {
+  const p = loadStoreProfile();
+  const pill = $('storePill'); const nameEl = $('storeName');
+  if (pill) { if (p.logo) pill.innerHTML = '<img src="'+p.logo+'" alt="logo">'; else pill.textContent = storeInitials(p.name); }
+  if (nameEl) nameEl.textContent = p.name || 'Store';
+}
+
+// ── USER PROFILE (sidebar bottom: name, email, photo, role) ──────────
+const USER_KEY = 'app.userProfile.v1';
+const DEFAULT_USER = { firstName: 'Tech', lastName: 'Operation', email: 'techopration72@gmail.com', photo: '', role: 'Admin' };
+function loadUserProfile() {
+  try {
+    const s = localStorage.getItem(USER_KEY);
+    if (!s) return { ...DEFAULT_USER, name: DEFAULT_USER.firstName + ' ' + DEFAULT_USER.lastName };
+    const o = JSON.parse(s);
+    // Backwards compat: if old shape with `name`, split it.
+    if (o.name && !o.firstName) {
+      const parts = o.name.trim().split(/\s+/);
+      o.firstName = parts[0] || '';
+      o.lastName = parts.slice(1).join(' ');
+    }
+    const merged = { ...DEFAULT_USER, ...o };
+    merged.name = ((merged.firstName || '') + ' ' + (merged.lastName || '')).trim() || 'User';
+    return merged;
+  } catch (e) { return { ...DEFAULT_USER, name: DEFAULT_USER.firstName + ' ' + DEFAULT_USER.lastName }; }
+}
+function saveUserProfile(p) { try { localStorage.setItem(USER_KEY, JSON.stringify(p)); } catch (e) {} }
+function userInitials(name) { return (name||'').trim().split(/\s+/).map(w=>w[0]||'').join('').slice(0,2).toUpperCase() || 'U'; }
+function renderUserBox() {
+  const u = loadUserProfile();
+  const pill = $('userPill'); const nameEl = $('userName'); const emailEl = $('userEmail'); const roleEl = $('userRoleBadge');
+  if (pill) { if (u.photo) pill.innerHTML = '<img src="'+u.photo+'" alt="user">'; else pill.textContent = userInitials(u.name); }
+  if (nameEl) nameEl.textContent = u.name || 'User';
+  if (emailEl) emailEl.textContent = u.email || '';
+  if (roleEl) { if (u.role) { roleEl.textContent = u.role; roleEl.style.display = 'inline-block'; } else { roleEl.style.display = 'none'; } }
+  if (window.refreshTopbarAvatar) window.refreshTopbarAvatar();
+}
+
+// Providers per section
+const PROVIDERS = {
+  cms: [
+    { id: 'wordpress', name: 'WordPress', icon: '🌐' },
+    { id: 'shopify', name: 'Shopify', icon: '🛍️' },
+  ],
+  shipping: [
+    { id: 'jt',      name: 'J&T',     logo: 'logos/jt.svg' },
+    { id: 'bosta',   name: 'Bosta',   logo: 'logos/bosta.svg' },
+    { id: 'qp',      name: 'QP',      logo: 'logos/qp.svg' },
+    { id: 'shipblu', name: 'ShipBlu', logo: 'logos/shipblu.svg' },
+    { id: 'turbo',   name: 'Turbo',   logo: 'logos/turbo.svg' },
+    // Generic — any other shipping carrier. Same flow as the named ones
+    // above (sample upload + column mapping). Saves as type=shipping
+    // provider=custom; the parser uses meta.column_map to read sheets/API.
+    { id: 'custom',  name: 'Custom shipping company', icon: '🛠️' },
+  ],
+  ads: [
+    { id: 'meta', name: 'Meta', icon: '📘' },
+    { id: 'tiktok', name: 'TikTok', icon: '🎵' },
+    { id: 'google', name: 'Google Ads', icon: '🔍' },
+    { id: 'snap', name: 'Snapchat', icon: '👻' },
+  ],
+  confirmation: [
+    { id: 'wesell', name: 'Wesell', icon: '✅' },
+    { id: 'zomeza', name: 'Zomeza', icon: '☑️' },
+    // Generic — any other confirmation system. The user uploads a sample
+    // sheet, maps the columns, and the parser handles it. Same UX as
+    // Zomeza/Wesell but no built-in defaults.
+    { id: 'custom', name: 'Custom confirmation', icon: '🛠️' },
+  ],
+  ai: [
+    { id: 'claude',     name: 'Claude (Anthropic)',  logo: 'logos/anthropic.svg' },
+    { id: 'chatgpt',    name: 'ChatGPT (OpenAI)',    logo: 'logos/openai.svg' },
+    { id: 'openrouter', name: 'OpenRouter (unified)', logo: 'logos/openrouter.svg' },
+  ],
+};
+
+// Step-by-step connection guide per provider (only providers we've actually
+// verified end-to-end — never guesses).
+const PROVIDER_GUIDES = {
+  // ── CMS ────────────────────────────────────────────────────────────
+  wordpress: {
+    title: 'How to connect WordPress / WooCommerce',
+    note: 'Long-lived: keys never expire unless you delete them.',
+    steps: [
+      '<strong>WooCommerce keys (Orders / Products):</strong> Open <strong>WooCommerce → Settings → Advanced → REST API → Add key</strong>. User = admin, Permissions = Read/Write. Copy <code>ck_…</code> and <code>cs_…</code>.',
+      '<strong>WP Application Password (Landing Page Auto):</strong> Open <strong>Users → Profile → Application Passwords</strong>. Add new with name "Landing Auto", copy the <code>xxxx xxxx …</code> password (shown once).',
+      'Type the WP admin <strong>username</strong> that owns that App Password into the field below.',
+      'Paste the store URL (e.g. <code>https://yourstore.com</code>) and all four credentials.',
+      'For full auto-import into WP Funnels, also install the <strong>Landing Auto Bridge</strong> mu-plugin (download link in the Landing Page Auto page).'
+    ]
+  },
+  shopify: {
+    title: 'How to connect Shopify',
+    note: 'Admin API tokens are long-lived (no expiry as long as the app is installed).',
+    steps: [
+      'Open your Shopify admin → <strong>Settings → Apps and sales channels → Develop apps</strong>.',
+      'Click <strong>Create an app</strong>, give it a name (e.g. "Analytics tool").',
+      'Open <strong>Configuration → Admin API integration → Configure</strong>. Tick at least: <code>read_orders</code>, <code>read_products</code>, <code>read_customers</code>. Save.',
+      'Click <strong>Install app</strong> on the app page.',
+      'Open the <strong>API credentials</strong> tab → Reveal the <strong>Admin API access token</strong> once and copy it.',
+      'Paste it here together with the store URL (e.g. <code>https://your-store.myshopify.com</code>).'
+    ]
+  },
+  // ── ADS ────────────────────────────────────────────────────────────
+  meta: {
+    title: 'How to connect Meta (Facebook / Instagram Ads)',
+    note: 'Use a System User token — it NEVER expires (regular user tokens last only ~60 days).',
+    steps: [
+      'Open <a href="https://business.facebook.com/settings" target="_blank" rel="noopener">business.facebook.com/settings</a> with the Business Manager that owns your ad accounts.',
+      '<strong>Users → System Users → Add</strong>. Pick role <strong>Admin</strong>. Click <strong>Add Assets</strong> and assign every ad account you want analytics for (with “Manage” access).',
+      'Open the system user → <strong>Generate New Token</strong>. Pick your App, then check at least: <code>ads_read</code>, <code>business_management</code> (and <code>ads_management</code> if you want to edit campaigns later).',
+      'Copy the token (starts with <code>EAAB…</code> / <code>EAAV…</code>) and paste it below.',
+      'Click <strong>🔍 Verify token & list ad accounts</strong> to confirm and pick which accounts to expose.'
+    ]
+  },
+  // ── SHIPPING ───────────────────────────────────────────────────────
+  jt: {
+    title: 'How to connect J&T Express (Egypt)',
+    note: 'You also need to ask J&T support to enable the “Query Orders / 查询订单” interface on your apiAccount before the integration can pull orders.',
+    steps: [
+      'Email or WhatsApp your J&T account manager and request: <strong>API Account</strong> (16-digit number) and <strong>privateKey</strong> (32-char string).',
+      'Ask them to enable the <strong>Query Orders interface</strong> permission on your apiAccount. Without this, every fetch returns <code>[145003012] API account has no interface permissions</code>.',
+      'Once they confirm enabling it, paste both values below and save.',
+      'Test by selecting this account in <strong>Shipping Analytics → Pull from carrier</strong>.'
+    ]
+  },
+  bosta: {
+    title: 'How to connect Bosta',
+    note: 'IMPORTANT — Bosta whitelists IPs server-side. Before fetching works in production, share our server IP with techsupport@bosta.co so they can whitelist it.',
+    steps: [
+      '1. <strong>Create the business account</strong> on Bosta — start in Staging for testing: <a href="https://stg-business.bosta.co" target="_blank" rel="noopener">stg-business.bosta.co</a>. Once everything is verified, create the real one on <a href="https://business.bosta.co" target="_blank" rel="noopener">business.bosta.co</a>.',
+      '2. <strong>Activate the account</strong> from the email confirmation Bosta sends.',
+      '3. <strong>Enable 2-Factor Authentication</strong> for every admin user (Bosta requires this for API access).',
+      '4. <strong>Generate the API Key</strong>: Dashboard → Settings → API. Copy it once — Bosta will not show it again.',
+      '5. Paste the key in the field below and Save. The tool calls <code>POST /api/v0/deliveries/search</code> on your behalf.',
+      '6. <strong>Whitelist our server IP with Bosta:</strong> email <a href="mailto:techsupport@bosta.co">techsupport@bosta.co</a> with our outbound IP so requests are not blocked.',
+      '7. (Optional) For real-time updates, set up a webhook → Bosta will push every shipment status change to our endpoint. Ask Bosta support for the webhook setup guide.'
+    ]
+  },
+  qp: {
+    title: 'How to connect QP',
+    note: 'QP has no public REST API — the tool will sign in with these credentials and pull orders from the orders page directly.',
+    steps: [
+      'Use the email and password you normally log in to the QP dashboard with.',
+      'For safety, create a dedicated read-only user inside QP and use those credentials here.',
+      'Note: QP integration is in active development — for now please import a CSV/XLSX export from QP if Pull-from-carrier returns an error.'
+    ]
+  },
+  shipblu: {
+    title: 'How to connect ShipBlu',
+    note: 'API tokens issued by ShipBlu support — pending end-to-end verification on our side.',
+    steps: [
+      'Email <a href="mailto:support@shipblu.com">support@shipblu.com</a> requesting an API key for "merchant orders read access".',
+      'Paste the key below.',
+      'If pulling fails, share the exact error so we can pin down the right endpoint with ShipBlu docs.'
+    ]
+  },
+  turbo: {
+    title: 'How to connect Turbo',
+    note: 'Both API Key and Customer Code are issued by Turbo support — pending end-to-end verification on our side.',
+    steps: [
+      'Contact Turbo support to receive your <strong>API Key</strong> and <strong>Customer Code</strong>.',
+      'Paste both below.',
+      'If pulling fails, share the exact error so we can adjust the endpoint mapping.'
+    ]
+  },
+  // Generic — shown for both "Custom shipping company" and "Custom
+  // confirmation". The actual onboarding work happens in the column
+  // mapping panel below the standard fields.
+  custom: {
+    title: 'Add a custom company',
+    note: 'No API integration is built — instead you upload one sample export from this provider in the "Sheet column mapping" section below. Once mapped, every future upload (sheet OR API JSON) is parsed automatically.',
+    steps: [
+      'Give this connector a clear name (e.g. "Aramex / J&T Saudi / Internal OMS").',
+      'Scroll to <strong>Sheet column mapping</strong> below and upload one sample export from this provider.',
+      'Pick the right column for each field (Product, Status, City, Date, etc.) — the dropdowns auto-fill from your sheet.',
+      'Type the exact status text(s) for DELIVERED / RETURNED (or CONFIRMED / CANCELED for confirmation systems).',
+      'Save. Future uploads from this provider go through the same mapping — no code changes needed.'
+    ]
+  },
+  // ── AI TOOLS ───────────────────────────────────────────────────────
+  claude: {
+    title: 'How to connect Claude (Anthropic)',
+    note: 'API keys are shown ONCE — copy and store securely. You also need credits in your Anthropic account before requests will work.',
+    steps: [
+      'Go to <a href="https://console.anthropic.com" target="_blank" rel="noopener">console.anthropic.com</a> and sign up or log in.',
+      'Once logged in, open <strong>Settings → API Keys</strong> from the left sidebar (or visit <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">console.anthropic.com/settings/keys</a>).',
+      'Click <strong>Create Key</strong>, give it a name (e.g. "Sila Gallery — production"), pick the workspace, and create.',
+      'Copy the key — it starts with <code>sk-ant-api03-</code>. This is the only time you can see the full value.',
+      'Open <strong>Settings → Billing</strong> (or <a href="https://console.anthropic.com/settings/billing" target="_blank" rel="noopener">console.anthropic.com/settings/billing</a>) and add a payment method, then buy credits — without credits the API returns 400 / insufficient_quota.',
+      'Paste the key in the field below and Save. The Copywriting / Landing page / Headlines tools will use it automatically.'
+    ]
+  },
+  chatgpt: {
+    title: 'How to connect ChatGPT (OpenAI)',
+    note: 'API keys are shown ONCE — copy them right away. A paid balance (Settings → Billing) is required before requests will succeed.',
+    steps: [
+      'Go to <a href="https://platform.openai.com" target="_blank" rel="noopener">platform.openai.com</a> and sign up or log in (this is the developer console — separate from chat.openai.com).',
+      'Open <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener">platform.openai.com/api-keys</a> (or click your avatar → <strong>Your profile → User API keys</strong>).',
+      'Click <strong>Create new secret key</strong>. Give it a name, pick the project, set permissions to <strong>All</strong> (or read-only if you only need text generation), and create.',
+      'Copy the key — it starts with <code>sk-proj-</code> or <code>sk-</code>. You will not be able to see it again after closing the dialog.',
+      'Open <a href="https://platform.openai.com/settings/organization/billing/overview" target="_blank" rel="noopener">Settings → Billing</a>, add a payment method, then click <strong>Add to credit balance</strong> — OpenAI keys do <em>not</em> work without a positive balance.',
+      'Paste the key in the field below and Save.'
+    ]
+  },
+  openrouter: {
+    title: 'How to connect OpenRouter (one key for many models)',
+    note: 'OpenRouter is a unified API gateway: one account & one balance gives you access to Claude, GPT-4, Gemini, Llama and more. ~5% cheaper than maintaining accounts on each provider.',
+    steps: [
+      'Go to <a href="https://openrouter.ai" target="_blank" rel="noopener">openrouter.ai</a> and sign up (Google / GitHub login is fastest).',
+      'Open <a href="https://openrouter.ai/settings/keys" target="_blank" rel="noopener">openrouter.ai/settings/keys</a>.',
+      'Click <strong>Create Key</strong>, give it a name (e.g. "Sila Gallery"), and create.',
+      'Copy the key — it starts with <code>sk-or-v1-</code>. You can see it again later from the same page.',
+      'Open <a href="https://openrouter.ai/settings/credits" target="_blank" rel="noopener">openrouter.ai/settings/credits</a> and click <strong>Add credits</strong>. Minimum is $5 and it is shared across every model.',
+      'Paste the key in the field below and Save. The Copywriting / Landing page / Headlines tools will route through OpenRouter when you pick "OpenRouter" as the model.'
+    ]
+  }
+};
+
+// Fields specific to each provider (which inputs to show in modal)
+const PROVIDER_FIELDS = {
+  // Google Drive — OAuth handles auth, but we still let the user save Drive
+  // folder/file IDs for the Clients/Brands/Products feature templates.
+  google_drive: [
+    {key: 'name', label: 'Connection name', placeholder: 'My Drive', required: true,
+     help: 'Display name for this Drive account.'},
+    {key: 'product_template_folder_id', label: 'PRODUCT TEMPLATE folder ID', meta: true, pickFolder: true,
+     placeholder: 'e.g. 1AbC...XYZ',
+     help: 'Folder copied for every new Product. Open the folder in Drive and copy its ID from the URL. The full sub-folder structure (Reviews, Images, Videos, Designs…) is duplicated for each product.'},
+  ],
+  wordpress: [
+    {key: 'name',     label: 'Store name',      placeholder: 'My Store',           required: true},
+    {key: 'url',      label: 'Store link',      placeholder: 'https://example.com', required: true},
+    {key: 'consumer_key',    label: 'Consumer Key',    placeholder: 'ck_...', required: true,
+     help: 'WooCommerce REST API key (Orders / Products).'},
+    {key: 'consumer_secret', label: 'Consumer Secret', placeholder: 'cs_...', required: true, secret: true},
+    {key: 'wp_username',     label: 'WP Admin Username', placeholder: 'admin', meta: true,
+     help: 'Required for Landing Page Auto. The Admin user that owns the Application Password below.'},
+    {key: 'wp_app_password', label: 'Application Password', placeholder: 'xxxx xxxx xxxx xxxx xxxx xxxx', secret: true, meta: true,
+     help: 'WP Admin → Users → Profile → Application Passwords → Add New. Used to upload images to Media Library and import funnels into WP Funnels.'},
+  ],
+  shopify: [
+    {key: 'name',  label: 'Store name', required: true},
+    {key: 'url',   label: 'Store link', placeholder: 'https://your-store.myshopify.com', required: true},
+    {key: 'token', label: 'Admin API access token', secret: true, required: true, multiline: true},
+  ],
+  meta: [
+    {key: '__fb_login',     label: '', _custom: 'fb-login'},
+    {key: 'name',  label: 'Connection name', placeholder: 'My Meta Business', required: true},
+    {key: 'token', label: 'Meta long-lived access token', placeholder: 'EAA...', secret: true, required: false, multiline: true,
+     help: 'Required ONLY if you skip "Sign in with Facebook" above. The login button auto-fills this for you.'},
+    {key: '__verify_meta', label: '', _custom: 'verify-meta'},
+  ],
+  // ── Shipping providers ───────────────────────────────────────────────
+  // The `name` field stores the CUSTOMER name (e.g. Motaz, Ahmed Yasser) so the
+  // same carrier can be linked to multiple accounts and the Shipping Analytics
+  // page groups them as: Carrier → [Customer A, Customer B, …]
+  jt: [
+    {key: 'name',         label: 'Customer name',  placeholder: 'e.g. Motaz, Ahmed Yasser', required: true,
+     help: 'Display name for this account — shown in the Shipping Analytics dropdown under the carrier.'},
+    {key: 'consumer_key', label: 'API Account',    placeholder: '907635506076979246', required: true},
+    {key: 'token',        label: 'Private Key',    placeholder: '5d185b08c699443a9b207b33257a5cb9', required: true, secret: true},
+  ],
+  bosta: [
+    {key: 'name',  label: 'Customer name', placeholder: 'e.g. Motaz, Ahmed Yasser', required: true,
+     help: 'Display name for this Bosta account.'},
+    {key: 'token', label: 'API Key',       placeholder: '965bf826a9e51b6d…', required: true, secret: true, multiline: true,
+     help: 'Bosta REST API key — used for tracking, label generation and order sync.'},
+  ],
+  qp: [
+    {key: 'name',            label: 'Customer name', placeholder: 'e.g. Motaz, Ahmed Yasser', required: true},
+    {key: 'consumer_key',    label: 'Username',      placeholder: 'qp.user@example.com', required: true},
+    {key: 'consumer_secret', label: 'Password',      required: true, secret: true,
+     help: 'QP is open-source — the tool will sign in with these credentials and pull orders straight from the orders page.'},
+  ],
+  shipblu: [
+    {key: 'name',  label: 'Customer name', placeholder: 'e.g. Motaz, Ahmed Yasser', required: true},
+    {key: 'token', label: 'API Key',       placeholder: 'sb_...', required: true, secret: true, multiline: true},
+  ],
+  turbo: [
+    {key: 'name',         label: 'Customer name', placeholder: 'e.g. Motaz, Ahmed Yasser', required: true},
+    {key: 'token',        label: 'API Key',       placeholder: 'tk_...', required: true, secret: true, multiline: true},
+    {key: 'consumer_key', label: 'Customer Code', placeholder: 'CUST-12345', required: true},
+  ],
+  // Generic custom confirmation — only collects a name. All parsing rules
+  // come from the column-mapping panel injected below the standard fields.
+  custom: [
+    {key: 'name', label: 'Connector name', placeholder: 'e.g. My CRM, Custom OMS', required: true,
+     help: 'How this connector appears in the dropdown. The actual sheet parsing comes from the column mapping below.'},
+  ],
+  // ── AI providers ─────────────────────────────────────────────────────
+  // Same key is used across all brands — no need for a per-brand name.
+  claude: [
+    {key: 'token', label: 'API Key', placeholder: 'sk-ant-api03-...', required: true, secret: true, multiline: true,
+     help: 'Saved in this browser (localStorage) so Copywriting / Landing page / Headlines tools use it directly.'},
+  ],
+  chatgpt: [
+    {key: 'token', label: 'API Key', placeholder: 'sk-proj-... or sk-...', required: true, secret: true, multiline: true,
+     help: 'Saved in this browser (localStorage). You also need a positive billing balance on the OpenAI account.'},
+  ],
+  openrouter: [
+    {key: 'token', label: 'API Key', placeholder: 'sk-or-v1-...', required: true, secret: true, multiline: true,
+     help: 'Saved in this browser (localStorage). One key works for Claude, GPT-4, Gemini and every other model OpenRouter routes to.'},
+  ],
+  // Generic for shipping / ads / confirmation
+  _default: [
+    {key: 'name',  label: 'Account name', required: true},
+    {key: 'url',   label: 'API URL / Endpoint', placeholder: '(optional)'},
+    {key: 'token', label: 'API key / Access token', secret: true, required: true, multiline: true},
+  ],
+};
+
+// Restore the last-viewed section on refresh (URL hash > localStorage > default).
+const ACTIVE_SECTION_LS = 'app.settings.activeSection';
+let activeSection = (function () {
+  const fromHash = (location.hash || '').replace(/^#/, '');
+  if (fromHash === 'account') return '__account';
+  if (fromHash) return fromHash;
+  try { return localStorage.getItem(ACTIVE_SECTION_LS) || 'general'; }
+  catch (e) { return 'general'; }
+})();
+let cache = { cms: null, shipping: null, ads: null, confirmation: null, ai: null, users: null };
+
+// ── NAV ──────────────────────────────────────────────────────────────
+function renderNav() {
+  $('navList').innerHTML = NAV.map(n => {
+    if (n._section) return `<div class="nav-section-label">${n._section}</div>`;
+    return `<div class="nav-item ${n.id===activeSection?'active':''}" data-id="${n.id}">
+      <span class="nav-ico">${NAV_SVGS[n.id]||''}</span><span>${n.label}</span></div>`;
+  }).join('');
+  $('navList').querySelectorAll('.nav-item').forEach(el => {
+    el.addEventListener('click', () => switchSection(el.dataset.id));
+  });
+}
+
+function switchSection(id) {
+  activeSection = id;
+  // Persist so a page refresh lands the user back on this same section.
+  try { localStorage.setItem(ACTIVE_SECTION_LS, id); } catch (e) {}
+  // Mirror to URL hash so the back button + shareable links work too.
+  history.replaceState(null, '', '#' + (id === '__account' ? 'account' : id));
+  renderNav();
+  const ub = $('userBox');
+  if (ub) ub.classList.toggle('active', id === '__account');
+  renderContent();
+}
+
+// ── CONTENT ──────────────────────────────────────────────────────────
+async function renderContent() {
+  const c = $('content');
+  if (activeSection === 'general') return renderGeneral(c);
+  if (activeSection === '__account') return renderAccount(c);
+  if (activeSection === 'users') return await renderUsers(c);
+  if (activeSection === 'skills') return await renderSkills(c);
+  if (activeSection === 'connectors-hub') return await renderConnectorsHub(c);
+  if (activeSection === 'brands') return await renderBrandAssets(c);
+  return await renderConnectorSection(c, activeSection);
+}
+
+// ── BRANDS & ASSETS ─────────────────────────────────────────────────
+// Connectors-style brand profile manager. Users see a clean list of brands;
+// each row has [Configure] to open a modal that wires the brand's assets
+// (Ad accounts / Shipping / Stores) plus its product SKU prefixes.
+// Topbar.js consumes the same data for the brand-switcher pill.
+const BRAND_COLORS = ['#FF4D8D','#7A4DFF','#3CCBA8','#FFA94D','#4D8DFF','#FF6B6B','#8B5CF6','#10B981'];
+function brandColor(id){ return BRAND_COLORS[(parseInt(id||0,10) || 0) % BRAND_COLORS.length]; }
+function brandInitials(name){
+  return String(name||'?').trim().split(/\s+/).map(w => w[0]||'').join('').slice(0,2).toUpperCase() || '?';
+}
+function escapeHtml(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+
+let __brandsState = { brands: [], clients: [], conns: { ads: [], shipping: [], cms: [] } };
+
+async function renderBrandAssets(c) {
+  c.innerHTML = `
+    <div class="settings-bread"><a href="/">Home</a> › Brands &amp; Assets</div>
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:6px;">
+      <h1 class="settings-title" style="margin:0;">Brands &amp; Assets</h1>
+      <button class="btn btn-primary" id="newBrandBtn">+ New brand</button>
+    </div>
+    <div class="settings-subtitle">Create brand profiles and link the ad accounts, shipping accounts and stores that belong to each. The active brand in the topbar filters orders, ads and shipping by these mappings.</div>
+    <div class="conn-card" id="brandsListCard" style="padding:0;overflow:hidden;">
+      <div id="brandsList" style="padding:8px;"><div style="padding:30px;text-align:center;color:#6D7175;font-size:13px;"><span class="spinner"></span> Loading brands…</div></div>
+    </div>`;
+
+  await reloadBrandsList();
+  $('newBrandBtn').addEventListener('click', openNewBrandModal);
+
+  // Auto-open Configure modal if URL hash includes ?configure=N
+  const m = (location.hash || '').match(/configure=(\d+)/);
+  if (m) {
+    const bid = parseInt(m[1], 10);
+    const found = __brandsState.brands.find(b => b.id === bid);
+    if (found) openConfigureBrand(found);
+    history.replaceState(null, '', '#brands');
+  }
+}
+
+async function reloadBrandsList() {
+  try {
+    const [b, cl, ads, ship, cms] = await Promise.all([
+      api('/brands.php'),
+      api('/clients.php'),
+      api('/connectors.php?type=ads'),
+      api('/connectors.php?type=shipping'),
+      api('/connectors.php?type=cms'),
+    ]);
+    __brandsState.brands  = (b.rows || []).filter(x => x && x.id);
+    __brandsState.clients = (cl.rows || []).filter(x => x && x.id);
+    __brandsState.conns.ads      = ads.rows  || [];
+    __brandsState.conns.shipping = ship.rows || [];
+    __brandsState.conns.cms      = cms.rows  || [];
+  } catch (e) {
+    $('brandsList').innerHTML = '<div style="padding:24px;color:#991B1B;font-size:13px;">' + escapeHtml(e.message) + '</div>';
+    return;
+  }
+  paintBrandsList();
+}
+
+function paintBrandsList() {
+  const list = $('brandsList');
+  if (!__brandsState.brands.length) {
+    list.innerHTML = `
+      <div style="padding:48px 24px;text-align:center;">
+        <div style="font-size:14px;color:#1A1A1A;font-weight:600;margin-bottom:6px;">No brands yet</div>
+        <div style="font-size:12px;color:#6D7175;margin-bottom:18px;">Create your first brand profile to organize products, ads and shipping by store.</div>
+        <button class="btn btn-primary" onclick="openNewBrandModal()">+ New brand</button>
+      </div>`;
+    return;
+  }
+  list.innerHTML = __brandsState.brands.map((b, i) => {
+    const assets = (b.meta && b.meta.assets) || {};
+    const counts = [];
+    if ((assets.ads||[]).length)      counts.push((assets.ads||[]).length      + ' ads');
+    if ((assets.shipping||[]).length) counts.push((assets.shipping||[]).length + ' shipping');
+    if ((assets.cms||[]).length)      counts.push((assets.cms||[]).length      + ' store' + ((assets.cms||[]).length>1?'s':''));
+    const prefixes = (b.meta && b.meta.sku_prefixes) || [];
+    if (prefixes.length) counts.push(prefixes.map(p => '<code style="background:#F1F1F1;padding:1px 5px;border-radius:3px;font-size:10px;">' + escapeHtml(p) + '</code>').join(' '));
+    const status = counts.length ? counts.join(' · ') : '<span style="color:#9CA3AF;">Not configured</span>';
+    const sep = i === 0 ? '' : 'border-top:1px solid #F1F1F1;';
+    const logo = b.meta && b.meta.logo;
+    const avatar = logo
+      ? `<div style="width:32px;height:32px;border-radius:8px;flex-shrink:0;overflow:hidden;background:#F1F1F1;"><img src="${logo}" style="width:100%;height:100%;object-fit:cover;display:block;"></div>`
+      : `<div style="width:32px;height:32px;border-radius:8px;background:${brandColor(b.id)};color:#FFF;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:11px;flex-shrink:0;">${escapeHtml(brandInitials(b.name))}</div>`;
+    return `
+      <div data-brand-row="${b.id}" style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;${sep}">
+        <div style="display:flex;align-items:center;gap:12px;min-width:0;flex:1;">
+          ${avatar}
+          <div style="min-width:0;">
+            <div style="font-size:14px;font-weight:700;color:#1A1A1A;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(b.name)}</div>
+            <div style="font-size:11px;color:#6D7175;margin-top:2px;">${status}</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <button class="btn btn-ghost" data-configure="${b.id}">Configure</button>
+          <button class="btn btn-ghost" data-delete="${b.id}" title="Delete brand" style="padding:0 10px;">⋯</button>
+        </div>
+      </div>`;
+  }).join('');
+  list.querySelectorAll('button[data-configure]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const bid = parseInt(btn.dataset.configure, 10);
+      const brand = __brandsState.brands.find(x => x.id === bid);
+      if (brand) openConfigureBrand(brand);
+    });
+  });
+  list.querySelectorAll('button[data-delete]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const bid = parseInt(btn.dataset.delete, 10);
+      const brand = __brandsState.brands.find(x => x.id === bid);
+      if (!brand) return;
+      // Close any other open menu first
+      document.querySelectorAll('.br-row-menu').forEach(m => m.remove());
+      // Render anchored dropdown right under the ⋯ button
+      const rect = btn.getBoundingClientRect();
+      const menu = document.createElement('div');
+      menu.className = 'br-row-menu';
+      menu.style.cssText = 'position:fixed;top:' + (rect.bottom + 4) + 'px;left:' + (rect.right - 180) + 'px;width:180px;background:#FFFFFF;border:1px solid #E1E3E5;border-radius:8px;box-shadow:0 8px 20px rgba(0,0,0,0.12);z-index:9000;padding:6px;font-family:inherit;';
+      menu.innerHTML = `
+        <button type="button" data-act="rename" style="display:block;width:100%;text-align:left;padding:8px 10px;border:none;background:transparent;cursor:pointer;font-size:13px;color:#1A1A1A;border-radius:6px;font-family:inherit;">✎ Rename</button>
+        <div style="height:1px;background:#F1F1F1;margin:4px 0;"></div>
+        <button type="button" data-act="delete" style="display:block;width:100%;text-align:left;padding:8px 10px;border:none;background:transparent;cursor:pointer;font-size:13px;color:#D72C0D;border-radius:6px;font-weight:600;font-family:inherit;">🗑 Delete connection</button>`;
+      menu.querySelectorAll('button').forEach(b => {
+        b.addEventListener('mouseenter', () => { b.style.background = '#F5F5F5'; });
+        b.addEventListener('mouseleave', () => { b.style.background = 'transparent'; });
+      });
+      document.body.appendChild(menu);
+      const close = () => { menu.remove(); document.removeEventListener('click', closeOnOutside, true); };
+      const closeOnOutside = (ev) => { if (!menu.contains(ev.target)) close(); };
+      setTimeout(() => document.addEventListener('click', closeOnOutside, true), 0);
+
+      menu.querySelector('[data-act="rename"]').addEventListener('click', async () => {
+        close();
+        const newName = await appPrompt(null, {
+          title: 'Rename brand',
+          defaultValue: brand.name,
+          placeholder: 'Brand name',
+          okText: 'Rename'
+        });
+        if (!newName || newName === brand.name) return;
+        try {
+          await api('/brands.php', { method: 'PATCH', body: JSON.stringify({ id: bid, name: newName }) });
+          reloadBrandsList();
+          if (window.refreshTopbarProfile) window.refreshTopbarProfile();
+          appToast('Brand renamed.', { type: 'success' });
+        } catch (e) { appToast(e.message, { type: 'error', title: 'Rename failed' }); }
+      });
+      menu.querySelector('[data-act="delete"]').addEventListener('click', async () => {
+        close();
+        // In-app confirm — removes brand+products AND trashes the Drive folder.
+        const okDel = await appConfirm(
+          'The Drive folder will also be moved to Trash (recoverable for 30 days).',
+          { title: 'Delete brand "' + brand.name + '"?', okText: 'Delete', danger: true }
+        );
+        if (!okDel) return;
+        try {
+          const res = await api('/brands.php?id=' + bid + '&drive=1', { method: 'DELETE' });
+          reloadBrandsList();
+          if (window.refreshTopbarProfile) window.refreshTopbarProfile();
+          if (window.getActiveBrandId && window.getActiveBrandId() === bid && window.setActiveBrandId) {
+            window.setActiveBrandId(0);
+          }
+          if (res && res.drive === 'trashed') {
+            appToast('Brand deleted from dashboard and Drive.', { type: 'success' });
+          } else if (res && res.drive === 'failed') {
+            appToast('Removed from dashboard, but Drive trash failed: ' + (res.drive_error || 'unknown'), { type: 'warn', title: 'Drive sync failed', duration: 8000 });
+          } else {
+            appToast('Brand deleted.', { type: 'success' });
+          }
+        } catch (e) { appToast(e.message, { type: 'error', title: 'Delete failed' }); }
+      });
+    });
+  });
+}
+
+// ── New brand wizard (3 steps) ─────────────────────────────────────
+// Step 1 → pick a connected Store (CMS). Brand inherits its name.
+// Step 2 → pick Ad accounts (multi).
+// Step 3 → pick Shipping accounts (multi) + Create.
+window.openNewBrandModal = function openNewBrandModal() {
+  // Multi-store + actual-ad-account model:
+  //   stores       = chosen CMS connectors (multi)  → meta.assets.cms (ids)
+  //   adAccountIds = actual Meta ad account ids     → meta.ad_account_ids (strings)
+  //   adConnIds    = the ad connectors those accounts belong to → meta.assets.ads (ids)
+  //   shipping     = chosen shipping connectors     → meta.assets.shipping (ids)
+  const wState = {
+    step: 1,
+    stores: [],          // [{id, name, provider}]
+    adAccountIds: [],    // ['act_...']
+    adConnIds: new Set(),// derived: connector ids whose accounts the user picked
+    shipping: [],        // [shipping_connector_id]
+    prefixes: [],
+    folder: null,        // {id, name} — picked from Drive (where this brand lives)
+  };
+  // Loaded once when Step 2 first renders
+  let __adAccountsLoading = false;
+  let __adAccounts = null; // [{id (act_…), name, currency, _connId, _connName}]
+
+  document.body.insertAdjacentHTML('beforeend', `
+    <div class="modal-backdrop open" id="brModal">
+      <div class="modal" style="max-width:560px;">
+        <div class="modal-head">
+          <div class="modal-title" id="brTitle">New brand</div>
+          <button class="modal-close" id="brClose">✕</button>
+        </div>
+        <div style="padding:14px 20px 0;">
+          <div id="brSteps" style="display:flex;gap:6px;margin-bottom:6px;">
+            <div class="brStep" data-i="1" style="flex:1;height:4px;border-radius:2px;background:#1A1A1A;"></div>
+            <div class="brStep" data-i="2" style="flex:1;height:4px;border-radius:2px;background:#E1E3E5;"></div>
+            <div class="brStep" data-i="3" style="flex:1;height:4px;border-radius:2px;background:#E1E3E5;"></div>
+            <div class="brStep" data-i="4" style="flex:1;height:4px;border-radius:2px;background:#E1E3E5;"></div>
+          </div>
+          <div style="font-size:11px;color:#6D7175;margin-bottom:10px;" id="brStepLabel">Step 1 of 4 · Choose stores</div>
+        </div>
+        <div class="modal-body" id="brBody"></div>
+        <div class="modal-foot" id="brFoot"></div>
+      </div>
+    </div>`);
+  const modal = document.getElementById('brModal');
+  const close = () => modal.remove();
+  $('brClose').addEventListener('click', close);
+  modal.addEventListener('click', e => { if (e.target.id === 'brModal') close(); });
+
+  function defaultBrandName(){
+    if (!wState.stores.length) return 'New brand';
+    if (wState.stores.length === 1) return wState.stores[0].name;
+    return wState.stores.map(s => s.name).join(' + ');
+  }
+
+  function setStepBar(){
+    document.querySelectorAll('.brStep').forEach(el => {
+      el.style.background = parseInt(el.dataset.i,10) <= wState.step ? '#1A1A1A' : '#E1E3E5';
+    });
+    const labels = ['', 'Step 1 of 4 · Choose stores', 'Step 2 of 4 · Link ad accounts', 'Step 3 of 4 · Link shipping accounts', 'Step 4 of 4 · Product code & create'];
+    $('brStepLabel').textContent = labels[wState.step];
+    const titles = ['', 'Choose stores', 'Link ad accounts', 'Link shipping accounts', 'Product code'];
+    $('brTitle').textContent = titles[wState.step] + ' · ' + defaultBrandName();
+  }
+
+  // ── Step 1: pick stores (multi-select) ─────────────────────────
+  function renderStep1(){
+    const stores = __brandsState.conns.cms || [];
+    const linked = new Set();
+    __brandsState.brands.forEach(b => ((b.meta && b.meta.assets && b.meta.assets.cms)||[]).forEach(id => linked.add(id)));
+    const available = stores.filter(s => !linked.has(s.id));
+    const intro = `<div style="font-size:12px;color:#6D7175;margin-bottom:12px;">Pick one or more stores for this brand. The brand name comes from the first store (you can rename later).</div>`;
+    const html = available.length
+      ? intro + available.map(s => `
+          <label class="store-pick" data-sid="${s.id}" style="display:flex;align-items:center;gap:12px;padding:10px 14px;border:1px solid #E1E3E5;border-radius:10px;margin-bottom:6px;cursor:pointer;">
+            <input type="checkbox" value="${s.id}" ${wState.stores.find(x=>x.id===s.id)?'checked':''} style="width:16px;height:16px;cursor:pointer;flex-shrink:0;">
+            <div style="width:32px;height:32px;border-radius:8px;background:${brandColor(s.id+100)};color:#FFF;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:11px;flex-shrink:0;">${escapeHtml(brandInitials(s.name||s.provider))}</div>
+            <div style="flex:1;min-width:0;">
+              <div style="font-size:13px;font-weight:700;color:#1A1A1A;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(s.name||s.provider)}</div>
+              <div style="font-size:11px;color:#6D7175;text-transform:capitalize;">${escapeHtml(s.provider||'')}</div>
+            </div>
+          </label>`).join('')
+      : `<div style="padding:30px 20px;text-align:center;color:#6D7175;font-size:13px;background:#FAFAFA;border:1px dashed #DCDCDC;border-radius:10px;">
+          ${stores.length ? 'All connected stores already belong to a brand. Add another store in <a href="#cms" style="color:#005BD3;">Settings → CMS</a> first.'
+                          : 'No stores connected yet. Open <a href="#cms" style="color:#005BD3;">Settings → CMS</a> to connect your first store.'}
+         </div>`;
+    $('brBody').innerHTML = html + '<div id="brErr"></div>';
+    $('brFoot').innerHTML = `
+      <button class="btn btn-ghost" id="brSkipStore" style="font-size:12px;">Empty brand</button>
+      <button class="btn btn-primary" id="brNext" ${wState.stores.length?'':'disabled'}>Next</button>`;
+    $('brBody').querySelectorAll('.store-pick input').forEach(cb => {
+      cb.addEventListener('change', () => {
+        const sid = parseInt(cb.value, 10);
+        const s = (__brandsState.conns.cms||[]).find(x => x.id === sid);
+        if (!s) return;
+        if (cb.checked) { if (!wState.stores.find(x=>x.id===sid)) wState.stores.push({id:s.id, name:s.name||s.provider, provider:s.provider}); }
+        else wState.stores = wState.stores.filter(x => x.id !== sid);
+        $('brNext').disabled = !wState.stores.length;
+        setStepBar();
+      });
+    });
+    $('brNext').addEventListener('click', () => { wState.step = 2; render(); });
+    $('brSkipStore').addEventListener('click', () => {
+      const name = prompt('Brand name?');
+      if (!name || !name.trim()) return;
+      wState.stores = [{ id: null, name: name.trim() }];
+      wState.step = 2; render();
+    });
+  }
+
+  // ── Step 2: pick ACTUAL ad accounts (live from Meta) ──────────
+  async function loadAdAccounts(){
+    if (__adAccounts) return __adAccounts;
+    const adConns = (__brandsState.conns.ads || []).filter(c => c.provider === 'meta');
+    if (!adConns.length) { __adAccounts = []; return __adAccounts; }
+    __adAccountsLoading = true;
+    try {
+      const results = await Promise.all(adConns.map(c =>
+        api('/meta.php?action=accounts&connector_id=' + c.id)
+          .then(d => ({ ok:true, c, rows: d.rows || [] }))
+          .catch(e => ({ ok:false, c, error: e.message, rows: [] }))
+      ));
+      const merged = [], seen = new Set();
+      results.forEach(r => {
+        r.rows.forEach(a => {
+          const id = a.account_id || a.id; // 'act_…'
+          if (seen.has(id)) return;
+          seen.add(id);
+          merged.push({
+            id,
+            name:     a.name || id,
+            currency: a.currency || '',
+            _connId:  r.c.id,
+            _connName: r.c.name || r.c.provider,
+          });
+        });
+      });
+      __adAccounts = merged;
+    } finally { __adAccountsLoading = false; }
+    return __adAccounts;
+  }
+
+  async function renderStep2(){
+    $('brBody').innerHTML = `<div style="padding:30px 20px;text-align:center;color:#6D7175;font-size:13px;"><span class="spinner"></span> Loading ad accounts from Meta…</div>`;
+    $('brFoot').innerHTML = `
+      <button class="btn btn-ghost" id="brBack">Back</button>
+      <button class="btn btn-primary" id="brNext">Next</button>`;
+    $('brBack').addEventListener('click', () => { wState.step = 1; render(); });
+    $('brNext').addEventListener('click', () => { wState.step = 3; render(); });
+
+    const accounts = await loadAdAccounts();
+    if (!accounts.length) {
+      $('brBody').innerHTML = `<div style="padding:30px 20px;text-align:center;color:#6D7175;font-size:13px;background:#FAFAFA;border:1px dashed #DCDCDC;border-radius:10px;">No Meta ad accounts found. Connect a Meta account in <a href="#ads" style="color:#005BD3;">Settings → Ads</a> or skip this step.</div>`;
+      $('brNext').textContent = 'Skip';
+      return;
+    }
+    const html = `<div style="font-size:12px;color:#6D7175;margin-bottom:12px;">Pick every ad account that belongs to <b>${escapeHtml(defaultBrandName())}</b>. Multi-select supported.</div>`
+      + accounts.map(a => `
+          <label class="ad-acct-pick" style="display:flex;align-items:center;gap:12px;padding:10px 14px;border:1px solid #E1E3E5;border-radius:10px;margin-bottom:6px;cursor:pointer;">
+            <input type="checkbox" value="${escapeHtml(a.id)}" data-conn="${a._connId}" ${wState.adAccountIds.includes(a.id)?'checked':''} style="width:16px;height:16px;cursor:pointer;flex-shrink:0;">
+            <div style="flex:1;min-width:0;">
+              <div style="font-size:13px;font-weight:700;color:#1A1A1A;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(a.name)}</div>
+              <div style="font-size:11px;color:#6D7175;font-family:'JetBrains Mono','Courier New',monospace;">${escapeHtml(a.id)} · ${escapeHtml(a._connName)}${a.currency?' · '+escapeHtml(a.currency):''}</div>
+            </div>
+          </label>`).join('');
+    $('brBody').innerHTML = html;
+    $('brBody').querySelectorAll('.ad-acct-pick input').forEach(cb => {
+      cb.addEventListener('change', () => {
+        const id = cb.value;
+        const connId = parseInt(cb.dataset.conn, 10);
+        if (cb.checked) {
+          if (!wState.adAccountIds.includes(id)) wState.adAccountIds.push(id);
+          wState.adConnIds.add(connId);
+        } else {
+          wState.adAccountIds = wState.adAccountIds.filter(x => x !== id);
+          // Drop the connector only if no remaining account from it stays selected
+          const stillUses = wState.adAccountIds.some(aid => {
+            const a = accounts.find(x => x.id === aid);
+            return a && a._connId === connId;
+          });
+          if (!stillUses) wState.adConnIds.delete(connId);
+        }
+      });
+    });
+  }
+
+  // ── Step 3: pick shipping (multi) ───────────────────────────────
+  function renderStep3(){
+    const ship = __brandsState.conns.shipping || [];
+    const html = ship.length
+      ? `<div style="font-size:12px;color:#6D7175;margin-bottom:12px;">Pick the shipping accounts used by <b>${escapeHtml(defaultBrandName())}</b>.</div>
+         ${ship.map(s => `
+           <label class="ship-pick" data-sid="${s.id}" style="display:flex;align-items:center;gap:12px;padding:10px 14px;border:1px solid #E1E3E5;border-radius:10px;margin-bottom:6px;cursor:pointer;">
+             <input type="checkbox" value="${s.id}" ${wState.shipping.includes(s.id)?'checked':''} style="width:16px;height:16px;cursor:pointer;flex-shrink:0;">
+             <div style="flex:1;min-width:0;">
+               <div style="font-size:13px;font-weight:700;color:#1A1A1A;">${escapeHtml(s.name||s.provider)}</div>
+               <div style="font-size:11px;color:#6D7175;text-transform:capitalize;">${escapeHtml(s.provider||'')}</div>
+             </div>
+           </label>`).join('')}`
+      : `<div style="padding:30px 20px;text-align:center;color:#6D7175;font-size:13px;background:#FAFAFA;border:1px dashed #DCDCDC;border-radius:10px;">No shipping accounts connected. <a href="#shipping" style="color:#005BD3;">Add one</a> or skip.</div>`;
+    $('brBody').innerHTML = html;
+    $('brFoot').innerHTML = `
+      <button class="btn btn-ghost" id="brBack">Back</button>
+      <button class="btn btn-primary" id="brNext">Next</button>`;
+    $('brBack').addEventListener('click', () => { wState.step = 2; render(); });
+    $('brBody').querySelectorAll('.ship-pick input').forEach(cb => {
+      cb.addEventListener('change', () => {
+        const id = parseInt(cb.value, 10);
+        if (cb.checked) { if (!wState.shipping.includes(id)) wState.shipping.push(id); }
+        else wState.shipping = wState.shipping.filter(x => x !== id);
+      });
+    });
+    $('brNext').addEventListener('click', () => { wState.step = 4; render(); });
+  }
+
+  // ── Step 4: SKU prefix + create ─────────────────────────────────
+  // The prefix (e.g. "re" for Rehla) tags products that belong to this
+  // brand. Whenever the user imports a shipping sheet or pulls orders,
+  // only items whose SKU starts with one of these prefixes show up.
+  function renderStep4(){
+    const firstStoreName = (wState.stores[0] && wState.stores[0].name) || '';
+    const suggested = firstStoreName.trim().slice(0, 2).toLowerCase();
+    const csv = wState.prefixes.length ? wState.prefixes.join(', ') : suggested;
+    const storeCount = wState.stores.filter(s => s.id).length;
+    const folderText = wState.folder ? wState.folder.name : 'No folder picked yet';
+    $('brBody').innerHTML = `
+      <div class="field">
+        <div class="field-label">Drive folder for this brand</div>
+        <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid #DCDCDC;border-radius:8px;background:#FAFAFA;">
+          <span style="font-size:18px;">📁</span>
+          <div style="flex:1;min-width:0;">
+            <div id="brFolderName" style="font-size:13px;font-weight:600;color:${wState.folder?'#1A1A1A':'#9CA3AF'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(folderText)}</div>
+            <div id="brFolderId" style="font-size:10px;color:#6D7175;font-family:'JetBrains Mono',monospace;">${escapeHtml(wState.folder?wState.folder.id:'')}</div>
+          </div>
+          <button type="button" class="btn btn-ghost" id="brPickFolder" style="height:30px;padding:0 12px;font-size:12px;">${wState.folder?'Change':'Pick from Drive'}</button>
+        </div>
+        <div class="field-help">Sheets and Products subfolders will be created inside this folder. Pick an existing brand folder or create one in Drive first.</div>
+      </div>
+
+      <div style="font-size:12px;color:#6D7175;margin:18px 0 14px;line-height:1.7;">
+        Every product on your store is coded with a 2-letter prefix that identifies the brand.
+        For example, <code style="background:#F1F1F1;padding:1px 5px;border-radius:3px;">re</code> tags products like <code style="background:#F1F1F1;padding:1px 5px;border-radius:3px;">re-gm-001</code> as <b>Rehla</b>'s.
+      </div>
+      <div class="field">
+        <div class="field-label">Product code (2-letter prefix)</div>
+        <input type="text" id="brPrefix" value="${escapeHtml(csv)}" placeholder="e.g. re" maxlength="40" style="width:100%;padding:10px 12px;border:1px solid #DCDCDC;border-radius:8px;font-size:14px;font-family:'JetBrains Mono','Courier New',monospace;letter-spacing:1px;text-transform:lowercase;">
+        <div class="field-help">Comma-separate to support multiple codes (e.g. <code>re, gm</code>).</div>
+      </div>
+      <div style="margin-top:14px;padding:12px 14px;background:#F8FAFC;border:1px solid #E1E3E5;border-radius:8px;font-size:12px;color:#1A1A1A;line-height:1.7;">
+        <div style="font-weight:600;margin-bottom:4px;">Will create:</div>
+        · Brand <b>${escapeHtml(defaultBrandName())}</b> in <b>${escapeHtml(folderText)}</b><br>
+        · Sheets/ subfolder · 7 sheet templates copied · Products/ subfolder<br>
+        · Linked: ${storeCount} store${storeCount===1?'':'s'} · ${wState.adAccountIds.length} ad account${wState.adAccountIds.length===1?'':'s'} · ${wState.shipping.length} shipping
+      </div>
+      <div id="brErr"></div>`;
+    $('brFoot').innerHTML = `
+      <button class="btn btn-ghost" id="brBack">Back</button>
+      <button class="btn btn-primary" id="brCreate" ${wState.folder?'':'disabled'}>Create brand</button>`;
+    $('brBack').addEventListener('click', () => { wState.step = 3; render(); });
+    $('brPickFolder').addEventListener('click', () => {
+      if (!window.pickGoogleDriveFolderId) { alert('Drive picker not loaded yet — refresh the page.'); return; }
+      window.pickGoogleDriveFolderId((folder) => {
+        wState.folder = { id: folder.id, name: folder.name };
+        renderStep4(); // re-render to show picked folder + enable Create
+      });
+    });
+    $('brCreate').addEventListener('click', () => {
+      if (!wState.folder) { $('brErr').innerHTML = '<div style="color:#991B1B;font-size:12px;margin-top:10px;">Pick a Drive folder first.</div>'; return; }
+      const raw = $('brPrefix').value || '';
+      wState.prefixes = raw.split(/[,\s]+/).map(s => s.trim().toLowerCase()).filter(Boolean);
+      createBrand();
+    });
+  }
+
+  async function createBrand(){
+    const btn = $('brCreate');
+    btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Creating…';
+    try {
+      const body = {
+        name: defaultBrandName(),
+        drive_folder_id: wState.folder.id, // user-picked Drive folder
+        assets: {
+          cms:      wState.stores.filter(s => s.id).map(s => s.id),
+          ads:      Array.from(wState.adConnIds),  // connector ids whose accounts were picked
+          shipping: wState.shipping,
+        },
+        ad_account_ids: wState.adAccountIds,       // actual Meta act_… ids
+        sku_prefixes:   wState.prefixes,
+      };
+      const r = await api('/brands.php', { method: 'POST', body: JSON.stringify(body) });
+      close();
+      await reloadBrandsList();
+      if (window.refreshTopbarProfile) window.refreshTopbarProfile();
+      if (window.setActiveBrandId) window.setActiveBrandId(r.id);
+      // Open Configure modal for fine-tuning (logo upload etc.)
+      const created = __brandsState.brands.find(b => b.id === r.id);
+      if (created) openConfigureBrand(created);
+    } catch (e) {
+      $('brErr').innerHTML = '<div style="color:#991B1B;font-size:12px;margin-top:10px;">⚠ ' + escapeHtml(e.message) + '</div>';
+      btn.disabled = false; btn.textContent = 'Create brand';
+    }
+  }
+
+  function render(){
+    setStepBar();
+    if      (wState.step === 1) renderStep1();
+    else if (wState.step === 2) renderStep2();   // async — fires the spinner first
+    else if (wState.step === 3) renderStep3();
+    else                         renderStep4();
+  }
+  render();
+};
+
+// ── Configure brand modal ──────────────────────────────────────────
+function openConfigureBrand(brand) {
+  const assets = (brand.meta && brand.meta.assets) || {};
+  const prefixes = (brand.meta && brand.meta.sku_prefixes) || [];
+  const conns = __brandsState.conns;
+  let workingLogo = (brand.meta && brand.meta.logo) || '';
+  // Persist folder names in meta so reopening the modal shows what the
+  // user picked (not the generic "Current folder" placeholder).
+  let workingDriveFolder = brand.drive_folder_id
+    ? { id: brand.drive_folder_id, name: (brand.meta && brand.meta.drive_folder_name) || brand.drive_folder_name || 'Folder' }
+    : null;
+  // Separate folder for Sheets — kept in meta.sheets_folder_id so the
+  // products folder and the sheets folder can be different (per-folder
+  // permission scoping). Falls back to the products folder if unset.
+  let workingSheetsFolder = (brand.meta && brand.meta.sheets_folder_id)
+    ? { id: brand.meta.sheets_folder_id, name: (brand.meta.sheets_folder_name || 'Folder') }
+    : null;
+  // ── Client (parent of this brand) ──────────────────────────────
+  // Each brand belongs to a client; in the "All brands" view in
+  // Products / Sheets we render clients as the top level of the
+  // hierarchy. Working state lets the user reassign or create a
+  // client + pick a Drive folder for it without leaving the modal.
+  const __clients = (__brandsState.clients || []).slice();
+  let workingClientId = brand.client_id ? Number(brand.client_id) : 0;
+  let workingClientCreate = null; // { name, drive_folder_id } when creating a new client
+  function findClient(id){ return __clients.find(c => Number(c.id) === Number(id)) || null; }
+  function currentClientFolder(){
+    if (workingClientCreate) {
+      return workingClientCreate.drive_folder_id ? { id: workingClientCreate.drive_folder_id, name: workingClientCreate.drive_folder_name || 'Selected folder' } : null;
+    }
+    const c = findClient(workingClientId);
+    return c && c.drive_folder_id ? { id: c.drive_folder_id, name: c.name + ' folder' } : null;
+  }
+  // Working selection state — persists while the user toggles checkboxes.
+  const sel = {
+    cms:        new Set((assets.cms      || []).map(Number)),
+    shipping:   new Set((assets.shipping || []).map(Number)),
+    adAccts:    new Set(((brand.meta && brand.meta.ad_account_ids) || []).map(String)),
+  };
+  let __adAccts = null; // [{id, name, currency, _connId, _connName}]
+  // Reusable card-row template for each connector / account.
+  const rowCard = (opts) => `
+    <label class="cfg-row" data-set="${opts.set}" data-id="${escapeHtml(String(opts.id))}" style="display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px solid #E1E3E5;border-radius:8px;margin-bottom:6px;cursor:pointer;background:${opts.checked?'#F8FAFC':'#FFFFFF'};">
+      <input type="checkbox" ${opts.checked?'checked':''} style="width:16px;height:16px;cursor:pointer;flex-shrink:0;">
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:13px;font-weight:700;color:#1A1A1A;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(opts.title)}</div>
+        ${opts.sub ? `<div style="font-size:11px;color:#6D7175;font-family:${opts.mono?"'JetBrains Mono','Courier New',monospace":"inherit"};">${escapeHtml(opts.sub)}</div>` : ''}
+      </div>
+    </label>`;
+  const emptyTile = (msg) => `<div style="padding:18px;text-align:center;color:#9CA3AF;font-size:12px;background:#FAFAFA;border:1px dashed #DCDCDC;border-radius:8px;">${msg}</div>`;
+  const sectionHead = (title, helpHtml) => `<div style="font-size:12px;font-weight:700;color:#1A1A1A;margin:14px 0 6px;">${escapeHtml(title)}</div>${helpHtml?`<div style="font-size:11px;color:#6D7175;margin-bottom:8px;line-height:1.5;">${helpHtml}</div>`:''}`;
+
+  document.body.insertAdjacentHTML('beforeend', `
+    <div class="modal-backdrop open" id="cfgModal">
+      <div class="modal" style="max-width:600px;">
+        <div class="modal-head">
+          <div class="modal-title">Configure brand</div>
+          <button class="modal-close" id="cfgClose">✕</button>
+        </div>
+        <div class="modal-body">
+          <div style="display:flex;align-items:center;gap:14px;margin-bottom:18px;padding-bottom:14px;border-bottom:1px solid #F1F1F1;">
+            <div id="cfgAvatar" style="width:56px;height:56px;border-radius:10px;background:${brandColor(brand.id)};color:#FFF;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px;flex-shrink:0;overflow:hidden;">${workingLogo?'<img src="'+workingLogo+'" style="width:100%;height:100%;object-fit:cover;border-radius:10px;display:block;">':escapeHtml(brandInitials(brand.name))}</div>
+            <div style="flex:1;min-width:0;">
+              <input type="text" id="cfgName" value="${escapeHtml(brand.name)}" style="width:100%;padding:8px 10px;border:1px solid #DCDCDC;border-radius:6px;font-size:14px;font-weight:700;font-family:inherit;">
+              <div style="display:flex;gap:6px;margin-top:6px;align-items:center;flex-wrap:wrap;">
+                <label for="cfgLogoFile" style="display:inline-flex;align-items:center;gap:4px;font-size:11px;height:28px;padding:0 10px;border:1px solid #DCDCDC;border-radius:6px;background:#FFFFFF;cursor:pointer;color:#1A1A1A;font-weight:600;">📷 Upload logo</label>
+                <input type="file" id="cfgLogoFile" accept="image/*" style="display:none;">
+                <button class="btn btn-ghost" id="cfgLogoRemove" style="font-size:11px;height:28px;padding:0 10px;${workingLogo?'':'display:none;'}">Remove</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="field" style="margin-bottom:14px;">
+            <div class="field-label">Product code (SKU prefixes)</div>
+            <input type="text" id="cfgPrefixes" value="${escapeHtml(prefixes.join(', '))}" placeholder="e.g. re, gm" style="width:100%;padding:8px 10px;border:1px solid #DCDCDC;border-radius:6px;font-size:13px;font-family:'JetBrains Mono','Courier New',monospace;letter-spacing:1px;text-transform:lowercase;">
+            <div class="field-help">Comma-separate to support multiple. Reports, ads &amp; shipping imports filter by these (e.g. <code>re</code> matches <code>re-gm-001</code>).</div>
+          </div>
+
+          <!-- ── Client folder (folder name = client name) ─── -->
+          <div class="field" style="margin-bottom:14px;">
+            <div class="field-label">Client folder</div>
+            <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid #DCDCDC;border-radius:8px;background:#FAFAFA;">
+              <span style="font-size:18px;">👤</span>
+              <div style="flex:1;min-width:0;">
+                <div id="cfgClientFolderName" style="font-size:13px;font-weight:600;color:#9CA3AF;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Not picked</div>
+                <div id="cfgClientFolderId" style="font-size:10px;color:#6D7175;font-family:'JetBrains Mono',monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div>
+              </div>
+              <a id="cfgClientFolderOpen" href="#" data-folder-id="" data-folder-name="" class="btn btn-ghost" style="height:30px;padding:0 10px;font-size:11px;pointer-events:none;opacity:0.4;" onclick="event.preventDefault(); var fid=this.dataset.folderId; if(!fid) return; if(window.openDriveViewer){window.openDriveViewer({id:fid, name:this.dataset.folderName||'Folder', mimeType:'application/vnd.google-apps.folder'});} else {window.open('https://drive.google.com/drive/folders/'+encodeURIComponent(fid),'_blank');}">Open</a>
+              <button type="button" class="btn btn-ghost" id="cfgPickClientFolder" style="height:30px;padding:0 12px;font-size:12px;">Change</button>
+            </div>
+            <div class="field-help">Pick a folder from Drive — its name becomes the client. Brands sharing a client folder group under it in the All-brands view.</div>
+          </div>
+
+          <div class="field" style="margin-bottom:14px;">
+            <div class="field-label">Products folder</div>
+            <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid #DCDCDC;border-radius:8px;background:#FAFAFA;">
+              <span style="font-size:18px;">📁</span>
+              <div style="flex:1;min-width:0;">
+                <div id="cfgFolderName" style="font-size:13px;font-weight:600;color:${workingDriveFolder?'#1A1A1A':'#9CA3AF'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(workingDriveFolder?workingDriveFolder.name:'Not picked')}</div>
+                <div id="cfgFolderId" style="font-size:10px;color:#6D7175;font-family:'JetBrains Mono',monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(workingDriveFolder?workingDriveFolder.id:'')}</div>
+              </div>
+              <a id="cfgFolderOpen" href="#" data-folder-id="${workingDriveFolder?escapeHtml(workingDriveFolder.id):''}" data-folder-name="${workingDriveFolder?escapeHtml(workingDriveFolder.name||'Folder'):''}" class="btn btn-ghost" style="height:30px;padding:0 10px;font-size:11px;${workingDriveFolder?'':'pointer-events:none;opacity:0.4;'}" onclick="event.preventDefault(); var fid=this.dataset.folderId; if(!fid) return; if(window.openDriveViewer){window.openDriveViewer({id:fid, name:this.dataset.folderName||'Folder', mimeType:'application/vnd.google-apps.folder'});} else {window.open('https://drive.google.com/drive/folders/'+encodeURIComponent(fid),'_blank');}">Open</a>
+              <button type="button" class="btn btn-ghost" id="cfgPickFolder" style="height:30px;padding:0 12px;font-size:12px;">Change</button>
+            </div>
+            <div class="field-help">"Import products" reads subfolders from here. New products land inside this folder.</div>
+          </div>
+
+          <div class="field" style="margin-bottom:14px;">
+            <div class="field-label">Sheets folder</div>
+            <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid #DCDCDC;border-radius:8px;background:#FAFAFA;">
+              <span style="font-size:18px;">📊</span>
+              <div style="flex:1;min-width:0;">
+                <div id="cfgSheetsFolderName" style="font-size:13px;font-weight:600;color:${workingSheetsFolder?'#1A1A1A':'#9CA3AF'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(workingSheetsFolder?workingSheetsFolder.name:'Not picked — falls back to Products folder')}</div>
+                <div id="cfgSheetsFolderId" style="font-size:10px;color:#6D7175;font-family:'JetBrains Mono',monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(workingSheetsFolder?workingSheetsFolder.id:'')}</div>
+              </div>
+              <a id="cfgSheetsFolderOpen" href="#" data-folder-id="${workingSheetsFolder?escapeHtml(workingSheetsFolder.id):''}" data-folder-name="${workingSheetsFolder?escapeHtml(workingSheetsFolder.name||'Folder'):''}" class="btn btn-ghost" style="height:30px;padding:0 10px;font-size:11px;${workingSheetsFolder?'':'pointer-events:none;opacity:0.4;'}" onclick="event.preventDefault(); var fid=this.dataset.folderId; if(!fid) return; if(window.openDriveViewer){window.openDriveViewer({id:fid, name:this.dataset.folderName||'Folder', mimeType:'application/vnd.google-apps.folder'});} else {window.open('https://drive.google.com/drive/folders/'+encodeURIComponent(fid),'_blank');}">Open</a>
+              <button type="button" class="btn btn-ghost" id="cfgPickSheetsFolder" style="height:30px;padding:0 12px;font-size:12px;">Change</button>
+              ${workingSheetsFolder ? '<button type="button" class="btn btn-ghost" id="cfgClearSheetsFolder" style="height:30px;padding:0 10px;font-size:11px;color:#D72C0D;" title="Use the Products folder instead">✕</button>' : ''}
+            </div>
+            <div class="field-help">"Pick from Drive" and "Import sheets" only read from this folder (per-folder permission scope). Leave empty to share the Products folder.</div>
+          </div>
+
+          <!-- Stores -->
+          ${sectionHead('Stores (CMS)', 'Sheet imports from these stores will be tagged to this brand.')}
+          <div id="cfgStoresList">${
+            conns.cms.length
+              ? conns.cms.map(c => rowCard({ set:'cms', id:c.id, title:c.name||c.provider, sub:(c.provider||'').toUpperCase(), checked:sel.cms.has(Number(c.id)) })).join('')
+              : emptyTile('No stores connected — add one in Settings → CMS first.')
+          }</div>
+
+          <!-- Ad accounts (real Meta accounts, not connectors) -->
+          ${sectionHead('Ad accounts', 'Pick the actual Meta ad accounts that belong to this brand. Reports & Ads pages will only show these.')}
+          <div id="cfgAdsList"><div style="padding:18px;text-align:center;color:#6D7175;font-size:12px;"><span class="spinner"></span> Loading ad accounts from Meta…</div></div>
+
+          <!-- Shipping accounts -->
+          ${sectionHead('Shipping accounts', '')}
+          <div id="cfgShipList">${
+            conns.shipping.length
+              ? conns.shipping.map(c => rowCard({ set:'shipping', id:c.id, title:c.name||c.provider, sub:(c.provider||'').toUpperCase(), checked:sel.shipping.has(Number(c.id)) })).join('')
+              : emptyTile('No shipping accounts connected.')
+          }</div>
+
+          <div id="cfgErr"></div>
+        </div>
+        <div class="modal-foot">
+          <button class="btn btn-ghost" id="cfgCancel">Cancel</button>
+          <button class="btn btn-primary" id="cfgSave">Save</button>
+        </div>
+      </div>
+    </div>`);
+  const modal = document.getElementById('cfgModal');
+  const close = () => modal.remove();
+  $('cfgClose').addEventListener('click', close);
+  $('cfgCancel').addEventListener('click', close);
+  modal.addEventListener('click', e => { if (e.target.id === 'cfgModal') close(); });
+
+  // Wire generic checkbox toggle for Stores + Shipping rows
+  function wireRows(){
+    modal.querySelectorAll('label.cfg-row').forEach(lbl => {
+      const cb = lbl.querySelector('input');
+      cb.addEventListener('change', () => {
+        const set = lbl.dataset.set;
+        const id = lbl.dataset.id;
+        const target = set === 'adAccts' ? sel.adAccts : sel[set];
+        const key = set === 'adAccts' ? id : Number(id);
+        if (cb.checked) target.add(key); else target.delete(key);
+        lbl.style.background = cb.checked ? '#F8FAFC' : '#FFFFFF';
+      });
+    });
+  }
+  wireRows();
+
+  // Lazy-load actual Meta ad accounts and render them
+  (async () => {
+    try {
+      const adConns = (conns.ads || []).filter(c => c.provider === 'meta');
+      if (!adConns.length) { $('cfgAdsList').innerHTML = emptyTile('No Meta ad connectors yet.'); return; }
+      const results = await Promise.all(adConns.map(c =>
+        api('/meta.php?action=accounts&connector_id=' + c.id)
+          .then(d => ({ ok:true, c, rows:d.rows||[] }))
+          .catch(e => ({ ok:false, c, rows:[] }))
+      ));
+      const merged = []; const seen = new Set();
+      results.forEach(r => r.rows.forEach(a => {
+        const id = a.account_id || a.id;
+        if (seen.has(id)) return; seen.add(id);
+        merged.push({ id, name:a.name||id, currency:a.currency||'', _connName:r.c.name||r.c.provider });
+      }));
+      __adAccts = merged;
+      $('cfgAdsList').innerHTML = merged.length
+        ? merged.map(a => rowCard({ set:'adAccts', id:a.id, title:a.name, sub:a.id + ' · ' + a._connName + (a.currency?' · '+a.currency:''), mono:true, checked:sel.adAccts.has(String(a.id)) })).join('')
+        : emptyTile('No ad accounts returned by Meta.');
+      wireRows();
+    } catch (e) {
+      $('cfgAdsList').innerHTML = emptyTile('Failed to load: ' + e.message);
+    }
+  })();
+
+  function refreshAvatar(){
+    const av = $('cfgAvatar');
+    if (workingLogo) {
+      av.innerHTML = '<img src="' + workingLogo + '" style="width:100%;height:100%;object-fit:cover;border-radius:10px;display:block;">';
+    } else {
+      av.textContent = brandInitials($('cfgName').value || brand.name);
+    }
+  }
+  // Live avatar refresh as user renames
+  $('cfgName').addEventListener('input', refreshAvatar);
+  // Logo upload — read as data URL (cap ~250KB original; resize on canvas to 256px)
+  $('cfgLogoFile').addEventListener('change', e => {
+    const file = e.target.files[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const img = new Image();
+      img.onload = () => {
+        // Aggressive: 96x96 JPEG quality 0.7 → typically <5KB. Stays well
+        // under PHP post_max_size and any edge proxy body limits ("Failed to
+        // fetch" symptom comes from oversized payloads being rejected).
+        const max = 96;
+        const scale = Math.min(1, max / Math.max(img.width, img.height));
+        const w = Math.round(img.width * scale), h = Math.round(img.height * scale);
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(0, 0, w, h);
+        ctx.drawImage(img, 0, 0, w, h);
+        workingLogo = canvas.toDataURL('image/jpeg', 0.7);
+        console.log('Brand logo data URL size:', Math.round(workingLogo.length / 1024) + 'KB');
+        refreshAvatar();
+        $('cfgLogoRemove').style.display = '';
+      };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+  $('cfgLogoRemove').addEventListener('click', () => {
+    workingLogo = '';
+    $('cfgLogoFile').value = '';
+    $('cfgLogoRemove').style.display = 'none';
+    refreshAvatar();
+  });
+
+  // ── Client section wiring ──────────────────────────────────
+  // Display either: the existing client's folder (if brand has client_id),
+  // OR the freshly-picked folder pending creation on Save.
+  function refreshClientFolderUI(){
+    const nm = $('cfgClientFolderName');
+    const idEl = $('cfgClientFolderId');
+    const open = $('cfgClientFolderOpen');
+    let label = '', folderId = '', color = '#9CA3AF';
+    if (workingClientCreate && workingClientCreate.drive_folder_id) {
+      label = workingClientCreate.name + ' (new)';
+      folderId = workingClientCreate.drive_folder_id;
+      color = '#1A1A1A';
+    } else if (workingClientId) {
+      const c = findClient(workingClientId);
+      if (c) { label = c.name; folderId = c.drive_folder_id || ''; color = '#1A1A1A'; }
+    }
+    if (folderId) {
+      nm.textContent = label;
+      nm.style.color = color;
+      idEl.textContent = folderId;
+      open.dataset.folderId = folderId;
+      open.dataset.folderName = label;
+      open.style.pointerEvents = '';
+      open.style.opacity = '';
+    } else {
+      nm.textContent = 'Not picked';
+      nm.style.color = '#9CA3AF';
+      idEl.textContent = '';
+      open.dataset.folderId = '';
+      open.style.pointerEvents = 'none';
+      open.style.opacity = '0.4';
+    }
+  }
+  refreshClientFolderUI();
+  $('cfgPickClientFolder').addEventListener('click', () => {
+    if (!window.pickGoogleDriveFolderId) { alert('Drive picker not loaded — refresh the page.'); return; }
+    window.pickGoogleDriveFolderId((folder) => {
+      // Folder name = client name. If a client with this folder already
+      // exists, link the brand to it. Otherwise stage a new client to
+      // create on Save.
+      const existing = __clients.find(c => c.drive_folder_id === folder.id);
+      if (existing) {
+        workingClientId = Number(existing.id);
+        workingClientCreate = null;
+      } else {
+        workingClientId = 0;
+        workingClientCreate = { name: folder.name, drive_folder_id: folder.id };
+      }
+      refreshClientFolderUI();
+    });
+  });
+
+  // Pick a different Drive folder (where Products will live)
+  $('cfgPickFolder').addEventListener('click', () => {
+    if (!window.pickGoogleDriveFolderId) { alert('Drive picker not loaded — refresh the page.'); return; }
+    window.pickGoogleDriveFolderId((folder) => {
+      workingDriveFolder = { id: folder.id, name: folder.name };
+      $('cfgFolderName').textContent = folder.name;
+      $('cfgFolderName').style.color = '#1A1A1A';
+      $('cfgFolderId').textContent = folder.id;
+      const openBtn = $('cfgFolderOpen');
+      openBtn.dataset.folderId = folder.id;
+      openBtn.dataset.folderName = folder.name || 'Folder';
+      openBtn.style.pointerEvents = '';
+      openBtn.style.opacity = '';
+    });
+  });
+
+  // Pick the Sheets folder (separate scope for sheet imports).
+  function refreshSheetsFolderUI(){
+    const nm = $('cfgSheetsFolderName');
+    const idEl = $('cfgSheetsFolderId');
+    const open = $('cfgSheetsFolderOpen');
+    if (workingSheetsFolder) {
+      nm.textContent = workingSheetsFolder.name;
+      nm.style.color = '#1A1A1A';
+      idEl.textContent = workingSheetsFolder.id;
+      open.dataset.folderId = workingSheetsFolder.id;
+      open.dataset.folderName = workingSheetsFolder.name || 'Folder';
+      open.style.pointerEvents = '';
+      open.style.opacity = '';
+    } else {
+      nm.textContent = 'Not picked — falls back to Products folder';
+      nm.style.color = '#9CA3AF';
+      idEl.textContent = '';
+      open.dataset.folderId = '';
+      open.style.pointerEvents = 'none';
+      open.style.opacity = '0.4';
+    }
+  }
+  $('cfgPickSheetsFolder').addEventListener('click', () => {
+    if (!window.pickGoogleDriveFolderId) { alert('Drive picker not loaded — refresh the page.'); return; }
+    window.pickGoogleDriveFolderId((folder) => {
+      workingSheetsFolder = { id: folder.id, name: folder.name };
+      refreshSheetsFolderUI();
+    });
+  });
+  // Optional clear button (only present when a sheets folder is set)
+  if ($('cfgClearSheetsFolder')) {
+    $('cfgClearSheetsFolder').addEventListener('click', () => {
+      workingSheetsFolder = null;
+      refreshSheetsFolderUI();
+    });
+  }
+
+  $('cfgSave').addEventListener('click', async () => {
+    const newName = $('cfgName').value.trim() || brand.name;
+    const prefixesCsv = $('cfgPrefixes').value || '';
+    const prefList = prefixesCsv.split(/[,\s]+/).map(s => s.trim().toLowerCase()).filter(Boolean);
+    // Translate the picked actual ad-account IDs back into their owning
+    // connector IDs so meta.assets.ads stays in sync (used by Reports/Ads).
+    const adConnIdsForPicked = new Set();
+    if (__adAccts) {
+      sel.adAccts.forEach(actId => {
+        const a = __adAccts.find(x => String(x.id) === String(actId));
+        if (a && a._connId != null) adConnIdsForPicked.add(Number(a._connId));
+      });
+    } else if (Array.isArray(assets.ads)) {
+      assets.ads.forEach(id => adConnIdsForPicked.add(Number(id)));
+    }
+    const meta = Object.assign({}, brand.meta || {}, {
+      assets: {
+        ads:      Array.from(adConnIdsForPicked),
+        shipping: Array.from(sel.shipping),
+        cms:      Array.from(sel.cms),
+      },
+      ad_account_ids: Array.from(sel.adAccts),
+      sku_prefixes: prefList,
+      logo: workingLogo || null,
+      // Persist the picked folder names so the Configure modal shows
+      // them next time the user opens it (not just the raw IDs).
+      drive_folder_name:  workingDriveFolder  ? workingDriveFolder.name  : null,
+      sheets_folder_id:   workingSheetsFolder ? workingSheetsFolder.id   : null,
+      sheets_folder_name: workingSheetsFolder ? workingSheetsFolder.name : null,
+    });
+    const body = { id: brand.id, name: newName, meta };
+    if (workingDriveFolder && workingDriveFolder.id !== brand.drive_folder_id) {
+      body.drive_folder_id = workingDriveFolder.id;
+    }
+    const btn = $('cfgSave'); btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Saving…';
+    // ── Step 0: persist the client (create new / update folder) ──
+    try {
+      if (workingClientCreate) {
+        if (!workingClientCreate.name) throw new Error('Enter a client name (or pick an existing client).');
+        const created = await api('/clients.php', { method: 'POST', body: JSON.stringify({
+          name: workingClientCreate.name,
+          drive_folder_id: workingClientCreate.drive_folder_id || ''
+        }) });
+        workingClientId = Number(created.id);
+        workingClientCreate = null;
+      } else if (workingClientId) {
+        const c = findClient(workingClientId);
+        if (c && c.__pendingFolderChange) {
+          await api('/clients.php', { method: 'PATCH', body: JSON.stringify({ id: c.id, drive_folder_id: c.drive_folder_id || '' }) });
+          delete c.__pendingFolderChange; delete c.__newFolderName;
+        }
+      }
+      if (workingClientId && Number(brand.client_id) !== workingClientId) {
+        body.client_id = workingClientId;
+      }
+    } catch (eClient) {
+      $('cfgErr').innerHTML = '<div style="color:#991B1B;font-size:12px;margin:8px 0;">⚠ Client save failed: ' + escapeHtml(eClient.message || String(eClient)) + '</div>';
+      btn.disabled = false; btn.textContent = 'Save';
+      return;
+    }
+    const payload = JSON.stringify(body);
+    console.log('Save brand payload size:', Math.round(payload.length / 1024) + 'KB');
+    try {
+      // Hostinger sometimes blocks JSON bodies > 64KB at the edge. If the
+      // payload is too big (tons of selected accounts + a logo), strip the
+      // logo to a separate save to keep the main save small.
+      if (payload.length > 60000 && workingLogo) {
+        // First save without logo
+        const lite = Object.assign({}, body);
+        const liteMeta = Object.assign({}, meta); liteMeta.logo = null;
+        lite.meta = liteMeta;
+        await api('/brands.php', { method: 'PATCH', body: JSON.stringify(lite) });
+        // Then save just the logo
+        await api('/brands.php', { method: 'PATCH', body: JSON.stringify({ id: brand.id, meta: { ...brand.meta, logo: workingLogo } }) });
+      } else {
+        await api('/brands.php', { method: 'PATCH', body: payload });
+      }
+      brand.name = newName; brand.meta = meta;
+      if (body.drive_folder_id) brand.drive_folder_id = body.drive_folder_id;
+      if (body.client_id) brand.client_id = body.client_id;
+      close();
+      // Re-fetch brands + clients so the UI reflects new associations
+      // (especially needed when a brand-new client was created on Save).
+      reloadBrandsList();
+      if (window.refreshTopbarProfile) window.refreshTopbarProfile();
+    } catch (e) {
+      const msg = (e && e.message) || String(e);
+      const detail = msg === 'Failed to fetch'
+        ? 'Network blocked the request (' + Math.round(payload.length/1024) + 'KB). Try removing the logo and saving the assets first, then re-add the logo.'
+        : msg;
+      $('cfgErr').innerHTML = '<div style="color:#991B1B;font-size:12px;margin:8px 0;">⚠ ' + escapeHtml(detail) + '</div>';
+      btn.disabled = false; btn.textContent = 'Save';
+    }
+  });
+}
+
+function renderGeneral(c) {
+  const profile = loadStoreProfile();
+  const user = loadUserProfile();
+  const logoSrc = profile.logo;
+  const initials = storeInitials(profile.name);
+  const nameSafe = (profile.name || '').replace(/"/g, '&quot;');
+  const userInits = userInitials(user.name);
+  c.innerHTML = `
+    <div class="settings-bread"><a href="/">Home</a> › General</div>
+    <h1 class="settings-title">General</h1>
+    <div class="settings-subtitle">Workspace details and integrations.</div>
+
+    <div class="gen-section">
+      <div>
+        <div class="gen-section-label">Details</div>
+      </div>
+      <div class="gen-card">
+        <div class="gen-card-block">
+          <div class="gen-photo-row">
+            <div class="gen-photo" id="genLogoPreview">${logoSrc?'<img src="'+logoSrc+'" alt="logo">':initials}</div>
+            <input id="genLogoFile" type="file" accept="image/*" style="display:none;">
+            <button class="btn" id="genLogoUpload">Upload photo</button>
+            ${logoSrc?'<button class="btn btn-danger" id="genLogoRemove">Remove</button>':''}
+          </div>
+        </div>
+        <div class="gen-card-block">
+          <div class="gen-fields">
+            <div>
+              <label class="gen-field-label" for="genStoreName">Store name</label>
+              <input class="form-input" id="genStoreName" value="${nameSafe}">
+            </div>
+            <div>
+              <label class="gen-field-label" for="genStoreHandle">Short handle</label>
+              <input class="form-input" id="genStoreHandle" value="${storeInitials(profile.name).toLowerCase()}" placeholder="e.g. sg">
+            </div>
+          </div>
+          <div class="gen-section-help">This name is shown in the sidebar and across the tool.</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;justify-content:flex-end;margin-top:18px;">
+      <button class="btn btn-primary" id="genStoreSave">Save</button>
+    </div>
+  `;
+  $('genLogoUpload').addEventListener('click', () => $('genLogoFile').click());
+  $('genLogoFile').addEventListener('change', (e) => {
+    const file = e.target.files && e.target.files[0]; if (!file) return;
+    if (file.size > 1024 * 1024) { toast('Image too large (max 1 MB)', true); return; }
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const dataUrl = ev.target.result;
+      const cur = loadStoreProfile();
+      saveStoreProfile({ ...cur, name: $('genStoreName').value || cur.name, logo: dataUrl });
+      renderStoreHeader();
+      renderGeneral(c);
+      toast('Logo updated');
+    };
+    reader.readAsDataURL(file);
+  });
+  const removeBtn = $('genLogoRemove');
+  if (removeBtn) removeBtn.addEventListener('click', () => {
+    const cur = loadStoreProfile();
+    saveStoreProfile({ ...cur, logo: '' });
+    renderStoreHeader();
+    renderGeneral(c);
+    toast('Logo removed');
+  });
+  $('genStoreSave').addEventListener('click', () => {
+    const curStore = loadStoreProfile();
+    saveStoreProfile({ ...curStore, name: $('genStoreName').value.trim() || 'Store', handle: ($('genStoreHandle').value || '').trim() });
+    renderStoreHeader();
+    toast('Saved');
+  });
+}
+
+// ── ACCOUNT (user profile — opens from sidebar user box click) ───────
+function renderAccount(c) {
+  const user = loadUserProfile();
+  const userInits = userInitials(user.name);
+  c.innerHTML = `
+    <div class="settings-bread"><a href="#" id="acctBackLink">Home</a> › Account</div>
+    <h1 class="settings-title">Account</h1>
+    <div class="settings-subtitle">Your personal info — shown at the bottom of the sidebar.</div>
+
+    <div class="gen-section">
+      <div>
+        <div class="gen-section-label">Profile</div>
+        <div class="gen-section-help">Photo, name, and role.</div>
+      </div>
+      <div class="gen-card">
+        <div class="gen-card-block">
+          <div class="gen-photo-row">
+            <div class="gen-photo" id="genUserPhotoPreview" style="background:#7E36CC;">${user.photo?'<img src="'+user.photo+'" alt="user">':userInits}</div>
+            <input id="genUserPhotoFile" type="file" accept="image/*" style="display:none;">
+            <button class="btn" id="genUserPhotoUpload">Upload photo</button>
+            ${user.photo?'<button class="btn btn-danger" id="genUserPhotoRemove">Remove</button>':''}
+          </div>
+        </div>
+        <div class="gen-card-block">
+          <div class="gen-fields">
+            <div>
+              <label class="gen-field-label" for="genUserFirstName">First name</label>
+              <input class="form-input" id="genUserFirstName" value="${(user.firstName||'').replace(/"/g,'&quot;')}">
+            </div>
+            <div>
+              <label class="gen-field-label" for="genUserLastName">Last name</label>
+              <input class="form-input" id="genUserLastName" value="${(user.lastName||'').replace(/"/g,'&quot;')}">
+            </div>
+          </div>
+          <div class="gen-section-help">Use your first and last name as they appear on your government-issued ID.</div>
+        </div>
+        <div class="gen-card-block">
+          <div class="gen-input-row">
+            <div class="left">
+              <div class="label">Email</div>
+              <div class="value" id="genUserEmailValue">${user.email||''}</div>
+            </div>
+            <div class="verified-badge">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#0E8345" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" fill="#0E8345" stroke="#0E8345"/><polyline points="8 12 11 15 16 9" stroke="#FFFFFF" fill="none"/></svg>
+              <span>Verified</span>
+            </div>
+            <button class="gen-link" id="genEmailUpdate">Update</button>
+          </div>
+        </div>
+        <div class="gen-card-block">
+          <div class="gen-input-row">
+            <div class="left">
+              <div class="label">Phone Number (optional)</div>
+              <div class="value" id="genPhoneValue">${user.phone?user.phone:'No phone number'}</div>
+            </div>
+            <button class="gen-link" id="genPhoneAdd">${user.phone?'Update':'Add'}</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;justify-content:flex-end;margin-top:18px;">
+      <button class="btn btn-primary" id="acctSave">Save</button>
+    </div>
+  `;
+  $('acctBackLink').addEventListener('click', (e) => { e.preventDefault(); switchSection('general'); });
+  $('genUserPhotoUpload').addEventListener('click', () => $('genUserPhotoFile').click());
+  $('genUserPhotoFile').addEventListener('change', (e) => {
+    const file = e.target.files && e.target.files[0]; if (!file) return;
+    if (file.size > 1024 * 1024) { toast('Image too large (max 1 MB)', true); return; }
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const cur = loadUserProfile();
+      saveUserProfile({ ...cur, firstName: $('genUserFirstName').value || cur.firstName, lastName: $('genUserLastName').value || cur.lastName, photo: ev.target.result });
+      renderUserBox();
+      renderAccount(c);
+      toast('Photo updated');
+    };
+    reader.readAsDataURL(file);
+  });
+  const userRemoveBtn = $('genUserPhotoRemove');
+  if (userRemoveBtn) userRemoveBtn.addEventListener('click', () => {
+    const cur = loadUserProfile();
+    saveUserProfile({ ...cur, photo: '' });
+    renderUserBox();
+    renderAccount(c);
+    toast('Photo removed');
+  });
+  // Inline edit helpers — convert a row's value into an input with Save/Cancel.
+  function startInlineEdit(rowEl, currentVal, type, onSave) {
+    rowEl.innerHTML = `
+      <div class="left">
+        <div class="label">${rowEl.dataset.label||''}</div>
+        <input class="form-input" id="__inlineInput" type="${type}" value="${escape(currentVal||'')}" style="margin-top:4px;">
+      </div>
+      <button class="btn" id="__inlineCancel">Cancel</button>
+      <button class="btn btn-primary" id="__inlineSave">Save</button>
+    `;
+    const input = document.getElementById('__inlineInput');
+    input.focus(); input.select();
+    document.getElementById('__inlineCancel').addEventListener('click', () => renderAccount(c));
+    document.getElementById('__inlineSave').addEventListener('click', () => onSave(input.value));
+    input.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Enter') onSave(input.value);
+      else if (ev.key === 'Escape') renderAccount(c);
+    });
+  }
+  $('genPhoneAdd').addEventListener('click', () => {
+    const row = $('genPhoneAdd').closest('.gen-input-row');
+    row.dataset.label = 'Phone Number (optional)';
+    startInlineEdit(row, loadUserProfile().phone || '', 'tel', (v) => {
+      const cur = loadUserProfile();
+      saveUserProfile({ ...cur, phone: (v||'').trim() });
+      renderAccount(c);
+      toast('Phone updated');
+    });
+  });
+  $('genEmailUpdate').addEventListener('click', () => {
+    const row = $('genEmailUpdate').closest('.gen-input-row');
+    row.dataset.label = 'Email';
+    startInlineEdit(row, loadUserProfile().email || '', 'email', (v) => {
+      const trimmed = (v||'').trim();
+      if (!trimmed || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) { toast('Enter a valid email', true); return; }
+      const cur = loadUserProfile();
+      saveUserProfile({ ...cur, email: trimmed });
+      renderUserBox();
+      renderAccount(c);
+      toast('Email updated');
+    });
+  });
+  $('acctSave').addEventListener('click', () => {
+    const cur = loadUserProfile();
+    saveUserProfile({ ...cur, firstName: $('genUserFirstName').value.trim() || 'User', lastName: $('genUserLastName').value.trim() });
+    renderUserBox();
+    toast('Saved');
+  });
+}
+
+const titleMap = {
+  cms: ['CMS', 'Connect your stores (WordPress, Shopify, …)'],
+  shipping: ['Shipping companies', 'Connect shipping providers (QP, J&T, Bosta, …)'],
+  ads: ['Ad accounts', 'Connect ad platforms (Meta, TikTok, Google, …)'],
+  confirmation: ['Confirmation system', 'Connect call-center / confirmation systems'],
+  ai: ['Connect AI Tools', 'Plug in API keys for Claude (Anthropic) and ChatGPT (OpenAI)'],
+};
+
+async function renderConnectorSection(c, section) {
+  const [title, desc] = titleMap[section];
+  // CMS section also surfaces the WP Funnels bridge plugin download (used by
+  // Landing Page Auto). Built once, shipped alongside the connector form so
+  // the user wires up everything for a new store in one place.
+  const pluginCard = section === 'cms' ? `
+    <div class="panel" style="margin-bottom:14px;padding:14px 16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+      <div style="font-size:22px;line-height:1;">🔌</div>
+      <div style="flex:1;min-width:200px;">
+        <div style="font-weight:700;font-size:14px;margin-bottom:2px;">Auto Land WP Funnels plugin</div>
+        <div style="font-size:12px;color:#6D7175;line-height:1.5;">Required on every WordPress store you want Landing Page Auto to publish to. Install once via <strong>WP Admin → Plugins → Add New → Upload Plugin</strong>.</div>
+      </div>
+      <a class="btn btn-primary" id="dlAutoLandZip" href="wp-plugin/auto-land.zip" download>
+        ⬇ Download .zip
+      </a>
+    </div>
+  ` : '';
+  c.innerHTML = `
+    <div class="settings-bread"><a href="/">Home</a> › Connectors › ${title}</div>
+    <h1 class="settings-title">${title}</h1>
+    <div class="settings-subtitle">${desc}</div>
+    <div class="info-banner">
+      <span class="ico">ⓘ</span>
+      <div>Add credentials for each account. Once saved, the tool loads data from this account automatically.</div>
+    </div>
+    ${pluginCard}
+    <div class="panel">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+        <div>
+          <div class="panel-title">Connected accounts</div>
+          <div class="panel-desc" style="margin-bottom:0;" id="countLine">Loading…</div>
+        </div>
+        <button class="btn btn-primary" id="addBtn">+ Add account</button>
+      </div>
+      <div id="connectorList"><div class="loading-state">Loading…</div></div>
+    </div>
+  `;
+  // Auto-version the plugin filename (reads readme.txt Stable tag) + cache-bust the URL
+  if (section === 'cms') wireAutoLandDownload();
+  $('addBtn').addEventListener('click', () => openConnectorModal(section));
+  try {
+    const data = await api('/connectors.php?type=' + section);
+    cache[section] = data.rows;
+    renderConnectorList(section, data.rows);
+  } catch (err) {
+    $('connectorList').innerHTML = `<div class="info-banner error"><span class="ico">⚠</span><div>Failed to load: ${escape(err.message)}</div></div>`;
+    $('countLine').textContent = '';
+  }
+}
+
+function renderConnectorList(section, rows) {
+  $('countLine').textContent = `${rows.length} ${rows.length===1?'account':'accounts'} connected.`;
+  if (rows.length === 0) {
+    $('connectorList').innerHTML = `<div class="empty-state">No accounts yet. Click <strong>Add account</strong> to connect.</div>`;
+    return;
+  }
+  $('connectorList').innerHTML = `<div class="item-list">${rows.map(it => `
+    <div class="item-row">
+      <div class="item-ico">${providerIcon(section, it.provider)}</div>
+      <div class="item-main">
+        <div class="item-title">${escape(it.name)}</div>
+        <div class="item-meta">${escape(providerName(section, it.provider))}${it.url?' · '+escape(it.url):''}${it.consumer_key?' · '+maskToken(it.consumer_key):it.token?' · '+maskToken(it.token):''}</div>
+      </div>
+      <div class="item-actions">
+        <button class="btn" data-edit="${it.id}">Edit</button>
+        <button class="btn btn-danger" data-del="${it.id}">Delete</button>
+      </div>
+    </div>`).join('')}</div>`;
+  document.querySelectorAll('[data-del]').forEach(b => b.addEventListener('click', async () => {
+    if (!confirm('Delete this account?')) return;
+    try {
+      await api('/connectors.php?id=' + b.dataset.del, {method: 'DELETE'});
+      toast('Deleted');
+      renderContent();
+    } catch (err) { toast(err.message, true); }
+  }));
+  document.querySelectorAll('[data-edit]').forEach(b => b.addEventListener('click', () => {
+    const it = rows.find(r => String(r.id) === b.dataset.edit);
+    openConnectorModal(section, it);
+  }));
+}
+
+function providerName(section, id) { return (PROVIDERS[section] || []).find(p => p.id === id)?.name || id; }
+function providerIcon(section, id) {
+  const p = (PROVIDERS[section] || []).find(p => p.id === id);
+  if (!p) return '🔌';
+  if (p.logo) return `<img src="${escape(p.logo)}" alt="${escape(p.name)}" style="max-width:32px;max-height:24px;display:block;object-fit:contain;">`;
+  return p.icon || '🔌';
+}
+function maskToken(t) { if (!t) return ''; const s = String(t); if (s.length <= 8) return '••••'; return s.slice(0,4)+'••••'+s.slice(-4); }
+function escape(s) { return String(s ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+
+// ── MODAL ────────────────────────────────────────────────────────────
+let modalCtx = null;
+
+function openConnectorModal(section, editing, providerOverride) {
+  const providers = PROVIDERS[section] || [];
+  const initialProvider = editing?.provider || providerOverride || providers[0]?.id;
+  modalCtx = { section, editing, provider: initialProvider };
+  // When the user opens the modal from the Connectors hub (or is editing an
+  // existing row), the provider is already known — hide the provider grid and
+  // jump straight to that provider's fields. Show the grid only on the legacy
+  // "Add account" path from the per-category sub-page.
+  const lockProvider = !!(providerOverride || editing);
+  const providerInfo = providers.find(p => p.id === initialProvider) || {};
+  $('modalTitle').textContent = editing
+    ? ('Edit ' + (providerInfo.name || titleMap[section]?.[0] || 'connector'))
+    : ('Connect ' + (providerInfo.name || titleMap[section]?.[0] || ''));
+  $('modalBody').innerHTML = `
+    ${lockProvider ? '' : `
+    <div style="margin-bottom:14px;">
+      <label class="form-label" style="display:block;margin-bottom:8px;">Provider</label>
+      <div class="provider-grid" id="providerGrid">
+        ${providers.map(p => `
+          <div class="provider-chip ${initialProvider===p.id?'selected':''}" data-pid="${p.id}">
+            <div class="ico" style="height:36px;display:flex;align-items:center;justify-content:center;">${p.logo
+              ? `<img src="${escape(p.logo)}" alt="${escape(p.name)}" style="max-width:80px;max-height:32px;object-fit:contain;">`
+              : (p.icon||'🔌')}</div>
+            <div class="name">${p.name}</div>
+          </div>`).join('')}
+      </div>
+    </div>`}
+    <div id="providerFields"></div>
+  `;
+  if (!lockProvider) {
+    document.querySelectorAll('#providerGrid .provider-chip').forEach(el => {
+      el.addEventListener('click', () => {
+        document.querySelectorAll('#providerGrid .provider-chip').forEach(x => x.classList.remove('selected'));
+        el.classList.add('selected');
+        modalCtx.provider = el.dataset.pid;
+        renderProviderFields();
+      });
+    });
+  }
+  renderProviderFields();
+  $('modalBackdrop').classList.add('open');
+}
+
+function renderProviderFields() {
+  const fields = PROVIDER_FIELDS[modalCtx.provider] || PROVIDER_FIELDS._default;
+  const e = modalCtx.editing || {};
+  const guide = PROVIDER_GUIDES[modalCtx.provider];
+  // Strip any leading "1." / "1) " numbering inside the step content — the circle
+  // already provides the number, so this avoids "1. 1. ..." double prefixes.
+  const stripLeadingNum = (s) => String(s).replace(/^\s*\d+[.)]\s*/, '');
+  const guideHtml = guide ? `
+    <div class="guide-card">
+      <div class="guide-title">
+        <svg class="guide-title-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+        <span>${escape(guide.title)}</span>
+      </div>
+      ${guide.steps.map((s, i) => `
+        <div class="guide-step">
+          <div class="guide-step-num">${i + 1}</div>
+          <div class="guide-step-text">${stripLeadingNum(s)}</div>
+        </div>
+      `).join('')}
+      ${guide.note ? `<div class="guide-note"><strong>Note:</strong> ${escape(guide.note)}</div>` : ''}
+    </div>` : '';
+  $('providerFields').innerHTML = guideHtml + fields.map(f => {
+    if (f._custom === 'fb-login') {
+      const connected = e.meta && e.meta.fb_user_name;
+      return `<div class="form-row" style="grid-template-columns:1fr;gap:8px;margin-bottom:18px;padding:14px;background:#F1F1F1;border-radius:10px;">
+        <div style="font-size:13px;font-weight:600;">Recommended — connect with Facebook login</div>
+        <div style="font-size:12px;color:#6D7175;line-height:1.5;">Opens Facebook in a popup, you log in, and we get a long-lived (~60 day) token automatically. No need to paste anything.</div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <button type="button" class="btn btn-primary" id="btnFbLogin" style="background:#1877F2;border-color:#1877F2;display:inline-flex;align-items:center;gap:8px;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="white"><path d="M24 12.07C24 5.41 18.63 0 12 0S0 5.41 0 12.07C0 18.1 4.39 23.1 10.13 24v-8.44H7.08v-3.49h3.05V9.41c0-3.02 1.79-4.69 4.53-4.69 1.31 0 2.68.24 2.68.24v2.97h-1.51c-1.49 0-1.96.93-1.96 1.89v2.27h3.33l-.53 3.49h-2.8V24C19.61 23.1 24 18.1 24 12.07z"/></svg>
+            Sign in with Facebook
+          </button>
+          ${connected ? `<span style="font-size:12px;color:#0E8345;font-weight:600;">✓ Connected as ${escape(e.meta.fb_user_name)}</span>` : ''}
+          <span id="fbLoginStatus" style="font-size:12px;color:#6D7175;"></span>
+        </div>
+      </div>
+      <div style="text-align:center;font-size:11px;color:#6D7175;margin-bottom:8px;letter-spacing:0.4px;">— OR PASTE A TOKEN MANUALLY —</div>`;
+    }
+    if (f._custom === 'verify-meta') {
+      return `<div class="form-row" style="grid-template-columns:1fr;gap:6px;margin-bottom:14px;">
+        <button type="button" class="btn" id="btnVerifyMeta">🔍 Verify token & list ad accounts</button>
+        <div id="metaVerifyResult" style="font-size:12px;color:#6D7175;margin-top:4px;"></div>
+      </div>`;
+    }
+    // Meta-stored fields (e.g. wp_username / wp_app_password) live under e.meta
+    const val = escape((f.meta ? (e.meta?.[f.key]) : e[f.key]) ?? '');
+    const inputType = f.secret ? 'password' : 'text';
+    const inputEl = f.multiline
+      ? `<textarea class="form-textarea" id="f_${f.key}" placeholder="${escape(f.placeholder||'')}">${val}</textarea>`
+      : `<input class="form-input" id="f_${f.key}" type="${inputType}" placeholder="${escape(f.placeholder||'')}" value="${val}">`;
+    const helpEl = f.help ? `<div class="form-help">${escape(f.help)}</div>` : '';
+    return `<div class="form-row" style="grid-template-columns:1fr;gap:6px;margin-bottom:14px;">
+      <label class="form-label">${f.label}${f.required?' <span style="color:#D72C0D;">*</span>':''}</label>
+      ${inputEl}${helpEl}
+    </div>`;
+  }).join('');
+  // Wire up verify button (Meta only)
+  const btnV = $('btnVerifyMeta');
+  if (btnV) btnV.addEventListener('click', verifyMetaToken);
+  // Wire up Facebook Login button
+  const btnFB = $('btnFbLogin');
+  if (btnFB) btnFB.addEventListener('click', startFacebookLogin);
+  // Inject the column-mapper section AFTER the standard fields. Lets the
+  // user upload a sample sheet and tell the system which column is which —
+  // so adding a new carrier or confirmation system doesn't need code
+  // changes, just a mapping. Saved into connector.meta.column_map.
+  // Confirmation systems (Zomeza / Wesell) get the same UI but with
+  // CONFIRMED/CANCELED status fields + an employee column.
+  if (modalCtx.section === 'shipping' || modalCtx.section === 'confirmation') {
+    renderShippingMapper();
+  }
+}
+
+// ── SHIPPING COLUMN MAPPER ────────────────────────────────────────────
+// Lazy-load SheetJS (XLSX) once so settings.html stays light when no
+// shipping carrier is being edited.
+function loadSheetJs(){
+  return new Promise((resolve, reject) => {
+    if (window.XLSX) return resolve(window.XLSX);
+    if (window._xlsxLoading) return window._xlsxLoading.then(resolve, reject);
+    window._xlsxLoading = new Promise((ok, fail) => {
+      const s = document.createElement('script');
+      s.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+      s.onload = () => ok(window.XLSX);
+      s.onerror = () => fail(new Error('Failed to load XLSX library'));
+      document.head.appendChild(s);
+    });
+    window._xlsxLoading.then(resolve, reject);
+  });
+}
+
+// Known column lists per carrier — full set of headers we've seen on
+// each provider's exports. Dropdowns pre-populate with these so the user
+// picks from real options without uploading a sample first. Auto-extended
+// at runtime when the user uploads a sample with new columns OR when we
+// find rows already in the DB for this source.
+const KNOWN_CARRIER_COLUMNS = {
+  jt: [
+    'Waybill','Waybill status','Order Source','Client Order No.','Reciever Name',
+    "The receiver's phone","Receiver phone number 2",'Receiver Flat No.',
+    "Receiver's Floor","Receiver's Building No.",'Receiver street',"Receiver's Area",
+    "Receiver's District",'Receiving province','Type of Item','Item name',
+    'Chargeable weight(KG)','Item weight (KG)','Length/width/height',
+    'Insurance Value','Insurance Fee','Prodcut type','Ex/DR 描述','Stlmt Method',
+    'Payment Method','COD amount','COD Service Fee','FOD Amount',
+    'Reference delivery fees','Pickup information','Fuel Surcharge',
+    'Out for delivery times','Abnormal parcel description','Remarks',
+    'Order account name','collection time','Sign Time','Reciever address',
+    'Sender name','Origin Province','Sender district','Sender street',
+    'Sender address details','Sender phone','Sender mobile number2',
+    'Box price','Platform name','Customer account','Delivery time',
+    'Returning parcel sign-in time',"Customer's pickup number",
+    'Third party waybill no.','Bound waybill','Submission time',
+  ],
+  bosta: [
+    'Tracking Number','State','Item Description','Quantity','City','Zone',
+    'COD Value','Total Cost','Created At','Delivered At','Returned At',
+    'Customer Name','Customer Phone','Address','Notes',
+  ],
+  qp: [
+    'shipment contents','status','city','total amount','shipping fee','order date','order id',
+    'customer name','phone','address','employee','COD',
+  ],
+  shipblu: ['Tracking ID','Status','Product','City','Total','Shipping','Date'],
+  turbo:   ['AWB','Status','Product','City','COD','Fees','Date'],
+  // ── Confirmation systems ──
+  zomeza: [
+    'العدد','رقم الاوردر','اسم المستلم','اوردرات العميل','الدوله','المحافظه','المدينه',
+    'العنوان','الهاتف  1','السعر الكلي بالشحن','السعر الكلي بدون الشحن','سعر الشحن',
+    'المطلوب تحصيله','المحصل','شركة الشحن','الرقم المرجعي','تاريخ الإنشاء','تاريخ أخر تحديث',
+    'حالة الأوردر','حالة فرعيه','حالة الدفع','نوع الاوردر','الانشاء عن طريق','موظف التاكيد',
+    'الادمن المضاف','عدد القطع','اسم المنتج','الملاحظات',
+    'محاوله 1','محاوله 2','محاوله 3','محاوله 4','محاوله 5','محاوله 6','محاوله 7','محاوله 8','محاوله 9','محاوله 10',
+  ],
+  wesell: [
+    'رقم الطلب','الحالة','اسم المنتج','المدينة','تاريخ الطلب','القائم على التاكيد','القائم علي التاكيد',
+    'تم الإنشاء','تم التسليم','الإرجاع قيد المعالجة','تم الإرسال','جاهز للتعبئة',
+    'ملغي من قبل العميل','ملغي من قبل الموظف',
+  ],
+};
+
+// Default column maps for the carriers we already know — pre-fills the
+// dropdowns so the user can confirm with one click instead of mapping
+// from scratch. Add new carriers here as we learn their headers.
+const DEFAULT_COLUMN_MAPS = {
+  jt: {
+    // Defaults verified against the J&T sample sheet + the existing
+    // shipping.html parseJT logic. Product comes from Remarks (the
+    // actual product description), status text "Signed" = delivered,
+    // "Returned"/"Returning" = returned.
+    product:           'Remarks',
+    status:            'Waybill status',
+    delivered_values:  'Signed',
+    returned_values:   'Returned,Returning',
+    city:              'Receiving province',
+    date:              'collection time',
+    cod:               'COD amount',
+    fees:              'Reference delivery fees',
+  },
+  bosta: {
+    product:           'Item Description',
+    status:            'State',
+    delivered_values:  'Delivered',
+    returned_values:   'Returned,Returned to Origin',
+    city:              'City',
+    date:              'Created At',
+    cod:               'COD Value',
+    fees:              'Total Cost',
+  },
+  qp: {
+    product:           'shipment contents',
+    status:            'status',
+    delivered_values:  'delivered',
+    returned_values:   'returned',
+    city:              'city',
+    date:              'order date',
+    cod:               'total amount',
+    fees:              'shipping fee',
+  },
+  // Confirmation systems — Zomeza / Wesell. They carry per-order
+  // confirmation status (Confirmed vs Canceled) plus the agent who
+  // confirmed it. No financial columns; the metric is confirmation rate.
+  zomeza: {
+    product:           'اسم المنتج',
+    status:            'حالة الأوردر',
+    confirmed_values:  'Confirmed,Under processing,processing,In shipping,Delivered,Failed',
+    canceled_values:   'Canceled',
+    city:              'المدينه',
+    date:              'تاريخ الإنشاء',
+    employee:          'موظف التاكيد',
+  },
+  wesell: {
+    product:           'اسم المنتج',
+    status:            'الحالة',
+    confirmed_values:  'تم الإنشاء,تم التسليم,الإرجاع قيد المعالجة,تم الإرسال,جاهز للتعبئة',
+    canceled_values:   'ملغي من قبل العميل,ملغي من قبل الموظف',
+    city:              'المدينة',
+    date:              'تاريخ الطلب',
+    employee:          'القائم على التاكيد',
+  },
+};
+
+// Section-specific field lists. Shipping carriers track delivered vs
+// returned + financials. Confirmation systems track confirmed vs canceled
+// + the agent who confirmed.
+const MAPPING_FIELDS_BY_SECTION = {
+  shipping: [
+    { key: 'product',           label: 'Product name column',          required: true },
+    { key: 'status',            label: 'Order status column',          required: true },
+    { key: 'delivered_values',  label: 'Status text(s) for DELIVERED', placeholder: 'Delivered, تم التسليم', isText: true, required: true,
+      help: 'Comma-separated. Any row whose status cell exactly matches one of these counts as a delivered shipment.' },
+    { key: 'returned_values',   label: 'Status text(s) for RETURNED',  placeholder: 'Returned, مرتجع', isText: true, required: true },
+    { key: 'city',              label: 'City / governorate column',    required: false },
+    { key: 'date',              label: 'Order date column',            required: false },
+    { key: 'cod',               label: 'Total order amount column',    required: false,
+      help: 'The full COD / cash collected per order — used for revenue calculations.' },
+    { key: 'fees',              label: 'Shipping fees column',         required: false },
+  ],
+  confirmation: [
+    { key: 'product',           label: 'Product name column',          required: true },
+    { key: 'status',            label: 'Order status column',          required: true },
+    { key: 'confirmed_values',  label: 'Status text(s) for CONFIRMED', placeholder: 'Confirmed, Delivered, In shipping…', isText: true, required: true,
+      help: 'Comma-separated. Any row whose status cell exactly matches one of these counts as a confirmed order.' },
+    { key: 'canceled_values',   label: 'Status text(s) for CANCELED',  placeholder: 'Canceled', isText: true, required: true },
+    { key: 'city',              label: 'City / governorate column',    required: false },
+    { key: 'date',              label: 'Order date column',            required: false },
+    { key: 'employee',          label: 'Confirmation employee column', required: false,
+      help: 'Used to break confirmation rate down per agent on the Shipping Analytics → Confirmation tab.' },
+  ],
+};
+// All possible keys (union) — read by saveConnector to pull values from
+// every cmap_* input regardless of which section is active.
+const ALL_MAPPING_KEYS = ['product','status','delivered_values','returned_values','confirmed_values','canceled_values','city','date','cod','fees','employee'];
+
+function renderShippingMapper(){
+  // The mapper lives in a side panel below the standard provider fields.
+  const e = modalCtx.editing || {};
+  const existing = (e.meta && e.meta.column_map) || DEFAULT_COLUMN_MAPS[modalCtx.provider] || {};
+  // Build the column-list dropdowns are pre-populated from. Order:
+  //   1. Saved meta.column_list — headers persisted from a previous
+  //      sample upload (so the user never has to re-upload to get options).
+  //   2. KNOWN_CARRIER_COLUMNS for this provider (built-in fallback).
+  //   3. Saved column_map values (so we never lose user picks).
+  //   4. Anything the user adds this session by uploading a NEW sample.
+  const baseCols = [];
+  const savedList = (e.meta && Array.isArray(e.meta.column_list)) ? e.meta.column_list : [];
+  savedList.forEach(c => { if (typeof c === 'string' && c && !baseCols.includes(c)) baseCols.push(c); });
+  (KNOWN_CARRIER_COLUMNS[modalCtx.provider] || []).forEach(c => { if (!baseCols.includes(c)) baseCols.push(c); });
+  Object.values(existing).forEach(v => {
+    // Don't add free-text fields (delivered_values / returned_values) — they aren't column names.
+    if (!v) return;
+    if (typeof v !== 'string') return;
+    if (!baseCols.includes(v) && v.length < 80 && !v.includes(',')) baseCols.push(v);
+  });
+  // Track all known headers (saved + built-in) so saveConnector() can
+  // persist the live ones added by uploading a NEW sample. Only headers
+  // are stored — not the row data — so the meta JSON stays small.
+  modalCtx._discoveredColumns = baseCols.slice();
+  // Custom dropdown — native <select> ellipsizes long column names in
+  // both the collapsed value AND the open panel on some browsers. We
+  // render a clickable trigger + a popup list where each row wraps to
+  // show the FULL column name regardless of width.
+  const ddHtml = (inputId, selected) => `
+    <div class="cmap-dd" data-cmap-dd="1">
+      <button type="button" class="cmap-dd-trigger" id="${inputId}_btn" title="${escape(selected || '')}">
+        <span class="cmap-dd-val">${selected ? escape(selected) : '<span style="color:#9CA3AF;">— pick a column —</span>'}</span>
+        <span class="cmap-dd-caret">▾</span>
+      </button>
+      <div class="cmap-dd-panel" id="${inputId}_panel" style="display:none;">
+        <input type="text" class="cmap-dd-search" placeholder="Search columns…" id="${inputId}_search">
+        <div class="cmap-dd-list" id="${inputId}_list">
+          <div class="cmap-dd-row" data-val="">— pick a column —</div>
+          ${baseCols.map(c => `<div class="cmap-dd-row${c === selected ? ' selected' : ''}" data-val="${escape(c)}" title="${escape(c)}">${escape(c)}</div>`).join('')}
+        </div>
+      </div>
+      <input type="hidden" id="${inputId}" value="${escape(selected || '')}" data-cmap-col="1">
+    </div>`;
+
+  const fields = MAPPING_FIELDS_BY_SECTION[modalCtx.section] || MAPPING_FIELDS_BY_SECTION.shipping;
+  const fieldsHtml = fields.map(f => {
+    const v = (existing[f.key] != null ? existing[f.key] : '');
+    const inputId = 'cmap_' + f.key;
+    if (f.isText) {
+      return `<div class="form-row" style="grid-template-columns:1fr;gap:6px;margin-bottom:12px;">
+        <label class="form-label" style="font-size:12px;">${escape(f.label)}${f.required ? ' <span style="color:#D72C0D;">*</span>' : ''}</label>
+        <input class="form-input" id="${inputId}" type="text" placeholder="${escape(f.placeholder||'')}" value="${escape(v)}">
+        ${f.help ? `<div class="form-help">${escape(f.help)}</div>` : ''}
+      </div>`;
+    }
+    return `<div class="form-row" style="grid-template-columns:1fr;gap:6px;margin-bottom:12px;">
+      <label class="form-label" style="font-size:12px;">${escape(f.label)}${f.required ? ' <span style="color:#D72C0D;">*</span>' : ''}</label>
+      ${ddHtml(inputId, v)}
+      ${f.help ? `<div class="form-help">${escape(f.help)}</div>` : ''}
+    </div>`;
+  }).join('');
+
+  const panel = `
+    <div class="guide-card" id="shippingMapperPanel" style="margin-top:14px;">
+      <div class="guide-title">
+        <svg class="guide-title-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h18v18H3z"/><path d="M3 9h18M9 3v18"/></svg>
+        <span>Sheet column mapping</span>
+      </div>
+      <div style="font-size:12px;color:#6D7175;line-height:1.5;margin-bottom:14px;">
+        Upload one carrier export to teach the system which column is which. Once mapped, every future upload from this carrier (and any new carrier you onboard) is parsed automatically — no code changes needed.
+      </div>
+      <div id="cmapDrop" style="border:2px dashed #DCDCDC;border-radius:10px;padding:18px;text-align:center;background:#FAFBFB;cursor:pointer;margin-bottom:16px;transition:border-color .15s,background .15s;">
+        <div style="font-size:24px;margin-bottom:6px;">📊</div>
+        <div style="font-size:13px;font-weight:600;color:#1A1A1A;">Upload sample sheet (XLSX / CSV)</div>
+        <div style="font-size:11px;color:#6D7175;margin-top:4px;" id="cmapDropHint">First row is read for column headers and to suggest status values.</div>
+        <input type="file" id="cmapFile" accept=".xlsx,.xls,.csv" style="display:none;">
+      </div>
+      <div id="cmapStatusValues" style="display:none;margin-bottom:14px;padding:10px 12px;background:#F1F1F1;border-radius:8px;">
+        <div style="font-size:12px;font-weight:600;margin-bottom:6px;">Distinct status values found in this sheet:</div>
+        <div id="cmapStatusList" style="font-size:12px;color:#1A1A1A;line-height:1.7;"></div>
+        <div style="font-size:11px;color:#6D7175;margin-top:6px;">Tip: copy the right ones into the DELIVERED / RETURNED fields below.</div>
+      </div>
+      ${fieldsHtml}
+    </div>`;
+  $('providerFields').insertAdjacentHTML('beforeend', panel);
+  ensureCmapCss();
+  wireCmapDropdowns();
+
+  // Wire upload area
+  const drop = $('cmapDrop');
+  const file = $('cmapFile');
+  drop.addEventListener('click', () => file.click());
+  file.addEventListener('change', e => onSampleFile(e.target.files[0]));
+  ['dragover','dragenter'].forEach(ev => drop.addEventListener(ev, e => {
+    e.preventDefault(); drop.style.borderColor = '#1A1A1A'; drop.style.background = '#F0F8FF';
+  }));
+  ['dragleave','drop'].forEach(ev => drop.addEventListener(ev, e => {
+    e.preventDefault(); drop.style.borderColor = '#DCDCDC'; drop.style.background = '#FAFBFB';
+    if (ev === 'drop' && e.dataTransfer.files[0]) onSampleFile(e.dataTransfer.files[0]);
+  }));
+}
+
+// Inject the custom-dropdown CSS once.
+function ensureCmapCss(){
+  if (document.getElementById('cmap-dd-css')) return;
+  const s = document.createElement('style');
+  s.id = 'cmap-dd-css';
+  s.textContent = `
+    .cmap-dd{position:relative;width:100%;}
+    .cmap-dd-trigger{width:100%;padding:9px 36px 9px 12px;background:#FFFFFF;border:1px solid #DCDCDC;border-radius:8px;font:inherit;font-size:13px;color:#1A1A1A;text-align:left;cursor:pointer;display:flex;align-items:center;gap:6px;position:relative;}
+    .cmap-dd-trigger:hover{border-color:#1A1A1A;}
+    .cmap-dd-trigger .cmap-dd-val{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+    .cmap-dd-trigger .cmap-dd-caret{position:absolute;right:12px;color:#6D7175;font-size:10px;}
+    .cmap-dd-panel{position:absolute;left:0;right:0;top:100%;margin-top:4px;background:#FFFFFF;border:1px solid #DCDCDC;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,0.12);z-index:1000;max-height:320px;display:flex;flex-direction:column;overflow:hidden;}
+    .cmap-dd-search{margin:8px;padding:6px 10px;border:1px solid #DCDCDC;border-radius:6px;font:inherit;font-size:12px;outline:none;}
+    .cmap-dd-search:focus{border-color:#1A1A1A;}
+    .cmap-dd-list{overflow-y:auto;padding:0 0 6px;}
+    .cmap-dd-row{padding:7px 12px;font-size:13px;color:#1A1A1A;cursor:pointer;line-height:1.4;word-break:break-word;}
+    .cmap-dd-row:hover{background:#F1F1F1;}
+    .cmap-dd-row.selected{background:#EEF2FF;color:#1A1A1A;font-weight:600;}
+  `;
+  document.head.appendChild(s);
+}
+
+// Wire every custom dropdown — open/close, select, search-filter.
+function wireCmapDropdowns(){
+  document.querySelectorAll('[data-cmap-dd="1"]').forEach(dd => {
+    if (dd.dataset.wired) return; dd.dataset.wired = '1';
+    const btn    = dd.querySelector('.cmap-dd-trigger');
+    const panel  = dd.querySelector('.cmap-dd-panel');
+    const search = dd.querySelector('.cmap-dd-search');
+    const list   = dd.querySelector('.cmap-dd-list');
+    const hidden = dd.querySelector('input[type="hidden"]');
+    const valEl  = dd.querySelector('.cmap-dd-val');
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      // Close any other open panel
+      document.querySelectorAll('.cmap-dd-panel').forEach(p => { if (p !== panel) p.style.display = 'none'; });
+      const willOpen = panel.style.display === 'none';
+      panel.style.display = willOpen ? 'flex' : 'none';
+      if (willOpen) { search.value = ''; filterRows(list, ''); setTimeout(() => search.focus(), 30); }
+    });
+    list.addEventListener('click', e => {
+      const row = e.target.closest('.cmap-dd-row');
+      if (!row) return;
+      const v = row.dataset.val || '';
+      hidden.value = v;
+      valEl.textContent = v || '— pick a column —';
+      btn.title = v || '';
+      list.querySelectorAll('.cmap-dd-row.selected').forEach(r => r.classList.remove('selected'));
+      if (v) row.classList.add('selected');
+      panel.style.display = 'none';
+      hidden.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    search.addEventListener('input', () => filterRows(list, search.value));
+  });
+  // Click-outside to close
+  if (!window._cmapClickWired) {
+    window._cmapClickWired = true;
+    document.addEventListener('click', () => {
+      document.querySelectorAll('.cmap-dd-panel').forEach(p => p.style.display = 'none');
+    });
+  }
+}
+function filterRows(list, q){
+  const lc = String(q || '').toLowerCase().trim();
+  list.querySelectorAll('.cmap-dd-row').forEach(r => {
+    const t = (r.textContent || '').toLowerCase();
+    r.style.display = (!lc || t.indexOf(lc) !== -1) ? '' : 'none';
+  });
+}
+
+async function onSampleFile(f){
+  if (!f) return;
+  const hint = $('cmapDropHint');
+  hint.textContent = 'Reading ' + f.name + '…';
+  try {
+    const xlsx = await loadSheetJs();
+    const buf = await f.arrayBuffer();
+    const wb = xlsx.read(buf, { type: 'array' });
+    const sheet = wb.Sheets[wb.SheetNames[0]];
+    const rows = xlsx.utils.sheet_to_json(sheet, { defval: '' });
+    if (!rows.length) throw new Error('Empty sheet');
+    const headers = Object.keys(rows[0] || {});
+    if (!headers.length) throw new Error('No columns detected');
+    // Extend every custom dropdown with newly discovered headers — keep
+    // the currently-selected value (from defaults or saved mapping).
+    document.querySelectorAll('[data-cmap-dd="1"]').forEach(dd => {
+      const list = dd.querySelector('.cmap-dd-list');
+      const hidden = dd.querySelector('input[type="hidden"]');
+      const cur = hidden.value;
+      const have = new Set(Array.from(list.querySelectorAll('.cmap-dd-row')).map(r => r.dataset.val));
+      headers.forEach(h => {
+        if (have.has(h)) return;
+        list.insertAdjacentHTML('beforeend',
+          `<div class="cmap-dd-row${h === cur ? ' selected' : ''}" data-val="${escape(h)}" title="${escape(h)}">${escape(h)}</div>`);
+      });
+    });
+    // Persist headers (only — never row data) so the next time the modal
+    // opens these options are pre-listed without re-uploading a sample.
+    modalCtx._discoveredColumns = modalCtx._discoveredColumns || [];
+    headers.forEach(h => {
+      if (h && !modalCtx._discoveredColumns.includes(h)) modalCtx._discoveredColumns.push(h);
+    });
+    // Preview distinct status values from the chosen status column (if set).
+    const renderStatusValues = (col) => {
+      const distinct = Array.from(new Set(rows.map(r => String(r[col] || '').trim()).filter(Boolean)));
+      $('cmapStatusList').innerHTML = distinct.slice(0, 50).map(s =>
+        `<code style="background:#FFFFFF;padding:2px 6px;border-radius:4px;border:1px solid #E1E3E5;display:inline-block;margin:2px 4px 2px 0;cursor:pointer;" data-status-val="${escape(s)}">${escape(s)}</code>`
+      ).join('');
+      $('cmapStatusValues').style.display = 'block';
+    };
+    const statusCol = $('cmap_status').value;
+    if (statusCol) renderStatusValues(statusCol);
+    $('cmap_status').addEventListener('change', () => {
+      const col = $('cmap_status').value;
+      if (col) renderStatusValues(col);
+    });
+    hint.textContent = '✓ ' + f.name + ' — ' + headers.length + ' columns, ' + rows.length + ' rows';
+  } catch (e) {
+    hint.textContent = '⚠ ' + e.message;
+    hint.style.color = '#D72C0D';
+  }
+}
+
+// ── FACEBOOK OAUTH FLOW ──────────────────────────────────────────────
+// Opens FB OAuth in a popup → fb-callback.php exchanges code for long-lived
+// token + saves connector → posts back via window.postMessage. We then
+// auto-fill the token field, run verify, and refresh the connector list.
+async function startFacebookLogin() {
+  const status = $('fbLoginStatus');
+  status.textContent = 'Opening Facebook…';
+  status.style.color = '#6D7175';
+  let cfg;
+  try {
+    cfg = await api('/fb-config.php');
+  } catch (e) {
+    status.textContent = 'Failed to load Facebook config: ' + e.message;
+    status.style.color = '#D72C0D';
+    return;
+  }
+  const state = Math.random().toString(36).slice(2);
+  const url = 'https://www.facebook.com/v21.0/dialog/oauth'
+    + '?client_id='     + encodeURIComponent(cfg.app_id)
+    + '&redirect_uri='  + encodeURIComponent(cfg.redirect_uri)
+    + '&scope='         + encodeURIComponent(cfg.scope)
+    + '&response_type=code'
+    + '&state='         + encodeURIComponent(state);
+  const w = 600, h = 720;
+  const left = (window.screen.width  - w) / 2;
+  const top  = (window.screen.height - h) / 2;
+  const popup = window.open(url, 'fbLogin', `width=${w},height=${h},left=${left},top=${top}`);
+  if (!popup) {
+    status.textContent = 'Popup blocked — allow popups for this site and try again.';
+    status.style.color = '#D72C0D';
+    return;
+  }
+  // Listen for the callback page's postMessage
+  const onMessage = async (event) => {
+    if (!event.data || event.data.type !== 'fb-oauth') return;
+    window.removeEventListener('message', onMessage);
+    const p = event.data.payload;
+    if (!p || !p.ok) {
+      status.textContent = 'Login failed.';
+      status.style.color = '#D72C0D';
+      return;
+    }
+    status.innerHTML = '✓ Connected as <strong>' + escape(p.user_name) + '</strong> · ' + p.ad_account_count + ' ad account(s).';
+    status.style.color = '#0E8345';
+    toast('Connected to Facebook');
+    closeModal();
+    renderContent();
+  };
+  window.addEventListener('message', onMessage);
+}
+
+// Holds the list of accounts fetched during Verify so we can save the selection on Save.
+let metaFetchedAccounts = [];
+
+async function verifyMetaToken() {
+  const tokenEl = $('f_token');
+  const result  = $('metaVerifyResult');
+  const btn     = $('btnVerifyMeta');
+  const token = (tokenEl?.value || '').trim();
+  if (!token) { result.innerHTML = '<span style="color:#D72C0D;">Enter the access token first.</span>'; return; }
+  btn.disabled = true;
+  result.innerHTML = 'Checking…';
+  try {
+    const data = await api('/meta.php?action=accounts&token=' + encodeURIComponent(token));
+    const rows = data.rows || [];
+    metaFetchedAccounts = rows;
+    if (!rows.length) {
+      result.innerHTML = '<span style="color:#D72C0D;">Token works but returned 0 ad accounts.</span>';
+      return;
+    }
+    // Pre-select either the previously saved selection (when editing) or all by default.
+    // Important: keep IDs that are saved but NOT visible under the new token
+    // (e.g. user rotated the token and the new one can't see some old accounts) —
+    // they stay in the persisted whitelist, hidden from the UI but preserved on Save.
+    const visibleIds = new Set(rows.map(r => r.account_id));
+    const savedList = (modalCtx.editing?.meta?.allowed_accounts) || rows.map(r => r.account_id);
+    const selected = new Set(savedList);
+    const hiddenSaved = [...selected].filter(id => !visibleIds.has(id));
+    const allCount = rows.length;
+    const selCount = () => rows.filter(r => selected.has(r.account_id)).length;
+    function repaint() {
+      const list = result.querySelector('.meta-acc-list');
+      if (!list) return;
+      list.querySelectorAll('input[type="checkbox"][data-acc]').forEach(cb => {
+        cb.checked = selected.has(cb.dataset.acc);
+      });
+      const cnt = result.querySelector('.meta-acc-count');
+      if (cnt) cnt.textContent = selCount() + ' of ' + allCount + ' selected';
+      const all = result.querySelector('input[data-allcheck]');
+      if (all) all.checked = selCount() === allCount && allCount > 0;
+      const hidEl = result.querySelector('.meta-acc-hidden');
+      if (hidEl) hidEl.textContent = hiddenSaved.length
+        ? '+ ' + hiddenSaved.length + ' previously saved ' + (hiddenSaved.length===1?'account is':'accounts are') + ' kept (not visible to this token)'
+        : '';
+    }
+    function row(r) {
+      const cur = r.currency || '';
+      const status = r.account_status === 1 ? '' : '<span style="color:#9CA3AF;font-size:11px;margin-left:6px;">(inactive)</span>';
+      return `<label style="display:flex;align-items:center;gap:10px;padding:6px 8px;border-radius:6px;cursor:pointer;" class="meta-acc-row">
+        <input type="checkbox" data-acc="${escape(r.account_id)}" style="margin:0;flex-shrink:0;">
+        <span style="flex:1;min-width:0;font-size:13px;color:#1A1A1A;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escape(r.name)}${status}</span>
+        <span style="font-size:11px;color:#9CA3AF;flex-shrink:0;">${escape(r.account_id)}${cur ? ' · ' + escape(cur) : ''}</span>
+      </label>`;
+    }
+    result.innerHTML = `
+      <div style="color:#0A6E2E;font-weight:600;margin-bottom:8px;">✓ Token valid — ${allCount} ad account${allCount===1?'':'s'} accessible.</div>
+      <div style="border:1px solid #E1E3E5;border-radius:8px;background:#FFFFFF;overflow:hidden;margin-top:6px;">
+        <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:#F7F7F7;border-bottom:1px solid #E1E3E5;">
+          <input type="search" placeholder="Filter accounts…" data-filter style="flex:1;min-width:0;height:28px;border:1px solid #DCDCDC;border-radius:6px;padding:0 8px;font-size:12px;font-family:inherit;outline:none;">
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#1A1A1A;cursor:pointer;white-space:nowrap;">
+            <input type="checkbox" data-allcheck style="margin:0;"> Select all
+          </label>
+        </div>
+        <div class="meta-acc-list" style="max-height:240px;overflow-y:auto;padding:6px;display:flex;flex-direction:column;gap:1px;">
+          ${rows.map(row).join('')}
+        </div>
+        <div style="padding:6px 10px;border-top:1px solid #E1E3E5;background:#F7F7F7;font-size:12px;color:#6D7175;">
+          <span class="meta-acc-count">0 of ${allCount} selected</span>
+          — only ticked accounts will appear in <strong>Ads Analysis</strong>.
+          <div class="meta-acc-hidden" style="font-size:11px;color:#0A6E2E;margin-top:3px;font-weight:600;"></div>
+        </div>
+      </div>`;
+    repaint();
+    // Wire events
+    result.querySelectorAll('input[data-acc]').forEach(cb => {
+      cb.addEventListener('change', () => {
+        if (cb.checked) selected.add(cb.dataset.acc); else selected.delete(cb.dataset.acc);
+        // expose via closure
+        modalCtx._allowedAccounts = [...selected];
+        repaint();
+      });
+    });
+    result.querySelector('input[data-allcheck]').addEventListener('change', e => {
+      // Toggle only the VISIBLE accounts — IDs saved under another token stay in `selected`.
+      if (e.target.checked) rows.forEach(r => selected.add(r.account_id));
+      else rows.forEach(r => selected.delete(r.account_id));
+      modalCtx._allowedAccounts = [...selected];
+      repaint();
+    });
+    result.querySelector('input[data-filter]').addEventListener('input', e => {
+      const q = e.target.value.trim().toLowerCase();
+      result.querySelectorAll('.meta-acc-row').forEach(lab => {
+        const cb = lab.querySelector('input[data-acc]');
+        const id = cb.dataset.acc;
+        const name = (lab.textContent || '').toLowerCase();
+        lab.style.display = (!q || name.includes(q) || id.includes(q)) ? 'flex' : 'none';
+      });
+    });
+    modalCtx._allowedAccounts = [...selected];
+  } catch (err) {
+    result.innerHTML = `<span style="color:#D72C0D;">${escape(err.message)}</span>`;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function saveConnector() {
+  const { section, editing, provider } = modalCtx;
+  const fields = PROVIDER_FIELDS[provider] || PROVIDER_FIELDS._default;
+  const obj = { type: section, provider, id: editing?.id };
+  // Preserve any existing meta from prior save (so unrelated keys survive).
+  const meta = (editing?.meta && typeof editing.meta === 'object') ? { ...editing.meta } : {};
+  for (const f of fields) {
+    if (f._custom) continue; // skip pseudo-fields like verify buttons
+    const v = $('f_' + f.key)?.value.trim() || '';
+    if (f.required && !v) { toast(f.label + ' is required', true); return; }
+    if (f.meta) meta[f.key] = v;
+    else obj[f.key] = v;
+  }
+  // Column mapping (shipping carriers + confirmation systems) — read every
+  // cmap_* field and persist as meta.column_map so the shipping parser /
+  // confirmation parser can use it.
+  if ((section === 'shipping' || section === 'confirmation') && document.getElementById('shippingMapperPanel')) {
+    const cmap = {};
+    (typeof ALL_MAPPING_KEYS !== 'undefined' ? ALL_MAPPING_KEYS
+      : ['product','status','delivered_values','returned_values','confirmed_values','canceled_values','city','date','cod','fees','employee']
+    ).forEach(k => {
+      const el = document.getElementById('cmap_' + k);
+      if (el && el.value && String(el.value).trim()) cmap[k] = String(el.value).trim();
+    });
+    if (Object.keys(cmap).length) meta.column_map = cmap;
+    // Persist the discovered column names so opening the modal again
+    // doesn't require re-uploading a sample. Headers only — never the
+    // row data — so meta JSON stays small. Capped at 200 to avoid runaway
+    // bloat on weird sheets.
+    if (Array.isArray(modalCtx._discoveredColumns) && modalCtx._discoveredColumns.length) {
+      meta.column_list = modalCtx._discoveredColumns.slice(0, 200);
+    }
+  }
+  if (Object.keys(meta).length) obj.meta = meta;
+  // AI providers don't expose a "name" field (one key per workspace), but the
+  // backend connectors row requires a name — synthesize a sensible default.
+  if (section === 'ai' && !obj.name) {
+    obj.name = provider === 'claude'     ? 'Claude (Anthropic)'
+            : provider === 'chatgpt'    ? 'ChatGPT (OpenAI)'
+            : provider === 'openrouter' ? 'OpenRouter (unified)'
+            : provider;
+  }
+  // Meta connector: persist the user-selected account whitelist (if Verify was used).
+  if (provider === 'meta') {
+    const allowed = modalCtx._allowedAccounts || (editing?.meta?.allowed_accounts) || null;
+    obj.meta = Object.assign({}, obj.meta || {}, { allowed_accounts: allowed && allowed.length ? allowed : null });
+  }
+  try {
+    $('modalSave').disabled = true;
+    await api('/connectors.php', {method: 'POST', body: JSON.stringify(obj)});
+    // For AI providers, also mirror the key to localStorage so the in-browser
+    // tools (Copywriting / Landing page / Headlines) can use it directly.
+    if (section === 'ai' && obj.token) {
+      try {
+        if (provider === 'claude')     localStorage.setItem('app.anthropicApiKey',  obj.token);
+        if (provider === 'chatgpt')    localStorage.setItem('app.openaiApiKey',     obj.token);
+        if (provider === 'openrouter') localStorage.setItem('app.openrouterApiKey', obj.token);
+      } catch (e) { /* ignore */ }
+    }
+    toast(editing ? 'Updated' : 'Added');
+    closeModal();
+    renderContent();
+  } catch (err) {
+    toast(err.message, true);
+  } finally {
+    $('modalSave').disabled = false;
+  }
+}
+
+// ── USERS ────────────────────────────────────────────────────────────
+async function renderUsers(c) {
+  c.innerHTML = `
+    <div class="settings-bread"><a href="/">Home</a> › Users</div>
+    <h1 class="settings-title">Users</h1>
+    <div class="settings-subtitle">Invite team members and assign permissions per store and ad account.</div>
+    <div class="panel">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+        <div>
+          <div class="panel-title">Team members</div>
+          <div class="panel-desc" style="margin-bottom:0;" id="userCountLine">Loading…</div>
+        </div>
+        <button class="btn btn-primary" id="addUserBtn">+ Invite user</button>
+      </div>
+      <div id="userList"><div class="loading-state">Loading…</div></div>
+    </div>
+  `;
+  $('addUserBtn').addEventListener('click', () => openUserModal());
+  try {
+    const data = await api('/users.php');
+    cache.users = data.rows;
+    renderUserList(data.rows);
+  } catch (err) {
+    $('userList').innerHTML = `<div class="info-banner error"><span class="ico">⚠</span><div>Failed to load: ${escape(err.message)}</div></div>`;
+    $('userCountLine').textContent = '';
+  }
+}
+
+function renderUserList(rows) {
+  $('userCountLine').textContent = `${rows.length} ${rows.length===1?'user':'users'}.`;
+  if (rows.length === 0) {
+    $('userList').innerHTML = `<div class="empty-state">No users yet. Click <strong>Invite user</strong> to add team members.</div>`;
+    return;
+  }
+  $('userList').innerHTML = `<div class="item-list">${rows.map(u => `
+    <div class="item-row">
+      <div class="item-ico" style="background:#7E36CC;color:#fff;">${escape((u.name||'?').slice(0,1).toUpperCase())}</div>
+      <div class="item-main">
+        <div class="item-title">${escape(u.name)}</div>
+        <div class="item-meta">${escape(u.email)} · ${(u.stores||[]).length} stores · ${(u.ad_accounts||[]).length} ad accounts</div>
+      </div>
+      <div class="item-actions">
+        <button class="btn" data-edit-u="${u.id}">Edit</button>
+        <button class="btn btn-danger" data-del-u="${u.id}">Remove</button>
+      </div>
+    </div>`).join('')}</div>`;
+  document.querySelectorAll('[data-del-u]').forEach(b => b.addEventListener('click', async () => {
+    if (!confirm('Remove this user?')) return;
+    try {
+      await api('/users.php?id=' + b.dataset.delU, {method: 'DELETE'});
+      toast('Removed');
+      renderContent();
+    } catch (err) { toast(err.message, true); }
+  }));
+  document.querySelectorAll('[data-edit-u]').forEach(b => b.addEventListener('click', () => {
+    const u = rows.find(r => String(r.id) === b.dataset.editU);
+    openUserModal(u);
+  }));
+}
+
+async function openUserModal(editing) {
+  modalCtx = { section: 'users', editing };
+  $('modalTitle').textContent = editing ? 'Edit user' : 'Invite user';
+  // load stores + ads + shipping connectors to show as permission checkboxes
+  let stores = cache.cms || [];
+  let ads = cache.ads || [];
+  let ship = cache.shipping || [];
+  if (!cache.cms)      try { stores = (await api('/connectors.php?type=cms')).rows;      cache.cms = stores; } catch {}
+  if (!cache.ads)      try { ads    = (await api('/connectors.php?type=ads')).rows;      cache.ads = ads;    } catch {}
+  if (!cache.shipping) try { ship   = (await api('/connectors.php?type=shipping')).rows; cache.shipping = ship; } catch {}
+
+  // Hard-coded list of in-app AI tool pages — admin grants access to specific tools.
+  const aiToolPages = [
+    { id: 'copywriting', name: 'Copywriting' },
+    { id: 'landing',     name: 'Landing page content' },
+    { id: 'headlines',   name: 'Headlines Generator' },
+  ];
+
+  // For each Meta ads connector, fetch the whitelisted ad accounts (with names)
+  // so we can show them individually instead of just the connector.
+  const adAccountChoices = []; // {key, label}
+  for (const conn of ads) {
+    if (conn.provider !== 'meta') {
+      adAccountChoices.push({ key: 'conn:' + conn.id, label: conn.name + ' (' + (providerName('ads', conn.provider) || conn.provider) + ')' });
+      continue;
+    }
+    try {
+      const data = await api('/meta.php?action=accounts&connector_id=' + conn.id);
+      const list = data.rows || [];
+      if (!list.length) {
+        adAccountChoices.push({ key: 'conn:' + conn.id, label: conn.name + ' — no whitelisted accounts' });
+      } else {
+        list.forEach(acc => {
+          adAccountChoices.push({ key: 'acc:' + acc.account_id, label: (acc.name || ('act_' + acc.account_id)) + ' — ' + conn.name });
+        });
+      }
+    } catch (err) {
+      adAccountChoices.push({ key: 'conn:' + conn.id, label: conn.name + ' (failed to load: ' + err.message + ')' });
+    }
+  }
+
+  const e = editing || {};
+  const isNew = !editing;
+  const savedAdKeys = new Set((e.ad_accounts || []).map(v => typeof v === 'string' ? v : 'conn:' + v));
+  const renderChip = (id, name, checked) =>
+    `<label class="provider-chip" style="flex-direction:row;padding:6px 12px;cursor:pointer;"><input type="checkbox" value="${escape(String(id))}" ${checked?'checked':''} style="margin-right:6px;">${escape(name)}</label>`;
+  $('modalBody').innerHTML = `
+    <div class="form-row" style="grid-template-columns:1fr;gap:6px;margin-bottom:14px;">
+      <label class="form-label">Name <span style="color:#D72C0D;">*</span></label>
+      <input class="form-input" id="u_name" placeholder="Full name" value="${escape(e.name||'')}">
+    </div>
+    <div class="form-row" style="grid-template-columns:1fr;gap:6px;margin-bottom:14px;">
+      <label class="form-label">Email <span style="color:#D72C0D;">*</span></label>
+      <input class="form-input" id="u_email" type="email" placeholder="email@example.com" value="${escape(e.email||'')}">
+    </div>
+    <div class="form-row" style="grid-template-columns:1fr;gap:6px;margin-bottom:14px;">
+      <label class="form-label">Password ${isNew?'<span style="color:#D72C0D;">*</span>':''}</label>
+      <input class="form-input" id="u_password" type="password" placeholder="${isNew?'At least 6 characters':'Leave blank to keep current password'}" autocomplete="new-password">
+      <div class="form-help">${isNew?'The user will sign in with this email and password.':'Only fill if you want to change the password.'}</div>
+    </div>
+    <div class="form-row" style="grid-template-columns:1fr;gap:6px;margin-bottom:14px;">
+      <label class="form-label">Allowed stores (CMS)</label>
+      <div id="u_stores" style="display:flex;flex-wrap:wrap;gap:6px;">
+        ${stores.length===0?'<div class="form-help">No CMS connected yet.</div>':stores.map(s=>renderChip(s.id,s.name,(e.stores||[]).includes(s.id))).join('')}
+      </div>
+    </div>
+    <div class="form-row" style="grid-template-columns:1fr;gap:6px;margin-bottom:14px;">
+      <label class="form-label">Allowed ad accounts</label>
+      <div id="u_ads" style="display:flex;flex-wrap:wrap;gap:6px;">
+        ${adAccountChoices.length===0?'<div class="form-help">No ad accounts connected yet.</div>':adAccountChoices.map(c=>renderChip(c.key,c.label,savedAdKeys.has(c.key))).join('')}
+      </div>
+    </div>
+    <div class="form-row" style="grid-template-columns:1fr;gap:6px;margin-bottom:14px;">
+      <label class="form-label">Allowed shipping companies</label>
+      <div id="u_shipping" style="display:flex;flex-wrap:wrap;gap:6px;">
+        ${ship.length===0?'<div class="form-help">No shipping companies connected yet.</div>':ship.map(s=>renderChip(s.id, s.name + ' ('+(providerName('shipping',s.provider))+')', (e.shipping_companies||[]).includes(s.id))).join('')}
+      </div>
+    </div>
+    <div class="form-row" style="grid-template-columns:1fr;gap:6px;">
+      <label class="form-label">Allowed AI Tools</label>
+      <div id="u_ai" style="display:flex;flex-wrap:wrap;gap:6px;">
+        ${aiToolPages.map(t=>renderChip(t.id, t.name, (e.ai_tools||[]).includes(t.id))).join('')}
+      </div>
+    </div>
+  `;
+  $('modalBackdrop').classList.add('open');
+}
+
+async function saveUser() {
+  const { editing } = modalCtx;
+  const password = $('u_password').value;
+  const obj = {
+    id: editing?.id,
+    name: $('u_name').value.trim(),
+    email: $('u_email').value.trim(),
+    stores: [...document.querySelectorAll('#u_stores input:checked')].map(i => +i.value),
+    ad_accounts: [...document.querySelectorAll('#u_ads input:checked')].map(i => i.value),
+    shipping_companies: [...document.querySelectorAll('#u_shipping input:checked')].map(i => +i.value),
+    ai_tools: [...document.querySelectorAll('#u_ai input:checked')].map(i => i.value),
+  };
+  if (password) obj.password = password;
+  if (!obj.name || !obj.email) { toast('Name and email required', true); return; }
+  if (!editing && !password) { toast('Password required for new users', true); return; }
+  if (password && password.length < 6) { toast('Password must be at least 6 characters', true); return; }
+  try {
+    $('modalSave').disabled = true;
+    await api('/users.php', {method: 'POST', body: JSON.stringify(obj)});
+    toast(editing ? 'Updated' : 'Invited');
+    closeModal();
+    renderContent();
+  } catch (err) {
+    toast(err.message, true);
+  } finally {
+    $('modalSave').disabled = false;
+  }
+}
+
+// ── CONNECTORS HUB ───────────────────────────────────────────────────
+// A single flat list of every provider (CMS, Shipping, Ads, Confirmation, AI)
+// with its current connection count + Configure / Connect button.
+// Mirrors the Claude "Connectors" UI pattern.
+async function renderConnectorsHub(c) {
+  // Only providers that don't have their own dedicated Categories page.
+  // CMS / Shipping / Confirmation live in the sidebar Categories already, so
+  // we don't duplicate them here — Connectors hub focuses on Ads + AI.
+  const HUB_PROVIDERS = [
+    { section: 'ads',          provider: 'meta',         name: 'Meta (Facebook & Instagram)', icon: 'logos/meta.svg' },
+    { section: 'ads',          provider: 'tiktok',       name: 'TikTok Ads',              icon: 'logos/tiktok.svg' },
+    { section: 'storage',      provider: 'google_drive', name: 'Google Drive',            icon: 'logos/google-drive.svg', oauth: API_BASE + '/google-oauth-start.php' },
+    { section: 'confirmation', provider: 'wesell',       name: 'Wesell',                  emoji: '✅' },
+    { section: 'confirmation', provider: 'zomeza',       name: 'Zomeza',                  emoji: '☑️' },
+    { section: 'ai',           provider: 'claude',       name: 'Claude (Anthropic)',      icon: 'logos/claude.svg' },
+    { section: 'ai',           provider: 'chatgpt',      name: 'ChatGPT (OpenAI)',        icon: 'logos/chatgpt.svg' },
+    { section: 'ai',           provider: 'openrouter',   name: 'OpenRouter',              icon: 'logos/openrouter.svg' },
+  ];
+
+  c.innerHTML = `
+    <div class="settings-bread"><a href="/">Home</a> › Connectors</div>
+    <h1 class="settings-title">Connectors</h1>
+    <div class="settings-subtitle">Allow the dashboard to reference other apps and services for more context.</div>
+    <div class="panel" style="padding:6px 0;">
+      <div id="hubList"><div class="loading-state" style="padding:30px;">Loading…</div></div>
+    </div>
+    <div style="margin-top:14px;">
+      <button class="btn" id="addCustomConnectorBtn" style="background:#1A1A1A;color:#fff;">+ Add custom connector</button>
+    </div>
+  `;
+  // Fetch all connectors in parallel and bucket by (type, provider)
+  const types = ['cms','shipping','ads','confirmation','ai','storage'];
+  const counts = {};
+  await Promise.all(types.map(async t => {
+    try {
+      const data = await api('/connectors.php?type=' + t);
+      (data.rows || []).forEach(r => {
+        const k = t + ':' + r.provider;
+        counts[k] = (counts[k] || 0) + 1;
+      });
+    } catch (e) { /* ignore — show 0 */ }
+  }));
+
+  // Bucket the actual connector rows by (type:provider) so we can list
+  // individual instances inside the dropdown menu.
+  const rowsByKey = {};
+  await Promise.all(types.map(async t => {
+    try {
+      const data = await api('/connectors.php?type=' + t);
+      (data.rows || []).forEach(r => {
+        const k = t + ':' + r.provider;
+        (rowsByKey[k] = rowsByKey[k] || []).push(r);
+      });
+    } catch (e) { /* ignore */ }
+  }));
+
+  // Connected first, not-connected after — keep original order within each group
+  const sortedProviders = HUB_PROVIDERS
+    .map((p, i) => ({ p, i, n: counts[p.section + ':' + p.provider] || 0 }))
+    .sort((a, b) => (b.n > 0) - (a.n > 0))
+    .map(x => x.p);
+  $('hubList').innerHTML = sortedProviders.map((p, i) => {
+    const k = p.section + ':' + p.provider;
+    const n = counts[k] || 0;
+    const status = n > 0
+      ? `<span style="color:#0E8345;font-size:12px;font-weight:600;">Connected${n>1?' ('+n+')':''}</span>`
+      : `<span style="color:#6D7175;font-size:12px;">Not connected</span>`;
+    const iconHtml = p.icon
+      ? `<img src="${p.icon}" alt="" style="width:24px;height:24px;border-radius:6px;background:#fff;object-fit:contain;padding:2px;border:1px solid #E1E3E5;">`
+      : `<div style="width:24px;height:24px;border-radius:6px;background:#F1F1F1;display:flex;align-items:center;justify-content:center;font-size:14px;">${p.emoji||'🔌'}</div>`;
+    const btnLabel = n > 0 ? 'Configure' : 'Connect';
+    const chevron = n > 0
+      ? `<button class="btn" data-hub-menu="${i}" title="More" style="padding:0 8px;height:32px;border-left:1px solid #E1E3E5;border-radius:0 6px 6px 0;margin-left:-1px;">▾</button>`
+      : '';
+    const groupBtn = n > 0
+      ? `<div style="display:flex;align-items:center;position:relative;">
+          <button class="btn" data-hub-section="${p.section}" data-hub-provider="${p.provider}" style="border-radius:6px 0 0 6px;">${btnLabel}</button>
+          ${chevron}
+          <div id="hubMenu_${i}" style="display:none;position:absolute;top:36px;right:0;background:#fff;border:1px solid #DCDCDC;border-radius:8px;box-shadow:0 4px 14px rgba(0,0,0,0.08);min-width:180px;z-index:50;overflow:hidden;font-size:12.5px;">
+            <button data-hub-action="view"     data-hub-idx="${i}" style="display:block;width:100%;text-align:left;padding:9px 14px;background:#fff;border:none;cursor:pointer;color:#1A1A1A;">View instances</button>
+            <button data-hub-action="refresh"  data-hub-idx="${i}" style="display:block;width:100%;text-align:left;padding:9px 14px;background:#fff;border:none;cursor:pointer;color:#1A1A1A;border-top:1px solid #F1F1F1;">Refresh list</button>
+            <button data-hub-action="disconnect" data-hub-idx="${i}" style="display:block;width:100%;text-align:left;padding:9px 14px;background:#fff;border:none;cursor:pointer;color:#D72C0D;border-top:1px solid #F1F1F1;">Disconnect all</button>
+          </div>
+        </div>`
+      : `<button class="btn" data-hub-section="${p.section}" data-hub-provider="${p.provider}">${btnLabel}</button>`;
+    return `<div class="hub-row" style="display:flex;align-items:center;gap:12px;padding:12px 18px;border-bottom:1px solid #F1F1F1;">
+      ${iconHtml}
+      <div style="flex:1;min-width:0;">
+        <div style="font-weight:600;font-size:13px;color:#1A1A1A;">${escape(p.name)}</div>
+        <div style="margin-top:2px;">${status}</div>
+      </div>
+      ${groupBtn}
+    </div>`;
+  }).join('');
+
+  // Wire main Connect/Configure button → opens add/edit modal directly
+  // (or kicks off OAuth for providers that use it)
+  document.querySelectorAll('[data-hub-section]').forEach(b => {
+    b.addEventListener('click', () => {
+      const section  = b.dataset.hubSection;
+      const provider = b.dataset.hubProvider;
+      const meta     = HUB_PROVIDERS.find(p => p.section === section && p.provider === provider);
+      const list     = rowsByKey[section + ':' + provider] || [];
+      // OAuth providers (Google Drive, future Facebook flow): pop a window
+      // to start the consent flow. The callback page closes itself + posts
+      // a message back so we refresh this list.
+      if (meta && meta.oauth && list.length === 0) {
+        const w = window.open(meta.oauth, 'oauth_popup', 'width=520,height=620');
+        const onMsg = (e) => {
+          if (typeof e.data === 'string' && e.data.startsWith('google-connected')) {
+            window.removeEventListener('message', onMsg);
+            renderConnectorsHub(c);
+          }
+        };
+        window.addEventListener('message', onMsg);
+        return;
+      }
+      activeSection = section;
+      // Single instance → edit it directly. Multiple → open Add modal.
+      if (list.length === 1) openConnectorModal(section, list[0], provider);
+      else openConnectorModal(section, null, provider);
+    });
+  });
+
+  // Toggle dropdown menu open/close (only one open at a time)
+  document.querySelectorAll('[data-hub-menu]').forEach(b => {
+    b.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const i = b.dataset.hubMenu;
+      document.querySelectorAll('[id^="hubMenu_"]').forEach(m => {
+        if (m.id !== 'hubMenu_' + i) m.style.display = 'none';
+      });
+      const menu = document.getElementById('hubMenu_' + i);
+      menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+    });
+  });
+  // Click anywhere else closes any open menu
+  document.addEventListener('click', () => {
+    document.querySelectorAll('[id^="hubMenu_"]').forEach(m => m.style.display = 'none');
+  });
+
+  // Wire dropdown actions
+  document.querySelectorAll('[data-hub-action]').forEach(b => {
+    b.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const action = b.dataset.hubAction;
+      const idx    = parseInt(b.dataset.hubIdx, 10);
+      const p      = sortedProviders[idx];
+      const k      = p.section + ':' + p.provider;
+      const list   = rowsByKey[k] || [];
+      document.querySelectorAll('[id^="hubMenu_"]').forEach(m => m.style.display = 'none');
+      if (action === 'view') {
+        // Jump to the per-type page so the user sees all instances
+        switchSection(p.section);
+      } else if (action === 'refresh') {
+        renderConnectorsHub(c);
+      } else if (action === 'disconnect') {
+        if (!confirm('Disconnect ' + list.length + ' ' + p.name + ' connection(s)?')) return;
+        for (const r of list) {
+          try { await api('/connectors.php?id=' + r.id, { method: 'DELETE' }); } catch (e) {}
+        }
+        toast('Disconnected');
+        renderConnectorsHub(c);
+      }
+    });
+  });
+
+  $('addCustomConnectorBtn').addEventListener('click', () => openCustomConnectorChooser());
+
+  // Append any custom MCP connectors saved in the backend to the hub list
+  try {
+    const mcp = await api('/connectors.php?type=mcp');
+    const rows = (mcp.rows || []);
+    if (rows.length) {
+      const mcpHtml = rows.map((r, i) => `
+        <div class="hub-row" style="display:flex;align-items:center;gap:12px;padding:12px 18px;border-bottom:1px solid #F1F1F1;">
+          <div style="width:24px;height:24px;border-radius:6px;background:#F1F1F1;display:flex;align-items:center;justify-content:center;font-size:14px;">🧩</div>
+          <div style="flex:1;min-width:0;">
+            <div style="font-weight:600;font-size:13px;color:#1A1A1A;display:flex;align-items:center;gap:8px;">
+              ${escape(r.name)}
+              <span style="font-size:10px;font-weight:700;background:#F1F1F1;color:#6D7175;padding:2px 6px;border-radius:4px;letter-spacing:0.4px;">CUSTOM</span>
+            </div>
+            <div style="margin-top:2px;font-size:12px;color:#6D7175;">${escape(r.url || '')}</div>
+          </div>
+          <button class="btn" data-mcp-edit="${r.id}">Configure</button>
+          <button class="btn btn-danger" data-mcp-del="${r.id}">Remove</button>
+        </div>
+      `).join('');
+      $('hubList').insertAdjacentHTML('beforeend', '<div style="padding:14px 18px 6px;font-size:11px;font-weight:600;color:#6D7175;text-transform:uppercase;letter-spacing:0.4px;border-top:1px solid #F1F1F1;">Custom MCP connectors</div>' + mcpHtml);
+
+      document.querySelectorAll('[data-mcp-edit]').forEach(b => b.addEventListener('click', () => {
+        const row = rows.find(x => String(x.id) === b.dataset.mcpEdit);
+        if (row) openMcpModal(row);
+      }));
+      document.querySelectorAll('[data-mcp-del]').forEach(b => b.addEventListener('click', async () => {
+        if (!confirm('Remove this custom connector?')) return;
+        try { await api('/connectors.php?id=' + b.dataset.mcpDel, { method: 'DELETE' }); toast('Removed'); renderConnectorsHub(c); }
+        catch (e) { toast(e.message, true); }
+      }));
+    }
+  } catch (e) { /* hub still works without MCP rows */ }
+}
+
+// ── ADD CUSTOM CONNECTOR (MCP) MODAL ─────────────────────────────────
+// Two-option chooser shown when the user clicks "+ Add custom connector".
+// Lets them pick between a Custom MCP server (existing flow) or a Custom
+// Confirmation system (Zomeza/Wesell-style sheet upload + column mapping).
+function openCustomConnectorChooser() {
+  modalCtx = { section: 'chooser', editing: null };
+  $('modalTitle').textContent = 'Add custom connector';
+  $('modalBody').innerHTML = `
+    <div style="font-size:13px;color:#6D7175;line-height:1.6;margin-bottom:16px;">
+      Pick what you want to connect. Custom MCP servers expose external tools to the AI; Confirmation systems plug a new order-confirmation source (sheet or API) into Shipping Analytics → Confirmation.
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+      <button type="button" id="chooseMcp" style="background:#FFFFFF;border:1px solid #DCDCDC;border-radius:12px;padding:18px;text-align:left;cursor:pointer;font-family:inherit;transition:border-color .15s,background .15s;">
+        <div style="font-size:24px;margin-bottom:6px;">🔌</div>
+        <div style="font-size:14px;font-weight:700;margin-bottom:4px;color:#1A1A1A;">Custom MCP server</div>
+        <div style="font-size:12px;color:#6D7175;line-height:1.5;">Remote MCP endpoint that exposes tools / data to the AI tools.</div>
+      </button>
+      <button type="button" id="chooseConf" style="background:#FFFFFF;border:1px solid #DCDCDC;border-radius:12px;padding:18px;text-align:left;cursor:pointer;font-family:inherit;transition:border-color .15s,background .15s;">
+        <div style="font-size:24px;margin-bottom:6px;">📋</div>
+        <div style="font-size:14px;font-weight:700;margin-bottom:4px;color:#1A1A1A;">Confirmation system</div>
+        <div style="font-size:12px;color:#6D7175;line-height:1.5;">Upload a sample sheet, map columns once. Same flow as Zomeza / Wesell — works for any custom OMS.</div>
+      </button>
+    </div>
+    <div style="font-size:11px;color:#9CA3AF;margin-top:14px;line-height:1.5;">Tip: built-in carriers (J&T, Bosta, QP…) and built-in confirmation systems (Zomeza, Wesell) live under their own sections — use those if your provider is listed there.</div>
+  `;
+  // Hide Save — choice buttons handle the next step
+  $('modalSave').style.display = 'none';
+  $('modalBackdrop').classList.add('open');
+  ['chooseMcp','chooseConf'].forEach(id => {
+    const el = $(id);
+    el.addEventListener('mouseenter', () => el.style.borderColor = '#1A1A1A');
+    el.addEventListener('mouseleave', () => el.style.borderColor = '#DCDCDC');
+  });
+  $('chooseMcp').addEventListener('click', () => { $('modalSave').style.display = ''; openMcpModal(); });
+  $('chooseConf').addEventListener('click', () => {
+    $('modalSave').style.display = '';
+    // Open the standard Connector modal in 'confirmation' section, default
+    // to 'custom' provider. The standard renderShippingMapper appends the
+    // upload + mapping UI under the regular fields.
+    openConnectorModal('confirmation', null, 'custom');
+  });
+}
+
+// Mirrors the Claude "Add custom connector BETA" UX: name + remote MCP URL
+// + advanced settings collapsible + trust warning. Saves as a connector
+// row of type=mcp, provider=custom, with the URL stored in `url`.
+function openMcpModal(editing) {
+  modalCtx = { section: 'mcp', editing: editing || null };
+  $('modalTitle').textContent = editing ? 'Edit custom connector' : 'Add custom connector';
+  const e = editing || {};
+  $('modalBody').innerHTML = `
+    <div style="font-size:13px;color:#6D7175;line-height:1.6;margin-bottom:14px;">
+      Connect the dashboard to external data and tools via the Model Context Protocol.
+    </div>
+    <div class="form-row" style="grid-template-columns:1fr;gap:6px;margin-bottom:12px;">
+      <input class="form-input" id="mcp_name" placeholder="Name" value="${escape(e.name || '')}">
+    </div>
+    <div class="form-row" style="grid-template-columns:1fr;gap:6px;margin-bottom:14px;">
+      <input class="form-input" id="mcp_url" placeholder="Remote MCP server URL (https://…)" value="${escape(e.url || '')}">
+    </div>
+    <div style="font-size:12px;color:#6D7175;line-height:1.6;padding:10px 12px;background:#FFF8E1;border:1px solid #FFE9A8;border-radius:8px;">
+      ⚠ Only use connectors from developers you trust. We do not control which tools the developer makes available and cannot verify that they will work as intended or that they will not change.
+    </div>
+  `;
+  $('modalSave').textContent = editing ? 'Save' : 'Add';
+  $('modalBackdrop').classList.add('open');
+}
+
+async function saveMcpConnector() {
+  const editing = modalCtx.editing;
+  const name = $('mcp_name').value.trim();
+  const url  = $('mcp_url').value.trim();
+  if (!name) { toast('Name is required',  true); return; }
+  if (!url || !/^https?:\/\//i.test(url)) { toast('Valid Remote MCP server URL is required (https://…)', true); return; }
+  try {
+    $('modalSave').disabled = true;
+    const body = { type: 'mcp', provider: 'custom', name, url };
+    if (editing && editing.id) body.id = editing.id;
+    await api('/connectors.php', { method: 'POST', body: JSON.stringify(body) });
+    toast(editing ? 'Updated' : 'Added');
+    closeModal();
+    renderConnectorsHub($('content'));
+  } catch (err) { toast(err.message, true); }
+  finally       { $('modalSave').disabled = false; }
+}
+
+// ── AUTO LAND PLUGIN DOWNLOAD ────────────────────────────────────────
+// Pulls the live plugin version from /wp-plugin/auto-land/readme.txt and
+// names the saved file accordingly (e.g. "Auto Land Wp Funnels v1.0.6.zip"),
+// + cache-busts the URL so each click serves the latest deploy.
+async function wireAutoLandDownload() {
+  const link = document.getElementById('dlAutoLandZip');
+  if (!link) return;
+  // Always use a RELATIVE href so the link resolves against whatever origin
+  // the Settings page is served from (Hostinger production OR localhost dev).
+  // Some preview environments block cross-origin links to hostingersite.com.
+  let version = '', tag = String(Date.now());
+  try {
+    const r = await fetch(API_BASE + '/plugin-version.php', { cache: 'no-store' });
+    if (r.ok) {
+      const j = await r.json();
+      if (j.version)       version = j.version;
+      if (j.last_modified) tag = encodeURIComponent(j.last_modified).replace(/[^A-Za-z0-9]/g, '').slice(0, 16);
+    }
+  } catch (e) { /* keep defaults */ }
+  link.href = 'wp-plugin/auto-land.zip?v=' + tag;
+  link.setAttribute('download', 'Auto Land Wp Funnels' + (version ? ' v' + version : '') + '.zip');
+}
+
+// ── SKILLS ───────────────────────────────────────────────────────────
+// AI "Skills" are reusable system-prompt blocks (style/voice/instructions)
+// that the AI tools (Copywriting / Landing / Headlines / Auto Land) load and
+// prepend to their system prompt before generating. So one place to edit
+// "how the AI talks like me" instead of touching every tool.
+async function renderSkills(c) {
+  c.innerHTML = `
+    <div class="settings-bread"><a href="/">Home</a> › Brain › Skills</div>
+    <h1 class="settings-title">Skills</h1>
+    <div class="settings-subtitle">Reusable instructions the AI loads before every task — your voice, your formatting, your rules.</div>
+    <div class="info-banner">
+      <span class="ico">🧠</span>
+      <div>Each skill is a slug (e.g. <code>egyptian-copywriter</code>). Tools pick the matching skill by slug — Copywriting reads <code>egyptian-copywriter</code>, Landing Page Auto reads <code>egyptian-landing-page</code>, Headlines reads <code>generate-headlines</code>. Update the instructions here once, every tool benefits.</div>
+    </div>
+    <div class="panel">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+        <div>
+          <div class="panel-title">Saved skills</div>
+          <div class="panel-desc" style="margin-bottom:0;" id="skillCount">Loading…</div>
+        </div>
+        <button class="btn btn-primary" id="addSkillBtn">+ Add skill</button>
+      </div>
+      <div id="skillList"><div class="loading-state">Loading…</div></div>
+    </div>
+  `;
+  $('addSkillBtn').addEventListener('click', () => openSkillModal());
+  try {
+    const data = await api('/skills.php');
+    cache.skills = data.rows;
+    renderSkillList(data.rows);
+  } catch (err) {
+    $('skillList').innerHTML = `<div class="info-banner error"><span class="ico">⚠</span><div>Failed to load: ${escape(err.message)}</div></div>`;
+    $('skillCount').textContent = '';
+  }
+}
+
+function renderSkillList(rows) {
+  $('skillCount').textContent = `${rows.length} ${rows.length===1?'skill':'skills'} saved.`;
+  if (rows.length === 0) {
+    $('skillList').innerHTML = `<div class="empty-state">No skills yet. Click <strong>Add skill</strong> to write your first one.</div>`;
+    return;
+  }
+  $('skillList').innerHTML = `<div class="item-list">${rows.map(it => `
+    <div class="item-row">
+      <div class="item-ico" style="background:#F1F1F1;color:#1A1A1A;font-weight:700;font-size:13px;">/</div>
+      <div class="item-main">
+        <div class="item-title">${escape(it.name)} <code style="font-size:11px;color:#6D7175;font-weight:400;margin-left:6px;">${escape(it.slug)}</code></div>
+        <div class="item-meta">${escape((it.description || '').slice(0, 140))}${(it.description||'').length > 140 ? '…' : ''}</div>
+      </div>
+      <div class="item-actions">
+        <button class="btn" data-edit-skill="${it.id}">Edit</button>
+        <button class="btn btn-danger" data-del-skill="${it.id}">Delete</button>
+      </div>
+    </div>`).join('')}</div>`;
+  document.querySelectorAll('[data-del-skill]').forEach(b => b.addEventListener('click', async () => {
+    if (!confirm('Delete this skill?')) return;
+    try {
+      await api('/skills.php?id=' + b.dataset.delSkill, {method: 'DELETE'});
+      toast('Deleted');
+      renderSkills($('content'));
+    } catch (err) { toast(err.message, true); }
+  }));
+  document.querySelectorAll('[data-edit-skill]').forEach(b => b.addEventListener('click', () => {
+    const it = (cache.skills || []).find(r => String(r.id) === b.dataset.editSkill);
+    if (it) openSkillModal(it);
+  }));
+}
+
+function openSkillModal(editing) {
+  modalCtx = { section: 'skills', editing: editing || null };
+  $('modalTitle').textContent = editing ? 'Edit skill' : 'Write skill instructions';
+  const e = editing || {};
+  $('modalBody').innerHTML = `
+    <div class="form-row" style="grid-template-columns:1fr;gap:6px;margin-bottom:14px;">
+      <label class="form-label">Skill name</label>
+      <input class="form-input" id="sk_name" placeholder="Egyptian Copywriter" value="${escape(e.name || '')}">
+    </div>
+    <div class="form-row" style="grid-template-columns:1fr;gap:6px;margin-bottom:14px;">
+      <label class="form-label">Slug <span style="color:#6D7175;font-weight:400;">(used by tools, lowercase + hyphens)</span></label>
+      <input class="form-input" id="sk_slug" placeholder="egyptian-copywriter" value="${escape(e.slug || '')}" ${editing ? '' : ''}>
+    </div>
+    <div class="form-row" style="grid-template-columns:1fr;gap:6px;margin-bottom:14px;">
+      <label class="form-label">Description</label>
+      <textarea class="form-textarea" id="sk_desc" placeholder="Generate Egyptian-Arabic ad copies. Use when asked for product copy or hook variations." style="min-height:90px;">${escape(e.description || '')}</textarea>
+    </div>
+    <div class="form-row" style="grid-template-columns:1fr;gap:6px;margin-bottom:14px;">
+      <label class="form-label">Instructions</label>
+      <textarea class="form-textarea" id="sk_instr" placeholder="Write copies in Egyptian Arabic dialect, focus on emotional hooks…" style="min-height:240px;font-family:'Consolas','Monaco',monospace;font-size:12.5px;line-height:1.5;">${escape(e.instructions || '')}</textarea>
+    </div>
+  `;
+  // Auto-slug from name on creation only
+  if (!editing) {
+    $('sk_name').addEventListener('input', () => {
+      $('sk_slug').value = $('sk_name').value.trim().toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
+    });
+  }
+  // Modal save button label
+  $('modalSave').textContent = editing ? 'Save' : 'Create';
+  $('modalBackdrop').classList.add('open');
+}
+
+async function saveSkill() {
+  const editing = modalCtx.editing;
+  const name         = $('sk_name').value.trim();
+  const slug         = $('sk_slug').value.trim().toLowerCase().replace(/[^a-z0-9-]+/g,'-').replace(/^-+|-+$/g,'');
+  const description  = $('sk_desc').value.trim();
+  const instructions = $('sk_instr').value;
+  if (!name)  { toast('Name is required',  true); return; }
+  if (!slug)  { toast('Slug is required',  true); return; }
+  try {
+    $('modalSave').disabled = true;
+    const body = { name, slug, description, instructions };
+    if (editing && editing.id) body.id = editing.id;
+    await api('/skills.php', { method: 'POST', body: JSON.stringify(body) });
+    toast(editing ? 'Updated' : 'Created');
+    closeModal();
+    renderSkills($('content'));
+  } catch (err) {
+    toast(err.message, true);
+  } finally {
+    $('modalSave').disabled = false;
+  }
+}
+
+// ── MODAL CONTROLS ───────────────────────────────────────────────────
+function closeModal() {
+  $('modalBackdrop').classList.remove('open');
+  modalCtx = null;
+  // Reset save button label (skill modal renames it to "Create")
+  const ms = $('modalSave'); if (ms) ms.textContent = 'Save';
+}
+$('modalSave').addEventListener('click', () => {
+  if (!modalCtx) return;
+  if (modalCtx.section === 'users')  return saveUser();
+  if (modalCtx.section === 'skills') return saveSkill();
+  if (modalCtx.section === 'mcp')    return saveMcpConnector();
+  saveConnector();
+});
+$('modalCancel').addEventListener('click', closeModal);
+$('modalClose').addEventListener('click', closeModal);
+$('modalBackdrop').addEventListener('click', e => { if (e.target.id === 'modalBackdrop') closeModal(); });
+
+// ── TOAST ────────────────────────────────────────────────────────────
+function toast(msg, isError = false) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (isError ? ' error' : '');
+  setTimeout(() => t.className = 'toast' + (isError ? ' error' : ''), 2400);
+}
+
+// ── INIT ─────────────────────────────────────────────────────────────
+// (activeSection was already resolved from hash > localStorage > default at top)
+renderStoreHeader();
+renderUserBox();
+const userBoxEl = $('userBox');
+if (userBoxEl) userBoxEl.addEventListener('click', () => switchSection('__account'));
+// React to back/forward navigation between sections
+window.addEventListener('hashchange', () => {
+  const h = (location.hash || '').replace(/^#/, '');
+  const next = h === 'account' ? '__account' : (h || 'general');
+  if (next !== activeSection) switchSection(next);
+});
+renderNav();
+renderContent();
+if (activeSection === '__account') {
+  const ub = $('userBox'); if (ub) ub.classList.add('active');
+}
+</script>
+
+</body>
+</html>

@@ -1,0 +1,1621 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Landing Page Auto</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Almarai:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html,body{min-height:100vh;background:#F1F1F1;font-family:'Inter','Almarai',system-ui,sans-serif;color:#1A1A1A;font-size:14px;}
+  .app-shell{display:flex;min-height:100vh;}
+  .app-sidebar{width:240px;min-width:240px;background:#EBEBEB;border-right:1px solid #DCDCDC;display:flex;flex-direction:column;height:calc(100vh - 48px);position:sticky;top:48px;font-family:'Inter',system-ui,sans-serif;}
+  .app-sidebar-items{padding:10px 8px;flex:1;display:flex;flex-direction:column;gap:2px;overflow-y:auto;}
+  .app-sidebar-item{padding:7px 12px;border-radius:8px;font-size:13px;color:#303030;display:flex;align-items:center;gap:10px;cursor:pointer;text-decoration:none;font-weight:800;background:transparent;}
+  .app-sidebar-item:hover{background:#E2E2E2;}
+  .app-sidebar-item.active{background:#FFFFFF;font-weight:600;box-shadow:0 0 0 0.5px rgba(0,0,0,0.1),0 1px 1px rgba(0,0,0,0.05);}
+  .app-sidebar-footer{padding:10px 8px;border-top:1px solid #DCDCDC;}
+  .app-sidebar-divider{height:1px;background:#DCDCDC;margin:8px 4px;}
+  .app-sidebar-group-header{padding:7px 12px;border-radius:8px;font-size:12px;color:#6D7175;font-weight:800;display:flex;align-items:center;gap:10px;user-select:none;background:transparent;text-transform:uppercase;letter-spacing:0.4px;}
+  .app-sidebar-group-items{display:flex;flex-direction:column;gap:2px;padding:2px 0;}
+  .app-main{flex:1;min-width:0;display:flex;flex-direction:column;}
+  .page{padding:24px 32px;max-width:none;width:100%;}
+  .page-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;gap:12px;flex-wrap:wrap;}
+  .page h1{font-size:22px;font-weight:700;letter-spacing:-0.3px;}
+  .btn{display:inline-flex;align-items:center;gap:8px;padding:0 16px;height:36px;border-radius:8px;border:1px solid #1A1A1A;background:#1A1A1A;color:#FFFFFF;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;text-decoration:none;}
+  .btn:hover:not(:disabled){background:#303030;}
+  .btn:disabled{opacity:0.55;cursor:not-allowed;}
+  .btn-ghost{background:#FFFFFF;color:#1A1A1A;border-color:#DCDCDC;}
+  .btn-ghost:hover:not(:disabled){background:#F5F5F5;}
+  .btn-danger{background:#FFFFFF;color:#D72C0D;border-color:#FFA396;}
+  .btn-danger:hover{background:#FFF1ED;}
+  .btn-sm{height:30px;padding:0 12px;font-size:12px;}
+  .panel{background:#FFFFFF;border:1px solid #E1E3E5;border-radius:12px;box-shadow:0 1px 0 rgba(0,0,0,0.05);overflow:hidden;}
+  table{width:100%;border-collapse:collapse;}
+  thead th{background:#F5F5F5;text-align:left;padding:12px 16px;font-size:12px;font-weight:600;color:#6D7175;border-bottom:1px solid #E1E3E5;text-transform:uppercase;letter-spacing:0.3px;}
+  tbody td{padding:14px 16px;border-bottom:1px solid #F1F1F1;font-size:13px;color:#1A1A1A;vertical-align:middle;}
+  tbody tr:last-child td{border-bottom:none;}
+  tbody tr:hover{background:#FAFAFA;}
+  .pname{font-weight:700;display:block;}
+  .pmeta{font-size:11px;color:#6D7175;margin-top:2px;}
+  .badge{display:inline-flex;align-items:center;padding:2px 9px;border-radius:10px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.3px;}
+  .badge.draft{background:#FFF8E1;color:#7A5500;}
+  .badge.sent{background:#E7F0FD;color:#0A4275;}
+  .badge.failed{background:#FEF2F2;color:#991B1B;}
+  .empty-row{text-align:center;padding:60px 20px;color:#6D7175;font-size:13px;}
+  .empty-row .ic{width:56px;height:56px;border-radius:14px;background:#F1F1F1;display:inline-flex;align-items:center;justify-content:center;margin-bottom:14px;color:#6D7175;}
+  .row-actions{display:flex;gap:6px;justify-content:flex-end;}
+
+  .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,0.45);display:none;align-items:flex-start;justify-content:center;z-index:200;padding:30px 20px;overflow-y:auto;}
+  .modal-backdrop.open{display:flex;}
+  .modal{background:#FFFFFF;border-radius:14px;width:100%;max-width:880px;}
+  .modal-head{display:flex;align-items:center;justify-content:space-between;padding:16px 22px;border-bottom:1px solid #F1F1F1;}
+  .modal-title{font-size:16px;font-weight:700;}
+  .modal-close{background:none;border:none;cursor:pointer;font-size:20px;color:#6D7175;padding:4px 8px;border-radius:6px;}
+  .modal-close:hover{background:#F1F1F1;}
+  .modal-body{padding:20px 22px;}
+  .modal-foot{display:flex;justify-content:flex-end;gap:8px;padding:14px 22px;border-top:1px solid #F1F1F1;background:#FAFAFA;}
+  .field{margin-bottom:14px;}
+  .field-label{display:block;font-size:13px;color:#1A1A1A;font-weight:600;margin-bottom:6px;}
+  .field-input,.field-textarea{width:100%;padding:9px 12px;border:1px solid #DCDCDC;border-radius:8px;font-size:13px;font-family:inherit;color:#1A1A1A;background:#F1F1F1;line-height:1.55;}
+  .field-textarea{min-height:80px;resize:vertical;direction:rtl;text-align:right;font-family:'Almarai',Inter,sans-serif;}
+  .field-input:focus,.field-textarea:focus{outline:none;border-color:#1A1A1A;background:#FFFFFF;box-shadow:0 0 0 1px #1A1A1A;}
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .img-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;}
+  .img-cell{position:relative;border:2px solid #DCDCDC;border-radius:8px;overflow:hidden;cursor:pointer;background:#F1F1F1;aspect-ratio:1;}
+  .img-cell.selected{border-color:#1A1A1A;box-shadow:0 0 0 2px rgba(26,26,26,0.12);}
+  .img-cell img{width:100%;height:100%;object-fit:cover;display:block;}
+  .img-cell .check{position:absolute;top:6px;right:6px;width:18px;height:18px;border-radius:50%;background:#FFFFFF;border:1.5px solid #DCDCDC;display:flex;align-items:center;justify-content:center;font-size:10px;}
+  .img-cell.selected .check{background:#1A1A1A;color:#FFFFFF;border-color:#1A1A1A;}
+  .img-cell .order{position:absolute;top:6px;left:6px;background:#1A1A1A;color:#FFFFFF;width:20px;height:20px;border-radius:50%;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;font-variant-numeric:tabular-nums;}
+  .img-cell.primary{border-color:#0E8345;}
+  .img-cell.primary .primary-tag{position:absolute;bottom:0;left:0;right:0;background:#0E8345;color:#FFFFFF;font-size:10px;font-weight:600;text-align:center;padding:2px 0;letter-spacing:0.3px;}
+  .img-cell.dragging{opacity:0.45;}
+  .img-cell.drop-target{outline:2px dashed #1A1A1A;outline-offset:2px;}
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1A1A1A;color:#FFFFFF;padding:10px 18px;border-radius:8px;font-size:13px;z-index:300;opacity:0;transition:opacity .2s;pointer-events:none;}
+  .toast.show{opacity:1;}
+  .toast.error{background:#D72C0D;}
+  .err{background:#FEF2F2;border:1px solid #FECACA;color:#991B1B;border-radius:8px;padding:10px 12px;font-size:13px;margin-bottom:12px;}
+  .spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+
+  /* Persistent progress panel — sits at the bottom-right while a flow runs */
+  .progress-panel{position:fixed;bottom:24px;right:24px;background:#FFFFFF;border:1px solid #E1E3E5;border-radius:12px;box-shadow:0 8px 28px rgba(0,0,0,0.12);width:340px;z-index:400;font-family:'Inter','Almarai',system-ui,sans-serif;display:none;overflow:hidden;}
+  .progress-panel.open{display:block;}
+  .progress-head{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid #F1F1F1;background:#FAFAFA;}
+  .progress-title{font-weight:700;font-size:13px;flex:1;}
+  .progress-close{background:none;border:none;cursor:pointer;font-size:16px;color:#6D7175;padding:4px 8px;border-radius:6px;}
+  .progress-close:hover{background:#F1F1F1;}
+  .progress-body{padding:6px 0;max-height:340px;overflow-y:auto;}
+  .progress-step{display:flex;align-items:flex-start;gap:10px;padding:9px 14px;font-size:12.5px;color:#6D7175;}
+  .progress-step.done{color:#1A1A1A;}
+  .progress-step.run{color:#1A1A1A;}
+  .progress-step.fail{color:#D72C0D;}
+  .progress-step .ico{width:18px;height:18px;flex-shrink:0;display:flex;align-items:center;justify-content:center;border-radius:50%;font-size:11px;}
+  .progress-step.pending .ico{border:1.5px solid #DCDCDC;color:#DCDCDC;}
+  .progress-step.run     .ico{border:none;color:#1A1A1A;}
+  .progress-step.run     .ico .spin2{display:inline-block;width:14px;height:14px;border:2px solid rgba(0,0,0,0.18);border-top-color:#1A1A1A;border-radius:50%;animation:spin .7s linear infinite;}
+  .progress-step.done    .ico{background:#0E8345;color:#fff;}
+  .progress-step.fail    .ico{background:#D72C0D;color:#fff;}
+  .progress-step .label{flex:1;line-height:1.4;}
+  .progress-step .detail{font-size:11px;color:#6D7175;margin-top:2px;}
+  .progress-foot{padding:10px 14px;border-top:1px solid #F1F1F1;display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:700;background:#FAFAFA;}
+  .progress-foot.finish{background:#E7F6EE;color:#0E8345;}
+  .progress-foot.error {background:#FEF2F2;color:#991B1B;}
+</style>
+<script src="topbar.js?v=1777784143"></script>
+<script src="sidebar-tools.js?v=1777784143"></script>
+</head>
+<body>
+<div class="app-shell">
+  <aside class="app-sidebar">
+    <nav class="app-sidebar-items">
+      <a href="index.html" class="app-sidebar-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg><span>Orders</span>
+      </a>
+      <a href="shipping.html" class="app-sidebar-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg><span>Shipping Analytics</span>
+      </a>
+      <a href="ads.html" class="app-sidebar-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg><span>Ads Analysis</span>
+      </a>
+      <div class="app-sidebar-divider"></div>
+      <div class="app-sidebar-group">
+        <div class="app-sidebar-group-header">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor" aria-hidden="true"><path d="M11.452 0h1.698c.47 0 .85.38.85.85v1.699c0 .469-.38.85-.85.85h-1.699a.85.85 0 0 1-.849-.85v-1.7c0-.469.38-.849.85-.849M13.15 5.301h-1.699a.85.85 0 0 0-.849.85V7.85c0 .469.38.849.85.849h1.698c.47 0 .85-.38.85-.85V6.15a.85.85 0 0 0-.85-.849M.85 10.602h1.699c.469 0 .85.38.85.85v1.698c0 .47-.381.85-.85.85h-1.7A.85.85 0 0 1 0 13.15v-1.699c0-.469.38-.85.85-.85M7.85 10.602h-1.7a.85.85 0 0 0-.85.85v1.698c.001.47.381.85.85.85h1.7c.469 0 .849-.38.849-.85v-1.699a.85.85 0 0 0-.85-.85M13.15 10.602h-1.699a.85.85 0 0 0-.849.85v1.698c0 .47.38.85.85.85h1.698c.47 0 .85-.38.85-.85v-1.699a.85.85 0 0 0-.85-.85M6.15 5.301h1.7c.469 0 .849.38.849.85V7.85c0 .469-.38.849-.85.849H6.15a.85.85 0 0 1-.85-.85V6.15c.001-.469.381-.849.85-.849M2.549 5.301h-1.7a.85.85 0 0 0-.849.85V7.85c0 .469.38.849.85.849h1.699c.469 0 .85-.38.85-.85V6.15a.85.85 0 0 0-.85-.849M7.85 0h-1.7a.85.85 0 0 0-.85.85v1.699c.001.469.381.85.85.85h1.7c.469 0 .849-.381.849-.85v-1.7A.85.85 0 0 0 7.849 0M.85 0h1.699c.469 0 .85.38.85.85v1.699c0 .469-.381.85-.85.85h-1.7A.85.85 0 0 1 0 2.548v-1.7C0 .38.38 0 .85 0"/></svg>
+          <span>All tools</span>
+        </div>
+        <div class="app-sidebar-group-items">
+          <a href="copywriting.html" class="app-sidebar-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg><span>Copywriting</span></a>
+          <a href="landing-page.html" class="app-sidebar-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg><span>Landing page content</span></a>
+          <a href="headlines.html" class="app-sidebar-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4v16"/><path d="M18 4v16"/><path d="M6 12h12"/></svg><span>Headlines Generator</span></a>
+        </div>
+      </div>
+      <div class="app-sidebar-divider"></div>
+      <div class="app-sidebar-group">
+        <div class="app-sidebar-group-header">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4"/><path d="M12 18v4"/><path d="m4.93 4.93 2.83 2.83"/><path d="m16.24 16.24 2.83 2.83"/><path d="M2 12h4"/><path d="M18 12h4"/><path d="m4.93 19.07 2.83-2.83"/><path d="m16.24 7.76 2.83-2.83"/></svg>
+          <span>Automation Tools</span>
+        </div>
+        <div class="app-sidebar-group-items">
+          <a href="landing-auto.html" class="app-sidebar-item active"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg><span>Landing Page Auto</span></a>
+        </div>
+      </div>
+    </nav>
+    <div class="app-sidebar-footer">
+      <a href="settings.html" class="app-sidebar-item" style="text-decoration:none;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg><span>Settings</span>
+      </a>
+    </div>
+  </aside>
+  <div class="app-main">
+    <div class="page">
+      <div class="page-head">
+        <h1>Landing Page Auto</h1>
+        <a href="landing-page.html" class="btn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          New build
+        </a>
+      </div>
+
+      <div class="panel">
+        <table>
+          <thead>
+            <tr>
+              <th style="width:38%;">Product</th>
+              <th style="width:18%;">Store</th>
+              <th style="width:14%;">Status</th>
+              <th style="width:14%;">Updated</th>
+              <th style="text-align:right;">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="buildsBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <!-- Persistent progress panel — shows the active flow's step-by-step state -->
+    <div class="progress-panel" id="progressPanel">
+      <div class="progress-head">
+        <div class="progress-title" id="progressTitle">Running…</div>
+        <button class="progress-close" id="progressClose" type="button">✕</button>
+      </div>
+      <div class="progress-body" id="progressBody"></div>
+      <div class="progress-foot" id="progressFoot" style="display:none;"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ───────── EDIT MODAL ───────── -->
+<div class="modal-backdrop" id="editBackdrop">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-title" id="editTitle">Edit build</div>
+      <button class="modal-close" id="editClose" type="button">✕</button>
+    </div>
+    <div class="modal-body" id="editBody"></div>
+    <div class="modal-foot">
+      <button class="btn btn-danger" id="editDeleteBtn" type="button">Delete</button>
+      <button class="btn btn-ghost" id="editVersionsBtn" type="button">Versions</button>
+      <div style="flex:1;"></div>
+      <button class="btn btn-ghost" id="editCancelBtn" type="button">Cancel</button>
+      <button class="btn" id="editSaveBtn" type="button">Save</button>
+    </div>
+
+    <!-- Versions popover (rolling history of saved edits) -->
+    <div id="versionsPop" style="display:none;position:absolute;bottom:60px;right:140px;background:#FFFFFF;border:1px solid #DCDCDC;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,0.12);width:320px;max-height:340px;overflow-y:auto;z-index:50;">
+      <div style="padding:10px 14px;border-bottom:1px solid #F1F1F1;font-size:12px;font-weight:700;color:#1A1A1A;">Edit history</div>
+      <div id="versionsList" style="padding:4px 0;"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const BUILDS_LS = 'app.landingAutoBuilds.v1';
+
+function loadBuilds() {
+  try { const s = localStorage.getItem(BUILDS_LS); return s ? JSON.parse(s) : []; }
+  catch (e) { return []; }
+}
+function saveBuilds(builds) {
+  try { localStorage.setItem(BUILDS_LS, JSON.stringify(builds)); } catch (e) {}
+}
+function escapeHtml(s) {
+  return String(s ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+function showToast(msg, isError) {
+  const t = $('toast'); t.textContent = msg; t.className = 'toast show' + (isError ? ' error' : '');
+  setTimeout(() => t.className = 'toast' + (isError ? ' error' : ''), 2400);
+}
+
+// ── PROGRESS PANEL ──────────────────────────────────────────────────
+// Persistent step-by-step UI that stays open while a flow runs.
+//   const p = newProgress('Running All — <product name>', [
+//     { id: 'upload',  label: 'Upload images' },
+//     { id: 'find',    label: 'Find TEMPLATE product' },
+//     ...
+//   ]);
+//   p.start('upload', 'Uploading 6 image(s)…');
+//   p.done('upload', '6 uploaded');
+//   p.start('find');  ...  p.fail('find', 'Not found'); ...
+//   p.finish('All done — product #123 + funnel #456');
+function newProgress(title, steps) {
+  const panel = $('progressPanel');
+  const body  = $('progressBody');
+  const foot  = $('progressFoot');
+  $('progressTitle').textContent = title;
+  body.innerHTML = steps.map(s => `
+    <div class="progress-step pending" data-step="${s.id}">
+      <span class="ico">○</span>
+      <div class="content">
+        <div class="label">${escapeHtml(s.label)}</div>
+        <div class="detail" data-detail></div>
+      </div>
+    </div>`).join('');
+  foot.style.display = 'none';
+  foot.className = 'progress-foot';
+  foot.textContent = '';
+  panel.classList.add('open');
+  $('progressClose').onclick = () => panel.classList.remove('open');
+
+  const setState = (id, state, detail) => {
+    const el = body.querySelector('[data-step="' + id + '"]');
+    if (!el) return;
+    el.classList.remove('pending', 'run', 'done', 'fail');
+    el.classList.add(state);
+    const ico = el.querySelector('.ico');
+    if (state === 'pending') ico.textContent = '○';
+    if (state === 'run')     ico.innerHTML   = '<span class="spin2"></span>';
+    if (state === 'done')    ico.textContent = '✓';
+    if (state === 'fail')    ico.textContent = '✕';
+    const d = el.querySelector('[data-detail]');
+    if (d) d.textContent = detail || '';
+  };
+  return {
+    start: (id, detail) => setState(id, 'run',  detail || ''),
+    done : (id, detail) => setState(id, 'done', detail || ''),
+    fail : (id, detail) => {
+      setState(id, 'fail', detail || '');
+      foot.style.display = 'flex';
+      foot.className = 'progress-foot error';
+      foot.innerHTML  = '✕ Stopped: ' + escapeHtml(detail || 'Unknown error');
+    },
+    skip : (id, detail) => setState(id, 'done', detail || 'Skipped'),
+    finish: (msg) => {
+      foot.style.display = 'flex';
+      foot.className = 'progress-foot finish';
+      foot.innerHTML  = '✓ Finish — ' + escapeHtml(msg || 'all done');
+    },
+    close: () => panel.classList.remove('open'),
+  };
+}
+function fmtDate(ts) {
+  if (!ts) return '—';
+  const d = new Date(ts);
+  const now = new Date();
+  const diff = (now - d) / 1000;
+  if (diff < 60) return 'just now';
+  if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
+  if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
+  return d.toLocaleDateString('en-GB', { day:'numeric', month:'short' });
+}
+
+function renderBuilds() {
+  const builds = loadBuilds();
+  const body = $('buildsBody');
+  if (!builds.length) {
+    body.innerHTML = `
+      <tr><td colspan="5">
+        <div class="empty-row">
+          <div class="ic">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+          </div>
+          <div>No builds yet. Generate a landing page from the <a href="landing-page.html" style="color:#005BD3;">Landing page tool</a> and save it here.</div>
+        </div>
+      </td></tr>`;
+    return;
+  }
+  body.innerHTML = builds.map((b, i) => `
+    <tr>
+      <td>
+        <span class="pname">${escapeHtml(b.product_name || 'Untitled product')}</span>
+        ${b.product_slug ? `<span class="pmeta">${escapeHtml(b.product_slug)}</span>` : ''}
+      </td>
+      <td>${escapeHtml(b.store || '—')}</td>
+      <td><span class="badge ${b.status || 'draft'}">${b.status || 'draft'}</span></td>
+      <td>${fmtDate(b.updated_at)}</td>
+      <td>
+        <div class="row-actions">
+          <button class="btn btn-ghost btn-sm" data-action="edit" data-idx="${i}" type="button">Edit</button>
+          ${b.landing_edit_url
+            ? `<a class="btn btn-ghost btn-sm" href="${escapeHtml(b.landing_edit_url)}" target="_blank" rel="noopener" title="Edit landing in Elementor">Edit landing</a>`
+            : (b.imported_funnel_url
+              ? `<a class="btn btn-ghost btn-sm" href="${escapeHtml(b.imported_funnel_url)}" target="_blank" rel="noopener">Open in WP</a>`
+              : '')}
+          <button class="btn btn-sm" data-action="product" data-idx="${i}" type="button" style="background:#0E8345;border-color:#0E8345;" title="Create the WooCommerce product only.">Generate Product</button>
+          <button class="btn btn-sm" data-action="landing" data-idx="${i}" type="button" style="background:#0E8345;border-color:#0E8345;" title="Duplicate the Template funnel only (uses an existing product).">Generate Landing page</button>
+          <button class="btn btn-sm" data-action="all"     data-idx="${i}" type="button" style="background:#0E8345;border-color:#0E8345;" title="Run the full automation: product + funnel.">${b.status === 'sent' ? 'Re-run All' : 'All'}</button>
+        </div>
+      </td>
+    </tr>
+  `).join('');
+  body.querySelectorAll('button[data-action]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const i = +btn.dataset.idx;
+      const a = btn.dataset.action;
+      if (a === 'edit')    return openEdit(i);
+      if (a === 'product') return runGenerateProduct(i);
+      if (a === 'landing') return runGenerateLanding(i);
+      if (a === 'all')     return runAll(i);
+      if (a === 'send')    return runAll(i); // legacy
+    });
+  });
+}
+
+// Image ordering rules:
+//   1. If an image has an explicit `order` field (set by drag-reorder), use it.
+//   2. Otherwise fall back to the leading number in the filename (1.webp → 1).
+//   3. Otherwise keep insertion order.
+// Returns [{ im, originalIdx, sortRank }] sorted ascending.
+function getSortedImgs(imgs) {
+  return imgs
+    .map((im, originalIdx) => {
+      let sortRank;
+      if (typeof im.order === 'number') sortRank = im.order;
+      else {
+        const m = (im.name || '').match(/(\d+)/);
+        sortRank = m ? parseInt(m[1], 10) : 9999 + originalIdx;
+      }
+      return { im, originalIdx, sortRank };
+    })
+    .sort((a, b) => a.sortRank - b.sortRank);
+}
+
+// Read a File object as a base64 dataURL.
+function readFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload  = () => resolve(r.result);
+    r.onerror = () => reject(new Error('Failed to read ' + file.name));
+    r.readAsDataURL(file);
+  });
+}
+
+let editingIdx = -1;
+async function openEdit(idx) {
+  const builds = loadBuilds();
+  const b = builds[idx];
+  if (!b) return;
+  editingIdx = idx;
+  $('editTitle').textContent = `Edit · ${b.product_name || 'Build'}`;
+  const sec = b.sections || {};
+  const imgs = b.images || [];
+  // Pull connected WordPress stores so the Store field can be a dropdown.
+  let storeOptions = [];
+  try {
+    const stores = await loadCmsStores();
+    storeOptions = stores.map(s => s.name).filter(Boolean);
+    // Make sure the currently saved store stays in the list even if it's
+    // been deleted from CMS — so the user can see + change it.
+    if (b.store && !storeOptions.includes(b.store)) storeOptions.unshift(b.store);
+  } catch (e) { /* fallback to a free-text input */ }
+  const storeFieldHtml = storeOptions.length
+    ? `<select class="field-input" id="ed_store">
+         <option value="" ${!b.store ? 'selected' : ''}>— Pick a store —</option>
+         ${storeOptions.map(s => `<option value="${escapeHtml(s)}" ${s === b.store ? 'selected' : ''}>${escapeHtml(s)}</option>`).join('')}
+       </select>`
+    : `<input class="field-input" id="ed_store" value="${escapeHtml(b.store || '')}">`;
+  $('editBody').innerHTML = `
+    <div class="grid-2">
+      <div class="field">
+        <label class="field-label">Product name</label>
+        <input class="field-input" id="ed_product_name" value="${escapeHtml(b.product_name || '')}">
+      </div>
+      <div class="field">
+        <label class="field-label">Store</label>
+        ${storeFieldHtml}
+      </div>
+    </div>
+    <div class="grid-2">
+      <div class="field">
+        <label class="field-label">Slug (URL)</label>
+        <input class="field-input" id="ed_slug" value="${escapeHtml(b.slug || '')}">
+      </div>
+      <div class="field">
+        <label class="field-label">Price (EGP)</label>
+        <input class="field-input" id="ed_price" value="${escapeHtml(b.price || 999)}">
+      </div>
+    </div>
+    <div class="field">
+      <label class="field-label">Title (Section 1)</label>
+      <textarea class="field-textarea" id="ed_title" style="min-height:50px;">${escapeHtml(sec.title || '')}</textarea>
+    </div>
+    <div class="field">
+      <label class="field-label">Hook (Section 2)</label>
+      <textarea class="field-textarea" id="ed_hook">${escapeHtml(sec.hook || '')}</textarea>
+    </div>
+    <div class="field">
+      <label class="field-label">Pain / Warning (Section 3)</label>
+      <textarea class="field-textarea" id="ed_pain">${escapeHtml(sec.pain || '')}</textarea>
+    </div>
+    <div class="field">
+      <label class="field-label">Benefits (one per line, 5)</label>
+      <textarea class="field-textarea" id="ed_benefits">${escapeHtml((sec.benefits || []).join('\n'))}</textarea>
+    </div>
+    <div class="field">
+      <label class="field-label">Headlines &amp; Subheadlines — Section 5 (each pair is 2 lines: headline on top, subheadline under it · 6 pairs)</label>
+      <textarea class="field-textarea" id="ed_headlines" style="min-height:200px;" placeholder="نفسك تحب القرآن؟ ابدأ من قصصه&#10;كتاب يجمعلك قصص القرآن وأهم العبر منها بأسلوب أدبي بسيط&#10;&#10;من واحد بيعدّي على الآيات لشخص بيعيش كل قصة&#10;عبر مستخلصة من القرآن جاهزة تطبقها في حياتك من النهارده">${escapeHtml((sec.headlines || []).map((h, i) => h + '\n' + ((sec.subheadlines || [])[i] || '')).join('\n\n'))}</textarea>
+    </div>
+    <div class="field">
+      <label class="field-label">Reviews — Section 7 (one per line: "&lt;text&gt; — &lt;name&gt;")</label>
+      <textarea class="field-textarea" id="ed_reviews" style="min-height:90px;" placeholder="&quot;كنت ضايع لكن الكتاب غيّر حياتي&quot; — أحمد حسن&#10;&quot;أحلى استثمار لوقتي&quot; — منى محمود&#10;&quot;رشحته لكل أصحابي&quot; — يوسف عادل">${escapeHtml((sec.reviews || []).join('\n'))}</textarea>
+    </div>
+    <div class="field">
+      <label class="field-label">
+        Images <span id="ed_imgCount" style="font-weight:400;color:#6D7175;">(${imgs.length} loaded — click to toggle, drag to reorder, image 1 is primary)</span>
+      </label>
+      <div class="img-grid" id="ed_images"></div>
+      <div style="margin-top:8px;display:flex;gap:8px;align-items:center;">
+        <input type="file" id="ed_imgInput" accept="image/*" multiple style="display:none;">
+        <button type="button" class="btn btn-ghost btn-sm" id="ed_addImagesBtn">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Add images
+        </button>
+        <div id="ed_imgHint" style="font-size:11px;color:#6D7175;">Drag a card to reorder · click to deselect</div>
+      </div>
+    </div>
+  `;
+  renderEditImages();
+  $('ed_addImagesBtn').addEventListener('click', () => $('ed_imgInput').click());
+  $('ed_imgInput').addEventListener('change', async (e) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+    const cur = loadBuilds();
+    const b = cur[editingIdx]; if (!b) return;
+    b.images = b.images || [];
+    // Compute the next order rank so new images land at the END.
+    const maxOrder = b.images.reduce((mx, im) => Math.max(mx, typeof im.order === 'number' ? im.order : 0), 0);
+    let next = maxOrder;
+    for (const f of files) {
+      try {
+        const dataUrl = await readFileAsDataUrl(f);
+        next += 1;
+        b.images.push({ name: f.name, dataUrl, selected: true, order: next });
+      } catch (err) { showToast(err.message, true); }
+    }
+    b.updated_at = Date.now();
+    saveBuilds(cur);
+    e.target.value = ''; // reset so re-uploading the same file fires change again
+    renderEditImages();
+    showToast('Added ' + files.length + ' image(s)');
+  });
+  $('editBackdrop').classList.add('open');
+}
+
+// Render (or re-render) the image grid inside the open Edit modal.
+// Centralised so add/reorder/toggle can all just call this.
+function renderEditImages() {
+  const builds = loadBuilds();
+  const b = builds[editingIdx]; if (!b) return;
+  const imgs = b.images || [];
+  const grid = $('ed_images'); if (!grid) return;
+  $('ed_imgCount').textContent = '(' + imgs.length + ' loaded — click to toggle, drag to reorder, image 1 is primary)';
+  if (!imgs.length) {
+    grid.innerHTML = '<div style="color:#6D7175;font-size:12px;">No images yet. Click <strong>Add images</strong> to upload.</div>';
+    return;
+  }
+  const sorted = getSortedImgs(imgs);
+  grid.innerHTML = sorted.map(({ im, originalIdx }, displayIdx) => `
+    <div class="img-cell ${im.selected ? 'selected' : ''} ${displayIdx === 0 ? 'primary' : ''}"
+         data-imgidx="${originalIdx}" draggable="true">
+      <span class="order">${displayIdx + 1}</span>
+      <img src="${im.dataUrl}" alt="img-${displayIdx + 1}">
+      <div class="check">${im.selected ? '✓' : ''}</div>
+      ${displayIdx === 0 ? '<div class="primary-tag">PRIMARY</div>' : ''}
+    </div>`).join('');
+
+  // Toggle on click (suppressed during drag)
+  let dragging = false;
+  grid.querySelectorAll('.img-cell').forEach(cell => {
+    cell.addEventListener('click', (e) => {
+      if (dragging) return;
+      const ii = +cell.dataset.imgidx;
+      const cur = loadBuilds();
+      cur[editingIdx].images[ii].selected = !cur[editingIdx].images[ii].selected;
+      saveBuilds(cur);
+      cell.classList.toggle('selected');
+      cell.querySelector('.check').textContent = cell.classList.contains('selected') ? '✓' : '';
+    });
+
+    // Drag-and-drop reorder
+    cell.addEventListener('dragstart', (e) => {
+      dragging = true;
+      cell.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', cell.dataset.imgidx);
+    });
+    cell.addEventListener('dragend', () => {
+      cell.classList.remove('dragging');
+      // Re-enable click after a short delay so dragend's bubbled click is ignored
+      setTimeout(() => { dragging = false; }, 50);
+    });
+    cell.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      cell.classList.add('drop-target');
+    });
+    cell.addEventListener('dragleave', () => cell.classList.remove('drop-target'));
+    cell.addEventListener('drop', (e) => {
+      e.preventDefault();
+      cell.classList.remove('drop-target');
+      const fromIdx = parseInt(e.dataTransfer.getData('text/plain'), 10);
+      const toIdx   = parseInt(cell.dataset.imgidx, 10);
+      if (Number.isNaN(fromIdx) || Number.isNaN(toIdx) || fromIdx === toIdx) return;
+      reorderImages(fromIdx, toIdx);
+    });
+  });
+}
+
+// Move the dragged image to the dropped position and rewrite the `order` field
+// on every image so the new order persists.
+function reorderImages(fromOriginalIdx, toOriginalIdx) {
+  const builds = loadBuilds();
+  const b = builds[editingIdx]; if (!b) return;
+  const sorted = getSortedImgs(b.images || []);
+  const fromDisplayIdx = sorted.findIndex(s => s.originalIdx === fromOriginalIdx);
+  const toDisplayIdx   = sorted.findIndex(s => s.originalIdx === toOriginalIdx);
+  if (fromDisplayIdx < 0 || toDisplayIdx < 0) return;
+  const [moved] = sorted.splice(fromDisplayIdx, 1);
+  sorted.splice(toDisplayIdx, 0, moved);
+  // Re-number `order` on every original image entry
+  sorted.forEach(({ originalIdx }, displayIdx) => {
+    b.images[originalIdx].order = displayIdx + 1;
+  });
+  b.updated_at = Date.now();
+  saveBuilds(builds);
+  renderEditImages();
+}
+
+function closeEdit() { $('editBackdrop').classList.remove('open'); editingIdx = -1; }
+$('editClose').addEventListener('click', closeEdit);
+$('editCancelBtn').addEventListener('click', closeEdit);
+
+// Snapshot a deep copy of the build BEFORE any save. Keeps last 10 versions.
+// Stored INSIDE the build object as `versions: [{ at, snapshot }]` so it
+// travels with the build and is never lost.
+function snapshotBuild(b, label) {
+  if (!b) return;
+  b.versions = b.versions || [];
+  // Don't save if previous snapshot's content matches the current state
+  const lastSnap = b.versions[0]?.snapshot;
+  const curJson = JSON.stringify(b, (k, v) => k === 'versions' ? undefined : v);
+  if (lastSnap && lastSnap === curJson) return;
+  b.versions.unshift({ at: Date.now(), label: label || 'Edit', snapshot: curJson });
+  b.versions = b.versions.slice(0, 10); // keep last 10
+}
+
+$('editSaveBtn').addEventListener('click', () => {
+  if (editingIdx < 0) return;
+  const builds = loadBuilds();
+  const b = builds[editingIdx]; if (!b) return;
+  // 1. Snapshot the current state before mutating
+  snapshotBuild(b, 'Before edit at ' + new Date().toLocaleTimeString('en-GB'));
+  // 2. Apply the changes
+  b.product_name = $('ed_product_name').value.trim();
+  b.store = $('ed_store').value.trim();
+  b.slug = $('ed_slug').value.trim();
+  b.price = $('ed_price').value.trim();
+  b.sections = b.sections || {};
+  b.sections.title = $('ed_title').value.trim();
+  b.sections.hook = $('ed_hook').value.trim();
+  b.sections.pain = $('ed_pain').value.trim();
+  b.sections.benefits = $('ed_benefits').value.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+  // Headlines & subheadlines: each pair is 2 consecutive non-blank lines
+  // (headline first, subheadline second). Blank lines between pairs are ignored.
+  const lines = $('ed_headlines').value.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+  b.sections.headlines    = [];
+  b.sections.subheadlines = [];
+  for (let i = 0; i < lines.length; i += 2) {
+    b.sections.headlines.push(lines[i]);
+    b.sections.subheadlines.push(lines[i + 1] || '');
+  }
+  b.sections.reviews = $('ed_reviews').value.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+  b.updated_at = Date.now();
+  try { saveBuilds(builds); } catch (e) { showToast('Save failed: ' + e.message, true); return; }
+  showToast('Saved (v' + (b.versions?.length || 0) + ' kept as backup)');
+  closeEdit();
+  renderBuilds();
+});
+
+// Restore a build to a previous version snapshot.
+function restoreVersion(buildIdx, versionIdx) {
+  const builds = loadBuilds();
+  const b = builds[buildIdx]; if (!b) return;
+  const v = (b.versions || [])[versionIdx]; if (!v) return;
+  if (!confirm('Restore to ' + (v.label || ('v' + versionIdx)) + '?')) return;
+  let snap;
+  try { snap = JSON.parse(v.snapshot); } catch (e) { showToast('Snapshot corrupted', true); return; }
+  // Snapshot the CURRENT state too before reverting (so revert is itself reversible)
+  snapshotBuild(b, 'Auto-saved before restore at ' + new Date().toLocaleTimeString('en-GB'));
+  // Replace fields from snapshot, but keep the versions array we just appended to
+  const versions = b.versions;
+  Object.keys(b).forEach(k => { if (k !== 'versions') delete b[k]; });
+  Object.assign(b, snap);
+  b.versions = versions;
+  b.updated_at = Date.now();
+  saveBuilds(builds);
+  showToast('Restored to ' + (v.label || ('v' + versionIdx)));
+  closeEdit();
+  renderBuilds();
+}
+
+// Versions popover: opens a list of past snapshots, click to restore
+$('editVersionsBtn').addEventListener('click', (e) => {
+  e.stopPropagation();
+  if (editingIdx < 0) return;
+  const builds = loadBuilds();
+  const b = builds[editingIdx]; if (!b) return;
+  const list = (b.versions || []);
+  const popover = $('versionsPop');
+  $('versionsList').innerHTML = list.length
+    ? list.map((v, i) => `
+        <div style="display:flex;align-items:center;gap:10px;padding:9px 14px;border-bottom:1px solid #F1F1F1;">
+          <div style="flex:1;">
+            <div style="font-size:12.5px;font-weight:600;color:#1A1A1A;">v${list.length - i}</div>
+            <div style="font-size:11px;color:#6D7175;">${escapeHtml(v.label || '')}</div>
+            <div style="font-size:11px;color:#6D7175;">${new Date(v.at).toLocaleString('en-GB', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' })}</div>
+          </div>
+          <button class="btn btn-ghost btn-sm" data-restore="${i}" type="button">Restore</button>
+        </div>
+      `).join('')
+    : '<div style="padding:14px;color:#6D7175;font-size:12px;">No saved versions yet — they appear here after each Save.</div>';
+  popover.style.display = popover.style.display === 'none' ? 'block' : 'none';
+  $('versionsList').querySelectorAll('[data-restore]').forEach(btn => {
+    btn.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      restoreVersion(editingIdx, parseInt(btn.dataset.restore, 10));
+      popover.style.display = 'none';
+    });
+  });
+});
+document.addEventListener('click', (e) => {
+  const pop = $('versionsPop');
+  if (pop && pop.style.display === 'block' && !pop.contains(e.target) && e.target.id !== 'editVersionsBtn') {
+    pop.style.display = 'none';
+  }
+});
+
+$('editDeleteBtn').addEventListener('click', () => {
+  if (editingIdx < 0) return;
+  if (!confirm('Delete this build permanently?')) return;
+  const builds = loadBuilds();
+  builds.splice(editingIdx, 1);
+  saveBuilds(builds);
+  showToast('Deleted');
+  closeEdit();
+  renderBuilds();
+});
+
+// ── WOOCOMMERCE REST CLIENT ────────────────────────────────────────────
+// Auth: prefer the WP Application Password (Basic auth) since it has full
+// admin caps and works on every endpoint. Fall back to WC consumer key/secret
+// only if the App Password isn't set (read-only WC keys can't create products).
+function wcAuth(store) {
+  const u = (store.meta?.wp_username || '').trim();
+  const p = (store.meta?.wp_app_password || '').trim();
+  if (u && p) return 'Basic ' + btoa(u + ':' + p);
+  const ck = (store.consumer_key || '').trim();
+  const cs = (store.consumer_secret || '').trim();
+  return ck && cs ? 'Basic ' + btoa(ck + ':' + cs) : null;
+}
+
+async function wcCall(store, path, opts = {}) {
+  const auth = wcAuth(store);
+  if (!auth) throw new Error('Store missing WP Application Password (or WC keys)');
+  const url = (store.url || '').replace(/\/$/, '') + '/wp-json/wc/v3' + path;
+  const headers = Object.assign({ 'Authorization': auth }, opts.headers || {});
+  if (opts.body && !headers['Content-Type']) headers['Content-Type'] = 'application/json';
+  const r = await fetch(url, { ...opts, headers });
+  const t = await r.text();
+  if (!r.ok) throw new Error('WC ' + r.status + ': ' + t.slice(0, 250));
+  try { return JSON.parse(t); } catch (e) { throw new Error('WC bad JSON: ' + t.slice(0, 200)); }
+}
+
+// Find the TEMPLATE product. Searches by name (any status incl. draft) and
+// returns the first product whose name starts with "TEMPLATE".
+async function findTemplateProduct(store) {
+  const candidates = [];
+  for (const status of ['publish', 'draft', 'private']) {
+    try {
+      const rows = await wcCall(store, '/products?search=TEMPLATE&status=' + status + '&per_page=20');
+      candidates.push(...rows);
+    } catch (e) { /* ignore */ }
+  }
+  const tpl = candidates.find(p => /^template\b/i.test((p.name || '').trim()));
+  if (!tpl) throw new Error('No product found whose name starts with "TEMPLATE" on ' + store.url);
+  return tpl;
+}
+
+// Duplicate a product: copy all relevant fields, overlay overrides, post.
+async function duplicateProduct(store, template, overrides) {
+  // Strip fields that must not be sent (auto-managed by WC).
+  const skip = new Set(['id','date_created','date_created_gmt','date_modified','date_modified_gmt',
+                        'permalink','price','price_html','related_ids','variations','grouped_products',
+                        'menu_order','total_sales','rating_count','average_rating','_links']);
+  const payload = {};
+  for (const k in template) if (!skip.has(k)) payload[k] = template[k];
+  // Categories / tags / attributes need only IDs (or name+slug for tags)
+  if (Array.isArray(template.categories)) payload.categories = template.categories.map(c => ({ id: c.id }));
+  if (Array.isArray(template.tags))       payload.tags       = template.tags.map(c => ({ id: c.id }));
+  if (Array.isArray(template.brands))     payload.brands     = template.brands.map(c => ({ id: c.id }));
+  // Apply overrides (name, prices, description, images, etc.)
+  Object.assign(payload, overrides);
+  payload.status = 'publish';
+  return wcCall(store, '/products', { method: 'POST', body: JSON.stringify(payload) });
+}
+
+// ── AI DESCRIPTION GENERATOR (GPT-4o) ──────────────────────────────────
+// ── SKILLS LOADER (Settings → Brain → Skills) ──────────────────────────
+const __landingAutoSkillCache = {};
+async function __loadLandingAutoSkill(slug) {
+  if (slug in __landingAutoSkillCache) return __landingAutoSkillCache[slug];
+  try {
+    const d = await api('/skills.php?slug=' + encodeURIComponent(slug));
+    __landingAutoSkillCache[slug] = d.instructions || null;
+    return __landingAutoSkillCache[slug];
+  } catch (e) { __landingAutoSkillCache[slug] = null; return null; }
+}
+async function __buildLandingAutoSkillBlock(slugs) {
+  const parts = await Promise.all(slugs.map(__loadLandingAutoSkill));
+  return parts.filter(Boolean).join('\n\n---\n\n');
+}
+
+// Load EVERY active skill (auto-includes any new skill the user adds later)
+let __allLandingAutoSkillsCache = null;
+async function __loadAllLandingAutoSkills() {
+  if (__allLandingAutoSkillsCache) return __allLandingAutoSkillsCache;
+  try {
+    const d = await api('/skills.php');
+    const rows = (d.rows || []).filter(s => s.instructions && s.instructions.trim());
+    rows.sort((a, b) => {
+      const aBase = /voice|tone|base/i.test(a.slug) ? -1 : 0;
+      const bBase = /voice|tone|base/i.test(b.slug) ? -1 : 0;
+      return aBase - bBase;
+    });
+    __allLandingAutoSkillsCache = rows;
+    return rows;
+  } catch (e) { __allLandingAutoSkillsCache = []; return []; }
+}
+async function __buildAllLandingAutoSkillsBlock() {
+  const rows = await __loadAllLandingAutoSkills();
+  if (!rows.length) return '';
+  return rows.map(s =>
+    '## Skill: ' + (s.name || s.slug) + ' (/' + s.slug + ')\n' +
+    (s.description ? s.description + '\n\n' : '') +
+    s.instructions
+  ).join('\n\n---\n\n');
+}
+
+const PRODUCT_DESC_PROMPT = `Act as a professional Shopify product page copywriter specialized in high-converting ecommerce descriptions.
+I will send you:
+1- Product details
+2- Product features
+3- Customer reviews
+Your task is to create a high-converting Shopify product description in Egyptian Arabic dialect (العامية المصرية).
+IMPORTANT RULES:
+• Write in natural Egyptian dialect, not formal Arabic.
+• Focus on emotional benefits more than features.
+• Use simple persuasive language like a real person talking.
+• Use the exact structure below.
+STRUCTURE YOU MUST FOLLOW
+1️⃣ Product Name
+Create a short product name optimized for selling.
+2️⃣ Emotional Hook (2 lines)
+Start with an emotional scenario that makes the reader imagine the experience of using the product.
+Example style:
+"تخيل إن…"
+Make it relatable and engaging.
+3️⃣ Section Title:
+ليه المنتج ده هيكون من المفضلة عندك؟
+Create 5 benefit blocks using this format:
+• Short Benefit Headline Bold : Explain the benefit emotionally in 1–2 sentences focusing on how it improves life or solves a problem.
+
+Focus on:
+• convenience
+• fun
+• safety
+• learning
+• comfort
+• saving time
+4️⃣ Section Title:
+استخدامات متعددة تسهّل يومك:
+Write 4 bullet points showing different ways the product can be used.
+Example style:
+• استخدام في البيت
+• نشاط ممتع للأطفال
+• مناسب للسفر
+• هدية رائعة
+5️⃣ Section Title:
+المواصفات:
+Write 5–7 bullet points including product specs such as:
+• material
+• size
+• age range
+• safety
+• included items
+• ease of use
+REVIEW ANALYSIS
+If customer reviews are provided:
+• Analyze them
+• Extract the most common benefits customers loved
+• Reflect those benefits naturally in the description
+TONE
+The tone must feel:
+• friendly
+• persuasive
+• emotional
+• natural Egyptian dialect
+Avoid robotic AI style writing.
+
+FORMAT STYLING (IMPORTANT):
+"خلّي العناوين الرئيسية (ليه المنتج ده هيكون من المفضلة عندك؟ / استخدامات متعددة تسهّل يومك / المواصفات) تكون أكبر من النص العادي بوضوح (زي H2 أو H3) وكمان B
+وابعت النص جاهز من غير الخطوط دي
+____________
+
+OUTPUT FORMAT:
+Return ONLY valid HTML ready to paste into WooCommerce's product description (no surrounding markdown, no code fences). Use <h2> for the 3 main section titles, <strong> for benefit headlines, <ul><li> for bullet lists, <p> for paragraphs.`;
+
+// Load an AI provider's token from the backend connectors table; mirrors it
+// to localStorage so we don't refetch every time.
+async function loadAiKey(provider, lsKey) {
+  let key = localStorage.getItem(lsKey) || '';
+  if (key) return key;
+  try {
+    const data = await api('/connectors.php?type=ai&provider=' + provider);
+    const row = (data.rows || [])[0];
+    if (row && row.token) {
+      localStorage.setItem(lsKey, row.token);
+      return row.token;
+    }
+  } catch (e) { /* fall through */ }
+  return '';
+}
+
+async function generateProductDescription(build) {
+  const apiKey = await loadAiKey('chatgpt', 'app.openaiApiKey');
+  if (!apiKey) throw new Error('No OpenAI API key. Settings → Connect AI Tools → ChatGPT.');
+
+  const sec = build.sections || {};
+  const userMsg = [
+    'Product Details:',
+    'Name: ' + (build.product_base_name || build.product_name || ''),
+    'Title: '   + (sec.title || ''),
+    'Hook: '    + (sec.hook  || ''),
+    'Pain: '    + (sec.pain  || ''),
+    '',
+    'Product Features (benefits + headline pairs):',
+    ...(sec.benefits || []).map((b, i) => '• ' + b),
+    ...(sec.headlines || []).map((h, i) => '— ' + h + ((sec.subheadlines || [])[i] ? ': ' + sec.subheadlines[i] : '')),
+    '',
+    'Customer Reviews:',
+    ...((sec.reviews || []).length ? (sec.reviews || []) : ['(none provided)'])
+  ].join('\n');
+
+  // Load EVERY active Skill so the AI has full access to your voice + style
+  // + any future skill you add later, without touching the code.
+  const skillBlock = await __buildAllLandingAutoSkillsBlock();
+  const sysPrompt = (skillBlock ? skillBlock + '\n\n---\n\n' : '') + PRODUCT_DESC_PROMPT;
+
+  // GPT-5 is a reasoning model: it spends tokens on internal thinking BEFORE
+  // emitting visible content. With a small budget the reasoning eats it all
+  // and `message.content` comes back empty. So:
+  //   • bump max_completion_tokens to 8000 (plenty of room for thinking + output)
+  //   • set reasoning_effort:"low" so most of the budget goes to actual writing
+  //     (creative copy doesn't need deep reasoning)
+  const r = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
+    body: JSON.stringify({
+      model: 'gpt-5',
+      max_completion_tokens: 8000,
+      reasoning_effort: 'low',
+      messages: [
+        { role: 'system', content: sysPrompt },
+        { role: 'user',   content: userMsg }
+      ]
+    })
+  });
+  const data = await r.json();
+  if (!r.ok) throw new Error((data && data.error && data.error.message) || ('OpenAI HTTP ' + r.status));
+  const choice = (data.choices || [])[0] || {};
+  let out = (choice.message?.content || '').trim();
+  // Strip accidental code fences
+  out = out.replace(/^```(?:html)?\s*/i, '').replace(/\s*```\s*$/i, '').trim();
+  if (!out) {
+    // Surface the most useful diagnostic so the progress panel shows WHY it's empty
+    const fr = choice.finish_reason || 'unknown';
+    const usage = data.usage ? ('reasoning_tokens=' + (data.usage.completion_tokens_details?.reasoning_tokens || 0) + ' / completion=' + (data.usage.completion_tokens || 0)) : '';
+    throw new Error('Empty GPT-5 response (finish_reason=' + fr + (usage ? ' · ' + usage : '') + '). Try raising max_completion_tokens or shortening Skills.');
+  }
+  return out;
+}
+
+// ── SHARED PRE-FLIGHT (resolve store + creds, upload images) ──────────
+// Returns { builds, b, store, wp, uploadedImages } or null if anything failed.
+async function preflightBuild(idx, opts) {
+  opts = opts || {};
+  const builds = loadBuilds();
+  const b = builds[idx]; if (!b) return null;
+  const stores = await loadCmsStores();
+  const store = findStore(stores, b.store);
+  if (!store) {
+    showToast('Store "' + (b.store || '—') + '" not found in CMS connectors. Add it in Settings → CMS.', true);
+    return null;
+  }
+  const wp = wpCredsFromStore(store);
+  if (!wp) {
+    showToast('Store "' + b.store + '" is missing WP Username / Application Password. Open Settings → CMS → edit the store.', true);
+    return null;
+  }
+  let uploadedImages = null;
+  if (opts.uploadImages !== false) {
+    const allImages   = (b.images || []);
+    const withDataUrl = allImages.filter(im => im.selected !== false && im.dataUrl);
+    const reuse       = allImages.filter(im => im.selected !== false && im.id && im.url && !im.dataUrl);
+    // Per-build "Found N images" toast removed — the persistent progress
+    // panel reports the upload step's status by itself.
+    if (!allImages.length) {
+      showToast('⚠ No images on this build. Open Edit → drag & drop images, then re-run.', true);
+      return null;
+    }
+    if (withDataUrl.length) {
+      try {
+        uploadedImages = await uploadImagesToWp(wp, allImages);
+        // Toast removed — the persistent progress panel already reports
+        // "Upload images to Media Library — N image(s) ready".
+      } catch (err) {
+        showToast('Media upload failed: ' + err.message, true);
+        return null;
+      }
+    } else if (reuse.length) {
+      // Already uploaded in a prior run — reuse the saved {id, url, name} entries
+      uploadedImages = reuse.map(im => ({
+        id: im.id, source_url: im.url, name: im.name || '',
+        sortRank: typeof im.order === 'number' ? im.order : (parseInt((im.name||'').match(/(\d+)/)?.[1] || '999', 10)),
+      })).sort((a, b) => a.sortRank - b.sortRank);
+      showToast('Reusing ' + uploadedImages.length + ' previously-uploaded image(s)');
+    } else {
+      showToast('⚠ Images on this build have no data — open Edit → re-add them.', true);
+      return null;
+    }
+    // Persist the uploaded media references onto the build so a future run can
+    // reuse them. Wrap in try/catch — if localStorage hits its quota we still
+    // want the rest of the flow (product + funnel) to continue.
+    if (uploadedImages) {
+      try {
+        const map = new Map(uploadedImages.map(u => [u.name, u]));
+        b.images = allImages.map(im => {
+          const u = map.get(im.name);
+          if (!u) return im;
+          return Object.assign({}, im, { id: u.id, url: u.source_url });
+        });
+        builds[idx] = b;
+        saveBuilds(builds);
+      } catch (e) {
+        console.warn('[autoland] Could not persist uploaded image refs:', e);
+      }
+    }
+  }
+  return { builds, b, store, wp, uploadedImages };
+}
+
+// Run preflight + product creation. If `progress` is supplied, drive the panel;
+// otherwise create our own panel. Returns { ctx, newProduct, uploadedImages }
+// or null on any failure.
+async function runGenerateProduct(idx, progress) {
+  const builds0 = loadBuilds();
+  const b0 = builds0[idx];
+  const standalone = !progress;
+  const p = progress || newProgress('Generate Product — ' + (b0?.product_name || 'build'), [
+    { id: 'upload',  label: 'Upload images' },
+    { id: 'find',    label: 'Find TEMPLATE product' },
+    { id: 'ai',      label: 'AI description (GPT-5)' },
+    { id: 'create',  label: 'Create WooCommerce product' },
+  ]);
+
+  // 1) Preflight + image upload
+  p.start('upload');
+  let ctx;
+  try { ctx = await preflightBuild(idx); }
+  catch (err) {
+    console.error('[autoland] preflight error', err);
+    p.fail('upload', err.message || String(err));
+    return null;
+  }
+  if (!ctx) { p.fail('upload', 'Stopped (see toast above)'); return null; }
+  const { builds, b, store, uploadedImages } = ctx;
+  p.done('upload', uploadedImages ? (uploadedImages.length + ' image(s) ready') : 'No images');
+
+  // 2) Find TEMPLATE
+  p.start('find');
+  let template;
+  try { template = await findTemplateProduct(store); }
+  catch (err) { console.error(err); p.fail('find', err.message); return null; }
+  p.done('find', '#' + template.id + ' · ' + template.name);
+
+  // 3) AI description
+  p.start('ai');
+  let aiDescription;
+  try { aiDescription = await generateProductDescription(b); }
+  catch (err) { console.error(err); p.fail('ai', err.message); return null; }
+  p.done('ai', (aiDescription || '').length + ' chars');
+
+  // 4) Duplicate product
+  p.start('create');
+  const price     = parseFloat(b.price) || 0;
+  const origPrice = price > 0 ? Math.ceil(price * 2 / 50) * 50 : 0;
+  const productImages = (uploadedImages || []).map(im => ({ id: im.id }));
+  const overrides = {
+    name: b.product_name,
+    slug: b.slug || undefined,
+    regular_price: String(origPrice || ''),
+    sale_price:    String(price || ''),
+    description:   aiDescription,
+    images:        productImages.length ? productImages : (template.images || []),
+  };
+  let newProduct;
+  try { newProduct = await duplicateProduct(store, template, overrides); }
+  catch (err) { console.error(err); p.fail('create', err.message); return null; }
+  p.done('create', '#' + newProduct.id);
+
+  builds[idx].wc_product_id  = newProduct.id;
+  builds[idx].wc_product_url = newProduct.permalink;
+  builds[idx].updated_at     = Date.now();
+  try { saveBuilds(builds); } catch (e) { console.warn('saveBuilds failed (non-fatal):', e); }
+  renderBuilds();
+  if (standalone) p.finish('Product #' + newProduct.id + ' created');
+  return { ctx, newProduct, uploadedImages, p };
+}
+
+// ── ACTION: Generate Landing page only ────────────────────────────────
+// If `productId` is supplied (e.g. coming from the All flow), the new funnel
+// is wired to that product. Otherwise we use any saved wc_product_id from a
+// previous run.
+async function runGenerateLanding(idx, productId, ctxOverride, uploadedImagesOverride, progress) {
+  const builds0 = loadBuilds();
+  const b0 = builds0[idx];
+  const standalone = !progress;
+  // Standalone Generate Landing skips product creation, so don't even SHOW
+  // the find/ai/create rows — the panel only lists steps we'll actually run.
+  // (When called from runAll, `progress` is passed in with the full row set.)
+  const p = progress || newProgress('Generate Landing — ' + (b0?.product_name || 'build'), [
+    { id: 'upload',    label: 'Upload images to Media Library' },
+    { id: 'duplicate', label: 'Duplicate Template funnel + link product' },
+  ]);
+
+  // 1) Preflight + image upload (always runs, same as the product flow)
+  let ctx;
+  if (ctxOverride) {
+    ctx = ctxOverride;
+    p.skip('upload', 'Reused from previous step');
+  } else {
+    p.start('upload');
+    try { ctx = await preflightBuild(idx, { uploadImages: !uploadedImagesOverride }); }
+    catch (err) { console.error(err); p.fail('upload', err.message); return null; }
+    if (!ctx) { p.fail('upload', 'Stopped (see toast above)'); return null; }
+    p.done('upload', (ctx.uploadedImages || []).length + ' image(s) ready');
+  }
+  const { builds, b, wp } = ctx;
+  const uploadedImages  = uploadedImagesOverride || ctx.uploadedImages;
+  const linkedProductId = productId || builds[idx].wc_product_id || 0;
+  if (!linkedProductId) {
+    p.fail('find', 'No product linked. Run Generate Product first or use All.');
+    return null;
+  }
+
+  // 2-4) Inside runAll the panel shows find/ai/create rows; in standalone
+  // mode they were never added (see panel definition above), so skip the
+  // markers when the row doesn't exist.
+  if (!standalone) {
+    p.skip('find',   'Reusing existing product #' + linkedProductId);
+    p.skip('ai',     'Reusing existing product description');
+    p.skip('create', 'Existing product #' + linkedProductId);
+  }
+
+  // 5) Duplicate funnel — IDENTICAL call to the one runAll makes.
+  p.start('duplicate', 'Linking product #' + linkedProductId);
+  let result;
+  try {
+    b._wp = wp;
+    const modifications = buildModifications(b, uploadedImages, linkedProductId);
+    result = await duplicateFunnelOnWp(wp, {
+      source_name:       'Template',
+      new_name:          b.product_name,
+      slug:              b.slug || 'landing',
+      linked_product_id: linkedProductId,
+      modifications:     modifications,
+    });
+  } catch (err) { console.error(err); p.fail('duplicate', err.message); return null; }
+  p.done('duplicate', '#' + result.funnel_id);
+
+  builds[idx].imported_funnel_id  = result.funnel_id;
+  builds[idx].imported_funnel_url = result.admin_url;
+  // Save the landing step ID + build a direct Elementor edit URL so the
+  // "Open in WP" button takes the user straight to the page builder for the
+  // landing (the pencil icon in WP Funnels canvas).
+  const landingStep = (result.steps || []).find(s => s.type === 'landing');
+  if (landingStep) {
+    builds[idx].landing_step_id = landingStep.id;
+    const storeBase = (wp.url || '').replace(/\/$/, '');
+    builds[idx].landing_edit_url = storeBase + '/wp-admin/post.php?post=' + landingStep.id + '&action=elementor';
+  }
+  builds[idx].updated_at = Date.now();
+  try { saveBuilds(builds); } catch (e) { console.warn('saveBuilds failed (non-fatal):', e); }
+  renderBuilds();
+  if (standalone) p.finish('Funnel #' + result.funnel_id + ' created (linked to product #' + linkedProductId + ')');
+  return { ctx, result };
+}
+
+// ── ACTION: All — full flow (product + funnel) ────────────────────────
+async function runAll(idx) {
+  const builds0 = loadBuilds();
+  const b0 = builds0[idx];
+  const p = newProgress('All — ' + (b0?.product_name || 'build'), [
+    { id: 'upload',    label: 'Upload images to Media Library' },
+    { id: 'find',      label: 'Find TEMPLATE product' },
+    { id: 'ai',        label: 'AI description (GPT-5)' },
+    { id: 'create',    label: 'Create WooCommerce product' },
+    { id: 'duplicate', label: 'Duplicate Template funnel + link product' },
+  ]);
+  let productResult;
+  try { productResult = await runGenerateProduct(idx, p); }
+  catch (err) { console.error(err); p.fail('upload', 'Crash: ' + (err.message || err)); return; }
+  if (!productResult) return;
+  const { ctx, newProduct, uploadedImages } = productResult;
+  let landingResult;
+  try { landingResult = await runGenerateLanding(idx, newProduct.id, ctx, uploadedImages, p); }
+  catch (err) { console.error(err); p.fail('duplicate', 'Crash: ' + (err.message || err)); return; }
+  if (!landingResult) return;
+  const builds = loadBuilds();
+  builds[idx].status     = 'sent';
+  builds[idx].sent_at    = Date.now();
+  builds[idx].updated_at = Date.now();
+  try { saveBuilds(builds); } catch (e) { console.warn('saveBuilds failed (non-fatal):', e); }
+  p.finish('Product #' + newProduct.id + ' · Funnel #' + landingResult.result.funnel_id);
+  renderBuilds();
+}
+
+// Legacy alias (table row's "Send" button still calls this)
+async function sendBuild(idx) { return runAll(idx); }
+
+
+// ── BACKEND API (CMS connectors) ───────────────────────────────────────
+const API_BASE  = 'https://indigo-dog-836598.hostingersite.com/api';
+const API_TOKEN = 'tk_4d2b9f7a8c6e1530a4f2d9b7e8c6a1f5';
+async function api(path, opts = {}) {
+  const headers = Object.assign({ 'Authorization': 'Bearer ' + API_TOKEN }, opts.headers || {});
+  if (opts.body && !headers['Content-Type']) headers['Content-Type'] = 'application/json';
+  const r = await fetch(API_BASE + path, { ...opts, headers });
+  if (!r.ok) throw new Error('API ' + r.status);
+  return r.json();
+}
+
+// Cache of CMS connectors so we don't refetch on every action.
+let __cmsCache = null;
+async function loadCmsStores(force) {
+  if (__cmsCache && !force) return __cmsCache;
+  try {
+    const data = await api('/connectors.php?type=cms');
+    __cmsCache = (data.rows || []).filter(r => r.provider === 'wordpress');
+  } catch (e) {
+    __cmsCache = [];
+  }
+  return __cmsCache;
+}
+
+// Pick the CMS row matching a given store name (case-insensitive).
+function findStore(stores, name) {
+  if (!name) return null;
+  const n = name.trim().toLowerCase();
+  return stores.find(s => (s.name || '').trim().toLowerCase() === n) || null;
+}
+
+// Resolve { url, user, pass } from a CMS row's WP credentials, or null if missing.
+function wpCredsFromStore(store) {
+  if (!store) return null;
+  const url  = (store.url || '').trim().replace(/\/$/,'');
+  const user = (store.meta?.wp_username || '').trim();
+  const pass = (store.meta?.wp_app_password || '').trim();
+  if (!url || !user || !pass) return null;
+  return { url, user, pass, name: store.name };
+}
+
+
+// ── WP MEDIA UPLOAD ────────────────────────────────────────────────────
+// Convert dataURL → Blob for fetch upload
+function dataUrlToBlob(dataUrl) {
+  const [meta, b64] = dataUrl.split(',');
+  const mime = (meta.match(/data:([^;]+)/) || [])[1] || 'application/octet-stream';
+  const bin = atob(b64);
+  const arr = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+  return new Blob([arr], { type: mime });
+}
+
+// Upload one image to WP Media Library. Returns { id, source_url }.
+async function uploadOneImageToWp(wp, img) {
+  const blob = dataUrlToBlob(img.dataUrl);
+  const safeName = (img.name || 'image').replace(/[^a-zA-Z0-9._-]/g, '_');
+  const r = await fetch(wp.url + '/wp-json/wp/v2/media', {
+    method: 'POST',
+    headers: {
+      'Authorization': 'Basic ' + btoa(wp.user + ':' + wp.pass),
+      'Content-Disposition': 'attachment; filename="' + safeName + '"',
+      'Content-Type': blob.type
+    },
+    body: blob
+  });
+  if (!r.ok) {
+    const t = await r.text().catch(() => '');
+    throw new Error('Media upload failed (' + r.status + '): ' + t.slice(0, 200));
+  }
+  const j = await r.json();
+  return { id: j.id, source_url: j.source_url, alt: img.alt || '' };
+}
+
+// Upload all selected images. `wp` is { url, user, pass }. Returns an array of
+// { id, source_url, name, sortRank } in the same sorted order as injection expects.
+async function uploadImagesToWp(wp, images) {
+  if (!wp) return null;
+  // Honour the user's explicit `order` field (set by drag-reorder); fall back
+  // to the leading number in the filename so pre-existing builds still work.
+  const sorted = images
+    .filter(im => im.selected !== false && im.dataUrl)
+    .map(im => {
+      const order = typeof im.order === 'number'
+        ? im.order
+        : parseInt((im.name || '').match(/(\d+)/)?.[1] || '999', 10);
+      return { ...im, sortRank: order };
+    })
+    .sort((a, b) => a.sortRank - b.sortRank);
+  const results = [];
+  for (let i = 0; i < sorted.length; i++) {
+    // Per-image upload toast removed — the persistent progress panel
+    // already shows the overall "upload images" step status.
+    const up = await uploadOneImageToWp(wp, sorted[i]);
+    results.push({ ...up, name: sorted[i].name, sortRank: sorted[i].sortRank });
+  }
+  return results;
+}
+
+// Auto-import the funnel JSON via the Landing Auto Bridge plugin.
+// Throws on failure (caller can fall back to JSON download).
+async function importFunnelToWp(wp, funnelJson) {
+  const r = await fetch(wp.url + '/wp-json/landing-auto/v1/import-funnel', {
+    method: 'POST',
+    headers: {
+      'Authorization': 'Basic ' + btoa(wp.user + ':' + wp.pass),
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(funnelJson)
+  });
+  const t = await r.text();
+  if (!r.ok) {
+    if (r.status === 404) throw new Error('Bridge plugin not installed on ' + wp.url + ' — open "Setup WP plugin" and follow the steps');
+    throw new Error('Funnel import failed (' + r.status + '): ' + t.slice(0, 300));
+  }
+  try { return JSON.parse(t); } catch (e) { throw new Error('Bad response from bridge plugin: ' + t.slice(0, 200)); }
+}
+
+// Build the "modifications" payload for /duplicate-funnel from a build.
+// This is the same set of replacements the legacy buildFunnelJson did, but
+// expressed as data the PHP plugin can apply to a freshly-cloned live funnel.
+function buildModifications(build, uploadedImages, newProductId) {
+  const sec   = build.sections || {};
+  const slug  = build.slug || 'landing';
+  const price = build.price || '999';
+  const origPrice = Math.ceil((+price || 999) * 2 / 50) * 50;
+  const productName = build.product_name || '';
+  const benefits     = sec.benefits || [];
+  const headlines    = sec.headlines || [];
+  const subheadlines = sec.subheadlines || [];
+
+  // Pull the store's bare host (e.g. "rehlaegypt.com") from the saved CMS URL so
+  // every hard-coded link inside the template (currently `trendjaded.online`) is
+  // rewritten to point at the user's actual store.
+  const storeHost = (() => {
+    try {
+      const url = (build._wp && build._wp.url) || '';
+      if (url) return new URL(url).host;
+    } catch (e) {}
+    return '';
+  })();
+
+  // Plain text replacements — applied IN ORDER. Longer/more-specific patterns
+  // come first so they're not chewed up by the shorter ones (e.g. العنوان
+  // before عنوان).
+  //
+  // Slug strategy (after the v1.0.11 flip):
+  //   • LANDING step gets the clean slug `<slug>` (e.g. /swimmingfloat/) — this
+  //     is the URL the user shares in ads.
+  //   • CHECKOUT step gets `<slug>-checkout` — this is what the 2 CTA buttons
+  //     inside the landing must point to.
+  //   • THANK-YOU stays `<slug>-thank-you`.
+  // The replacement order matters: longer template slugs first so they don't
+  // get partially matched by shorter ones (`scaling-checkout` BEFORE `scaling`).
+  const text_replacements = [
+    // Domain rewrite first so any URL inside the template gets the user's host
+    ...(storeHost ? [{ find: 'trendjaded.online', replace: storeHost }] : []),
+    { find: 'scaling-landing-page', replace: slug },                 // landing = clean slug
+    { find: 'scaling-checkout',     replace: slug + '-checkout' },   // checkout = -checkout
+    { find: 'scaling-thank-you',    replace: slug + '-thank-you' },
+    { find: 'اسم المنتج',           replace: productName },
+    { find: '<h2>العنوان</h2>',     replace: '<h2>' + (sec.title || 'العنوان') + '</h2>' },
+    { find: '<p>الوصف</p>',         replace: '<p>' + (sec.hook  || 'الوصف') + '</p>' },
+    { find: 'العنوان',              replace: sec.title || 'العنوان' },
+    { find: 'الوصف',                replace: sec.hook  || 'الوصف' },
+    { find: 'السعر الأصلي: 000 ج.م', replace: 'السعر الأصلي: ' + origPrice + ' ج.م' },
+    { find: '000 فقط',              replace: price + ' فقط' },
+  ];
+
+  // HTML pair replacement (post_content uses this pattern for h3+p blocks)
+  const html_pairs = [];
+  if (headlines.length) {
+    html_pairs.push({
+      find: '<h3>عنوان</h3><p>وصف</p>',
+      format: '<h3>{0}</h3><p>{1}</p>',
+      values: headlines.map((h, i) => [h, subheadlines[i] || '']),
+    });
+  }
+
+  // Counter replacements (each occurrence advances index)
+  const counters = {};
+  if (benefits.length)     counters['منافع']  = benefits;
+  if (headlines.length)    counters['عنوان']  = headlines;
+  if (subheadlines.length) counters['وصف']    = subheadlines;
+
+  // Image array (uploaded to Media Library by uploadImagesToWp)
+  const images = (uploadedImages || []).map(im => ({
+    id:  im.id,
+    url: im.source_url,
+    alt: (im.name || '').replace(/\.[^.]+$/, ''),
+  }));
+
+  // Testimonial array (parsed from sec.reviews "<text> — <name>")
+  const testimonials = (sec.reviews || []).map(r => {
+    const m = String(r).match(/^([\s\S]+?)\s*[—–\-]\s*(.+?)\s*$/);
+    if (m) return { text: m[1].trim().replace(/^"|"$/g, ''), name: m[2].trim() };
+    return { text: String(r).trim().replace(/^"|"$/g, ''), name: 'عميل' };
+  });
+
+  return { text_replacements, html_pairs, counters, images, testimonials };
+}
+
+// Call /duplicate-funnel — clones the live "Template" funnel on the WP site
+// and applies the modifications payload server-side.
+async function duplicateFunnelOnWp(wp, payload) {
+  const r = await fetch(wp.url + '/wp-json/landing-auto/v1/duplicate-funnel', {
+    method: 'POST',
+    headers: {
+      'Authorization': 'Basic ' + btoa(wp.user + ':' + wp.pass),
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(payload)
+  });
+  const t = await r.text();
+  if (!r.ok) {
+    if (r.status === 404) throw new Error('Auto Land plugin v1.0.4+ required — open "Setup WP plugin" to update');
+    throw new Error('Duplicate failed (' + r.status + '): ' + t.slice(0, 300));
+  }
+  try { return JSON.parse(t); } catch (e) { throw new Error('Bad response from bridge plugin: ' + t.slice(0, 200)); }
+}
+
+// Build the modified funnel JSON by find/replace placeholders in the template.
+// `uploadedImages`: optional array of { id, source_url, name, sortRank } from WP
+// Media Library upload. When present, image-box widgets get the real WP URL+ID
+// so Elementor's image control accepts them. When null, falls back to dataURLs
+// (which Elementor's sanitizer rejects on import — section images break).
+async function buildFunnelJson(build, uploadedImages) {
+  // Load template (cached after first fetch)
+  if (!window.__landingTemplate) {
+    const res = await fetch('templates/landing-template.json');
+    if (!res.ok) throw new Error('Template not found at templates/landing-template.json');
+    window.__landingTemplate = await res.json();
+  }
+  // Deep clone
+  const tpl = JSON.parse(JSON.stringify(window.__landingTemplate));
+  const sec = build.sections || {};
+  const benefits = sec.benefits || [];
+  const headlines = sec.headlines || [];
+  const subheadlines = sec.subheadlines || [];
+  const slug = build.slug || 'landing';
+  const price = build.price || '999';
+  const origPrice = Math.ceil((+price || 999) * 2 / 50) * 50;
+  const productName = build.product_name || '';
+
+  // Build a stateful replacer where counter-based replacements (benefits,
+  // headlines, subheadlines) persist across calls. This is critical for
+  // _elementor_data where each widget title is a separate string leaf — we
+  // walk the tree and need the counter to advance widget-by-widget.
+  function createReplacer() {
+    let bIdx = 0, hIdxHtml = 0, hIdx = 0, shIdx = 0;
+    return function (input) {
+      if (typeof input !== 'string') return input;
+      let s = input;
+
+      // Slugs (URLs in CTAs and step links). Done first.
+      s = s.replace(/scaling-checkout/g, slug + '-checkout');
+      s = s.replace(/scaling-thank-you/g, slug + '-thank-you');
+      s = s.replace(/scaling-landing-page/g, slug);
+
+      // Product name (only one literal in template).
+      s = s.replace(/اسم المنتج/g, productName);
+
+      // HTML-wrapped versions (only present in post_content, harmless elsewhere).
+      s = s.replace(/<h2>العنوان<\/h2>/g, '<h2>' + (sec.title || 'العنوان') + '</h2>');
+      s = s.replace(/<p>الوصف<\/p>/g, '<p>' + (sec.hook || 'الوصف') + '</p>');
+
+      // Plain title/description (used inside _elementor_data settings).
+      // Replace longer patterns BEFORE shorter ones to avoid "العنوان" being
+      // partially eaten by the bare "عنوان" replacer below.
+      s = s.replace(/العنوان/g, sec.title || 'العنوان');
+      s = s.replace(/الوصف/g, sec.hook || 'الوصف');
+
+      // Price + original (struck-through) price.
+      s = s.replace(/000 فقط/g, price + ' فقط');
+      s = s.replace(/السعر الأصلي: 000 ج\.م/g, 'السعر الأصلي: ' + origPrice + ' ج.م');
+
+      // Counter-based: every instance of "منافع" → next benefit (closure counter).
+      s = s.replace(/منافع/g, () => benefits[bIdx++] || 'منفعة');
+
+      // HTML pair (post_content only): <h3>عنوان</h3><p>وصف</p> → headline + subheadline
+      s = s.replace(/<h3>عنوان<\/h3><p>وصف<\/p>/g, () => {
+        const h = headlines[hIdxHtml] || ('Headline ' + (hIdxHtml + 1));
+        const sh = subheadlines[hIdxHtml] || '';
+        hIdxHtml++;
+        return '<h3>' + h + '</h3><p>' + sh + '</p>';
+      });
+
+      // Counter-based bare (Elementor widgets): each occurrence advances the index
+      s = s.replace(/عنوان/g, () => headlines[hIdx++] || ('Headline ' + (hIdx)));
+      s = s.replace(/وصف/g, () => subheadlines[shIdx++] || '');
+
+      return s;
+    };
+  }
+
+  if (Array.isArray(tpl) && tpl[0] && tpl[0].steps_data) {
+    tpl[0].funnel_name = productName || tpl[0].funnel_name;
+    tpl[0].steps_data.forEach(step => {
+      if (step.title) {
+        step.title = step.title.replace(/Landing/, productName + ' — Landing')
+                              .replace(/Checkout/, productName + ' — Checkout')
+                              .replace(/Thank You/, productName + ' — Thank You');
+      }
+      if (step.slug) {
+        step.slug = step.slug
+          .replace('scaling-landing-page', slug)
+          .replace('scaling-checkout', slug + '-checkout')
+          .replace('scaling-thank-you', slug + '-thank-you');
+      }
+      if (step.post_content) {
+        const replacePc = createReplacer();
+        step.post_content = replacePc(step.post_content);
+      }
+      if (step.meta && step.meta._elementor_data) {
+        // Elementor stores Arabic as JSON-escaped \uXXXX sequences. To replace
+        // literal Arabic patterns we need to PARSE the inner JSON, walk every
+        // string value, run our text replacements, then re-stringify.
+        const arr = Array.isArray(step.meta._elementor_data);
+        const raw = arr ? step.meta._elementor_data[0] : step.meta._elementor_data;
+        if (typeof raw === 'string') {
+          let tree;
+          try { tree = JSON.parse(raw); } catch (e) { tree = null; }
+          if (tree) {
+            const replaceEd = createReplacer(); // fresh counters for elementor
+            (function walk(node) {
+              if (Array.isArray(node)) { node.forEach(walk); return; }
+              if (node && typeof node === 'object') {
+                for (const k in node) {
+                  if (typeof node[k] === 'string') node[k] = replaceEd(node[k]);
+                  else if (node[k] && typeof node[k] === 'object') walk(node[k]);
+                }
+              }
+            })(tree);
+            // ── IMAGE INJECTION ──────────────────────────────────────────
+            // Prefer uploaded WP Media URLs (real http URLs + media IDs) — these
+            // pass Elementor's sanitizer. Fall back to base64 dataURLs when WP
+            // creds aren't configured (image-box widgets will break in that case).
+            let selectedImages;
+            let buildImg;
+            if (uploadedImages && uploadedImages.length) {
+              selectedImages = uploadedImages.slice().sort((a, b) => a.sortRank - b.sortRank);
+              buildImg = (img) => ({
+                url: img.source_url,
+                id: img.id,
+                size: 'full',
+                alt: (img.name || '').replace(/\.[^.]+$/, ''),
+                source: 'library'
+              });
+            } else {
+              selectedImages = (build.images || [])
+                .filter(im => im.selected !== false && im.dataUrl)
+                .map(im => ({ ...im, sortRank: parseInt((im.name || '').match(/(\d+)/)?.[1] || '999', 10) }))
+                .sort((a, b) => a.sortRank - b.sortRank);
+              buildImg = (img) => ({
+                url: img.dataUrl,
+                id: '',
+                size: 'full',
+                alt: (img.name || '').replace(/\.[^.]+$/, ''),
+                source: 'library'
+              });
+            }
+            if (selectedImages.length) {
+              let imgIdx = 0;
+              const nextImg = () => selectedImages[imgIdx++ % selectedImages.length];
+              (function injectImages(node) {
+                if (Array.isArray(node)) { node.forEach(injectImages); return; }
+                if (node && typeof node === 'object') {
+                  // image-box / image / icon-box widgets — `image` setting
+                  if ((node.widgetType === 'image-box' || node.widgetType === 'image' || node.widgetType === 'icon-box')
+                      && node.settings && node.settings.image) {
+                    node.settings.image = buildImg(nextImg());
+                  }
+                  // image-carousel — `carousel` array
+                  if (node.widgetType === 'image-carousel' && node.settings) {
+                    node.settings.carousel = selectedImages.map(buildImg);
+                  }
+                  for (const k in node) if (node[k] && typeof node[k] === 'object') injectImages(node[k]);
+                }
+              })(tree);
+            }
+
+            // ── TESTIMONIAL INJECTION ────────────────────────────────────
+            // Replace the 3 hardcoded testimonials with the AI's reviews from
+            // Section 7. Each review block is parsed as `<text> — <name>`.
+            const aiReviews = (sec.reviews || []).map(r => {
+              const m = String(r).match(/^([\s\S]+?)\s*[—–\-]\s*(.+?)\s*$/);
+              if (m) return { text: m[1].trim().replace(/^"|"$/g, ''), name: m[2].trim() };
+              return { text: String(r).trim().replace(/^"|"$/g, ''), name: 'عميل' };
+            });
+            if (aiReviews.length) {
+              let testIdx = 0;
+              (function injectTestimonials(node) {
+                if (Array.isArray(node)) { node.forEach(injectTestimonials); return; }
+                if (node && typeof node === 'object') {
+                  if (node.widgetType === 'testimonial' && node.settings) {
+                    const r = aiReviews[testIdx % aiReviews.length];
+                    if (r) {
+                      node.settings.testimonial_content = r.text || node.settings.testimonial_content;
+                      node.settings.testimonial_name = r.name || node.settings.testimonial_name;
+                      // Keep the 5-star rating in testimonial_job
+                      testIdx++;
+                    }
+                  }
+                  for (const k in node) if (node[k] && typeof node[k] === 'object') injectTestimonials(node[k]);
+                }
+              })(tree);
+            }
+            const replaced = JSON.stringify(tree);
+            step.meta._elementor_data = arr ? [replaced] : replaced;
+          } else {
+            // Fallback: simple string replace (won't catch Arabic-as-escapes
+            // but at least handles ASCII patterns like scaling-checkout)
+            const replaceEd = createReplacer();
+            const replaced = replaceEd(raw);
+            step.meta._elementor_data = arr ? [replaced] : replaced;
+          }
+        }
+      }
+    });
+  }
+  return tpl;
+}
+
+renderBuilds();
+</script>
+</body>
+</html>

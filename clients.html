@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Products</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html,body{min-height:100vh;background:#F1F1F1;font-family:'Inter',system-ui,sans-serif;color:#1A1A1A;font-size:14px;}
+  .app-shell{display:flex;min-height:100vh;}
+  .app-sidebar{width:240px;min-width:240px;background:#EBEBEB;border-right:1px solid #DCDCDC;display:flex;flex-direction:column;height:calc(100vh - 48px);position:sticky;top:48px;}
+  .app-sidebar-items{padding:10px 8px;flex:1;display:flex;flex-direction:column;gap:2px;overflow-y:auto;}
+  .app-sidebar-item{padding:7px 12px;border-radius:8px;font-size:13px;color:#303030;display:flex;align-items:center;gap:10px;cursor:pointer;text-decoration:none;font-weight:800;}
+  .app-sidebar-item:hover{background:#E2E2E2;}
+  .app-sidebar-divider{height:1px;background:#DCDCDC;margin:8px 4px;}
+  .app-main{flex:1;min-width:0;}
+  .page{padding:24px 32px;width:100%;max-width:none;}
+  .page-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;gap:12px;flex-wrap:wrap;}
+  .page h1{font-size:22px;font-weight:700;}
+  .btn{display:inline-flex;align-items:center;gap:8px;padding:0 16px;height:36px;border-radius:8px;border:1px solid #1A1A1A;background:#1A1A1A;color:#FFFFFF;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;text-decoration:none;}
+  .btn:disabled{opacity:0.6;cursor:not-allowed;}
+  .btn-ghost{background:#FFFFFF;color:#1A1A1A;border-color:#DCDCDC;}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:12px;}
+  .card{position:relative;background:#FFFFFF;border:1px solid #E1E3E5;border-radius:12px;padding:14px 14px 14px;cursor:pointer;transition:border-color .12s,box-shadow .12s,transform .12s;display:flex;flex-direction:column;gap:6px;}
+  .card:hover{border-color:#1A1A1A;box-shadow:0 4px 12px rgba(0,0,0,0.08);transform:translateY(-1px);}
+  .card .icon{font-size:26px;color:#9CA3AF;line-height:1;}
+  .card .name{font-size:13px;font-weight:700;color:#1A1A1A;word-break:break-word;padding-right:22px;line-height:1.3;}
+  .card .more{position:absolute;top:10px;right:10px;width:24px;height:24px;border:none;background:transparent;border-radius:6px;cursor:pointer;color:#6D7175;font-size:18px;line-height:1;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .12s,background .12s;font-family:inherit;}
+  .card:hover .more{opacity:1;}
+  .card .more:hover{background:#F1F1F1;color:#1A1A1A;}
+  .prod-menu{position:fixed;background:#FFFFFF;border:1px solid #E1E3E5;border-radius:8px;box-shadow:0 8px 20px rgba(0,0,0,0.12);padding:6px;z-index:9000;min-width:200px;font-family:inherit;}
+  .prod-menu button{display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:8px 12px;border:none;background:transparent;cursor:pointer;font-size:13px;color:#1A1A1A;border-radius:6px;font-family:inherit;}
+  .prod-menu button:hover{background:#F5F5F5;}
+  .prod-menu button.danger{color:#D72C0D;font-weight:600;}
+  .prod-menu .sep{height:1px;background:#F1F1F1;margin:4px 0;}
+  .card .meta{font-size:11px;color:#6D7175;}
+  .card .badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;margin-top:8px;}
+  .badge.draft{background:#F1F1F1;color:#6D7175;}
+  .badge.ready{background:#FEF3C7;color:#92400E;}
+  .badge.sent{background:#D1FAE5;color:#065F46;}
+  .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:center;justify-content:center;}
+  .modal{background:#FFFFFF;border-radius:12px;width:480px;max-width:92vw;padding:22px 24px;}
+  .modal h3{font-size:16px;font-weight:700;margin-bottom:14px;}
+  .modal label{display:block;font-size:12px;font-weight:600;color:#1A1A1A;margin-bottom:6px;}
+  .modal input[type=text]{width:100%;padding:10px 12px;border:1px solid #DCDCDC;border-radius:8px;font-size:13px;margin-bottom:14px;font-family:inherit;}
+  .upload-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;}
+  .upload-btn{display:inline-flex;align-items:center;gap:6px;padding:8px 12px;border:1px solid #DCDCDC;border-radius:8px;background:#FFFFFF;cursor:pointer;font-size:12px;font-weight:600;color:#1A1A1A;font-family:inherit;}
+  .upload-btn:hover{border-color:#1A1A1A;}
+  .files-summary{display:none;margin-bottom:14px;padding:8px 12px;background:#F0FDF4;border:1px solid #BBF7D0;border-radius:6px;font-size:11px;color:#0F5132;line-height:1.5;}
+  .modal-foot{display:flex;justify-content:flex-end;gap:8px;}
+  .err{background:#FEF2F2;border:1px solid #FECACA;color:#991B1B;border-radius:8px;padding:10px 12px;font-size:13px;margin-bottom:14px;}
+  .spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(0,0,0,0.15);border-top-color:#1A1A1A;border-radius:50%;animation:spin .7s linear infinite;}
+  .spinner.white{border-color:rgba(255,255,255,0.3);border-top-color:#FFFFFF;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .progress{font-size:11px;color:#6D7175;margin-top:8px;}
+  /* All-brands drill-down: client → brand → products */
+  .tree-head{display:flex;align-items:center;gap:10px;padding:14px 16px;background:#FFFFFF;border:1px solid #E1E3E5;border-radius:10px;cursor:pointer;margin-bottom:10px;transition:border-color .12s,background .12s;}
+  .tree-head:hover{border-color:#1A1A1A;background:#FAFAFA;}
+  .tree-head .ch-icon{font-size:20px;}
+  .tree-head .ch-name{font-size:14px;font-weight:700;color:#1A1A1A;}
+  .tree-head .ch-meta{margin-left:auto;font-size:11px;color:#6D7175;font-weight:500;}
+  .tree-head .ch-chevron{font-size:18px;color:#9CA3AF;margin-left:6px;}
+  .tree-brand-head{display:flex;align-items:center;gap:8px;padding:12px 14px;background:#FFFFFF;border:1px solid #E1E3E5;border-radius:10px;cursor:pointer;margin-bottom:10px;transition:border-color .12s,background .12s;}
+  .tree-brand-head:hover{border-color:#1A1A1A;background:#FAFAFA;}
+  .tree-brand-head .bh-icon{font-size:18px;color:#FBBF24;}
+  .tree-brand-head .bh-name{font-size:14px;font-weight:700;color:#1A1A1A;}
+  .tree-brand-head .bh-meta{margin-left:auto;font-size:11px;color:#6D7175;}
+  /* Breadcrumb bar */
+  .bc-bar{display:flex;align-items:center;gap:6px;font-size:12px;margin-bottom:14px;flex-wrap:wrap;}
+  .bc-link{color:#005BD3;text-decoration:none;font-weight:600;cursor:pointer;}
+  .bc-link:hover{text-decoration:underline;}
+  .bc-sep{color:#9CA3AF;}
+  .bc-cur{color:#1A1A1A;font-weight:700;}
+</style>
+<link rel="stylesheet" href="app-shared.css?v=1777873601">
+<script src="topbar.js?v=1777873601"></script>
+<script src="sidebar-tools.js?v=1777873601"></script>
+<script src="google-picker.js?v=1777873601"></script>
+<script src="drive-viewer.js?v=1777873601"></script>
+<script src="app-ui.js?v=1777873601"></script>
+</head>
+<body>
+<div class="app-shell">
+  <aside class="app-sidebar">
+    <nav class="app-sidebar-items">
+      <a href="index.html" class="app-sidebar-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/></svg><span>Orders</span></a>
+      <a href="shipping.html" class="app-sidebar-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg><span>Shipping Analytics</span></a>
+      <a href="ads.html" class="app-sidebar-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg><span>Ads Analysis</span></a>
+    </nav>
+  </aside>
+  <div class="app-main">
+    <div class="page">
+      <div class="page-head">
+        <h1>Products</h1>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn btn-ghost" id="importProductsBtn" title="Import every product subfolder inside the brand's PRODUCTS folder">⤓ Import products</button>
+          <button class="btn" id="newBtn">+ New Product</button>
+        </div>
+      </div>
+      <div id="errBox"></div>
+      <div id="grid"><div class="empty"><span class="spinner"></span> Loading…</div></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const API_BASE  = 'https://indigo-dog-836598.hostingersite.com/api';
+const API_TOKEN = 'tk_4d2b9f7a8c6e1530a4f2d9b7e8c6a1f5';
+async function api(path, opts = {}) {
+  const headers = Object.assign({ 'Authorization': 'Bearer ' + API_TOKEN }, opts.headers || {});
+  if (opts.body && !headers['Content-Type']) headers['Content-Type'] = 'application/json';
+  const r = await fetch(API_BASE + path, { ...opts, headers });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(d.error || ('HTTP ' + r.status));
+  return d;
+}
+function escapeHtml(s){return String(s ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
+function showErr(msg){ $('errBox').innerHTML = msg ? '<div class="err">⚠ ' + escapeHtml(msg) + '</div>' : ''; }
+
+let connectorId = null;
+async function loadConnectorId(){
+  if (connectorId) return connectorId;
+  const d = await api('/connectors.php?type=storage&provider=google_drive');
+  const c = (d.rows || [])[0];
+  if (c) connectorId = c.id;
+  return connectorId;
+}
+
+// ── View modes ───────────────────────────────────────────────
+// "All brands" (no active brand) → drill-down: clients → brands → products.
+// Single brand active → flat product list (unchanged).
+// Read active brand from localStorage in case topbar.js hasn't finished init.
+function readActiveBrandId(){
+  if (typeof window.getActiveBrandId === 'function') return window.getActiveBrandId();
+  try { return parseInt(localStorage.getItem('app.activeBrandId') || '0', 10) || 0; } catch(e){ return 0; }
+}
+
+// Cached datasets shared across drill-down levels
+let __cache = { products: [], clients: [], brands: [], loaded: false };
+
+// Navigation state lives in URL hash so back/forward + reload preserve it:
+//   #              → clients list
+//   #c/12          → brands of client 12
+//   #c/12/b/34     → products of brand 34
+function readNav(){
+  const h = (location.hash || '').replace(/^#/, '');
+  const m = h.match(/^c\/(\d+)(?:\/b\/(\d+))?$/);
+  if (!m) return { level: 0 };
+  return { level: m[2] ? 2 : 1, clientId: parseInt(m[1], 10), brandId: m[2] ? parseInt(m[2], 10) : 0 };
+}
+function setNav(state){
+  let h = '';
+  if (state.level === 1) h = 'c/' + state.clientId;
+  else if (state.level === 2) h = 'c/' + state.clientId + '/b/' + state.brandId;
+  if (h) location.hash = h; else history.replaceState(null, '', location.pathname + location.search);
+  loadProducts();
+}
+window.addEventListener('hashchange', () => loadProducts());
+
+function renderBreadcrumbs(state){
+  const parts = ['<a href="#" data-nav="root" class="bc-link">All brands</a>'];
+  if (state.level >= 1) {
+    const c = __cache.clients.find(x => x.id === state.clientId) || (state.clientId === 0 ? { name: 'Unassigned' } : null);
+    parts.push('<span class="bc-sep">›</span>');
+    if (state.level === 1) parts.push('<span class="bc-cur">' + escapeHtml(c ? c.name : 'Client') + '</span>');
+    else parts.push('<a href="#c/' + state.clientId + '" data-nav="client" class="bc-link">' + escapeHtml(c ? c.name : 'Client') + '</a>');
+  }
+  if (state.level >= 2) {
+    const b = __cache.brands.find(x => x.id === state.brandId);
+    parts.push('<span class="bc-sep">›</span>');
+    parts.push('<span class="bc-cur">' + escapeHtml(b ? b.name : 'Brand') + '</span>');
+  }
+  return '<div class="bc-bar">' + parts.join('') + '</div>';
+}
+
+async function loadProducts(){
+  try {
+    const activeId = readActiveBrandId();
+    if (activeId) {
+      // ── Single-brand view: flat list filtered by active brand ──
+      // (bug fix: was hitting /products.php without brand_id, which
+      // returned EVERY brand's products under whichever brand was active)
+      const d = await api('/products.php?brand_id=' + activeId);
+      const rows = d.rows || [];
+      if (!rows.length) { $('grid').innerHTML = '<div class="empty">No products yet — click <b>+ New Product</b> to add your first one.<br><br><a href="settings.html#brands" style="color:#005BD3;text-decoration:none;font-weight:600;">Create a brand profile first →</a></div>'; return; }
+      $('grid').innerHTML = '<div class="grid">' + rows.map(p => `
+        <div class="card" data-id="${p.id}" data-folder="${escapeHtml(p.drive_folder_id||'')}" data-name="${escapeHtml(p.name)}">
+          <button class="more" data-more="${p.id}" title="More actions">⋯</button>
+          <div class="icon">📁</div>
+          <div class="name">${escapeHtml(p.name)}</div>
+          <div class="meta">Updated ${escapeHtml((p.updated_at||'').replace('T',' ').slice(0,16))}</div>
+        </div>`).join('') + '</div>';
+      wireProductCards();
+      return;
+    }
+    // ── All-brands view: drill-down ──
+    if (!__cache.loaded) {
+      const [pData, cData, bData] = await Promise.all([
+        api('/products.php'),
+        api('/clients.php'),
+        api('/brands.php'),
+      ]);
+      __cache.products = pData.rows || [];
+      __cache.clients  = (cData.rows || []).filter(c => c && c.id);
+      __cache.brands   = (bData.rows || []).filter(b => b && b.id);
+      __cache.loaded = true;
+    }
+    const state = readNav();
+    const brandsByClient = new Map();
+    __cache.brands.forEach(b => {
+      const cid = b.client_id || 0;
+      if (!brandsByClient.has(cid)) brandsByClient.set(cid, []);
+      brandsByClient.get(cid).push(b);
+    });
+    const productsByBrand = new Map();
+    __cache.products.forEach(p => {
+      const bid = p.brand_id || 0;
+      if (!productsByBrand.has(bid)) productsByBrand.set(bid, []);
+      productsByBrand.get(bid).push(p);
+    });
+    let html = renderBreadcrumbs(state);
+    if (state.level === 0) {
+      // ── Level 0: clients list ────────────────────────────────
+      const clientsWithBrands = __cache.clients.filter(c => (brandsByClient.get(c.id) || []).length > 0);
+      const orphans = brandsByClient.get(0) || [];
+      if (!clientsWithBrands.length && !orphans.length) {
+        html += '<div class="empty">No products yet — click <b>+ New Product</b> to add your first one.<br><br><a href="settings.html#brands" style="color:#005BD3;text-decoration:none;font-weight:600;">Create a brand profile first →</a></div>';
+      } else {
+        clientsWithBrands.forEach(c => {
+          const myBrands = brandsByClient.get(c.id) || [];
+          let total = 0; myBrands.forEach(b => total += (productsByBrand.get(b.id) || []).length);
+          html += `<div class="tree-head" data-nav="client" data-client-id="${c.id}">
+            <span class="ch-icon">👤</span>
+            <span class="ch-name">${escapeHtml(c.name)}</span>
+            <span class="ch-meta">${myBrands.length} brand${myBrands.length===1?'':'s'} · ${total} product${total===1?'':'s'}</span>
+            <span class="ch-chevron">›</span>
+          </div>`;
+        });
+        if (orphans.length) {
+          let total = 0; orphans.forEach(b => total += (productsByBrand.get(b.id) || []).length);
+          html += `<div class="tree-head" data-nav="client" data-client-id="0">
+            <span class="ch-icon">👤</span>
+            <span class="ch-name">Unassigned</span>
+            <span class="ch-meta">${orphans.length} brand${orphans.length===1?'':'s'} · ${total} product${total===1?'':'s'}</span>
+            <span class="ch-chevron">›</span>
+          </div>`;
+        }
+      }
+    } else if (state.level === 1) {
+      // ── Level 1: brands of the chosen client ────────────────
+      const myBrands = brandsByClient.get(state.clientId) || [];
+      if (!myBrands.length) {
+        html += '<div class="empty">No brands under this client.</div>';
+      } else {
+        myBrands.forEach(b => {
+          const prods = productsByBrand.get(b.id) || [];
+          html += `<div class="tree-brand-head" data-nav="brand" data-client-id="${state.clientId}" data-brand-id="${b.id}">
+            <span class="bh-icon">📁</span>
+            <span class="bh-name">${escapeHtml(b.name)}</span>
+            <span class="bh-meta">${prods.length} product${prods.length===1?'':'s'}</span>
+            <span class="ch-chevron">›</span>
+          </div>`;
+        });
+      }
+    } else if (state.level === 2) {
+      // ── Level 2: products of the chosen brand ───────────────
+      const prods = productsByBrand.get(state.brandId) || [];
+      if (!prods.length) {
+        html += '<div class="empty">No products yet in this brand.</div>';
+      } else {
+        html += '<div class="grid">' + prods.map(p => `
+          <div class="card" data-id="${p.id}" data-folder="${escapeHtml(p.drive_folder_id||'')}" data-name="${escapeHtml(p.name)}">
+            <button class="more" data-more="${p.id}" title="More actions">⋯</button>
+            <div class="icon">📁</div>
+            <div class="name">${escapeHtml(p.name)}</div>
+            <div class="meta">Updated ${escapeHtml((p.updated_at||'').replace('T',' ').slice(0,16))}</div>
+          </div>`).join('') + '</div>';
+      }
+    }
+    $('grid').innerHTML = html;
+    // Wire breadcrumb links
+    $('grid').querySelectorAll('.bc-link').forEach(a => {
+      a.addEventListener('click', e => {
+        e.preventDefault();
+        if (a.dataset.nav === 'root') setNav({ level: 0 });
+        else if (a.dataset.nav === 'client') setNav({ level: 1, clientId: state.clientId });
+      });
+    });
+    // Drill-in handlers
+    $('grid').querySelectorAll('[data-nav="client"]').forEach(row => {
+      row.addEventListener('click', () => setNav({ level: 1, clientId: parseInt(row.dataset.clientId, 10) }));
+    });
+    $('grid').querySelectorAll('[data-nav="brand"]').forEach(row => {
+      row.addEventListener('click', () => setNav({ level: 2, clientId: parseInt(row.dataset.clientId, 10), brandId: parseInt(row.dataset.brandId, 10) }));
+    });
+    wireProductCards();
+  } catch (e) { $('grid').innerHTML = ''; showErr(e.message); }
+}
+
+// Force reload of cached datasets (e.g. when user switches brand or
+// products list changes after Create/Delete/Rename).
+function invalidateProductsCache(){ __cache.loaded = false; }
+
+function wireProductCards(){
+  $('grid').querySelectorAll('.card').forEach(c => c.addEventListener('click', (e) => {
+    if (e.target.closest('.more')) return;
+    window.location.href = 'product.html?id=' + c.dataset.id;
+  }));
+  $('grid').querySelectorAll('.more').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const card = btn.closest('.card');
+      openProductMenu(btn, card.dataset.id, card.dataset.name, card.dataset.folder);
+    });
+  });
+}
+
+// ── New Product modal ────────────────────────────────────────────────
+// Creating a product just duplicates the PRODUCT TEMPLATE folder + all of
+// its files / subfolders for the active brand. No upload step is needed.
+function openNewModal(){
+  document.body.insertAdjacentHTML('beforeend', `
+    <div class="modal-bg" id="newModal">
+      <div class="modal">
+        <h3>New Product</h3>
+        <div id="modalErr"></div>
+        <label>Product name (Arabic — same as in shipping/sheet)</label>
+        <input type="text" id="newName" placeholder="e.g. حمام سباحة عائلي" autofocus>
+        <label>Campaign name (English — exact name used in Meta ad campaigns)</label>
+        <input type="text" id="newCampaignName" placeholder="e.g. Family Pool" style="margin-bottom:8px;">
+        <div style="font-size:11px;color:#6D7175;margin-bottom:14px;line-height:1.6;">Used by Financial Modeling Updater to bridge Arabic ↔ English when reading ROAS from ads. Can be edited later from the product menu.</div>
+        <div class="modal-foot">
+          <button class="btn btn-ghost" id="modalCancel">Cancel</button>
+          <button class="btn" id="modalSave">Create</button>
+        </div>
+        <div id="progress" class="progress"></div>
+      </div>
+    </div>`);
+  $('modalCancel').addEventListener('click', () => $('newModal').remove());
+  $('modalSave').addEventListener('click', createProduct);
+}
+
+async function createProduct(){
+  const name = $('newName').value.trim();
+  if (!name) { $('modalErr').innerHTML = '<div class="err">Name is required.</div>'; return; }
+  // The product folder MUST be created under the active brand's Drive
+  // folder. If the user is on "All brands" we can't tell which brand
+  // they meant, so we block here instead of dumping the product into
+  // the workspace default.
+  const activeBrandId = readActiveBrandId();
+  if (!activeBrandId) {
+    $('modalErr').innerHTML = '<div class="err">Switch to a specific brand in the topbar first — products can\'t be created from "All brands" view.</div>';
+    return;
+  }
+  const save = $('modalSave'); save.disabled = true;
+  save.innerHTML = '<span class="spinner white"></span> Copying template…';
+  try {
+    // Server copies PRODUCT TEMPLATE folder (with all sub-folders & files)
+    // into the active brand's folder. The template's empty () placeholders
+    // get filled with the product name on every file.
+    // Pass the active brand_id so the new folder is created under THIS
+    // brand's Drive folder (not the workspace default).
+    const campaignName = ($('newCampaignName').value || '').trim();
+    await api('/products.php', { method: 'POST', body: JSON.stringify({ brand_id: activeBrandId, name, campaign_name: campaignName || undefined }) });
+    $('newModal').remove();
+    invalidateProductsCache(); loadProducts();
+  } catch (e) {
+    $('modalErr').innerHTML = '<div class="err">⚠ ' + escapeHtml(e.message) + '</div>';
+    save.disabled = false; save.innerHTML = 'Create';
+    $('progress').textContent = '';
+  }
+}
+
+// ── Per-product action menu ─────────────────────────────────────────
+function openProductMenu(anchor, productId, productName, folderId){
+  document.querySelectorAll('.prod-menu').forEach(m => m.remove());
+  const rect = anchor.getBoundingClientRect();
+  const menu = document.createElement('div');
+  menu.className = 'prod-menu';
+  menu.style.top = (rect.bottom + 4) + 'px';
+  menu.style.left = Math.max(8, rect.right - 200) + 'px';
+  menu.innerHTML = `
+    <button data-act="download">⬇ Download folder</button>
+    <button data-act="rename">✎ Rename</button>
+    <button data-act="campaign">🎯 Edit campaign name</button>
+    <div class="sep"></div>
+    <button data-act="delete" class="danger">🗑 Delete product</button>`;
+  document.body.appendChild(menu);
+  const close = () => { menu.remove(); document.removeEventListener('click', closeOut, true); };
+  const closeOut = (ev) => { if (!menu.contains(ev.target)) close(); };
+  setTimeout(() => document.addEventListener('click', closeOut, true), 0);
+
+  menu.querySelector('[data-act="download"]').addEventListener('click', () => {
+    close();
+    if (folderId) window.open('https://drive.google.com/drive/folders/' + folderId + '?download=zip', '_blank');
+    else appToast('No Drive folder to download.', { type: 'warn' });
+  });
+  menu.querySelector('[data-act="rename"]').addEventListener('click', async () => {
+    close();
+    const newName = await appPrompt(null, {
+      title: 'Rename product',
+      defaultValue: productName,
+      placeholder: 'Product name',
+      okText: 'Rename'
+    });
+    if (!newName || newName === productName) return;
+    try {
+      await api('/products.php', { method: 'PATCH', body: JSON.stringify({ id: parseInt(productId, 10), name: newName }) });
+      invalidateProductsCache(); loadProducts();
+      appToast('Renamed.', { type: 'success' });
+    } catch (e) { appToast(e.message, { type: 'error', title: 'Rename failed' }); }
+  });
+  menu.querySelector('[data-act="campaign"]').addEventListener('click', async () => {
+    close();
+    // Fetch the product so the prompt can prefill with the current campaign name.
+    let current = '';
+    try {
+      const p = await api('/products.php?id=' + productId);
+      current = (p && p.meta && p.meta.campaign_name) || '';
+    } catch (e) { /* not fatal — user can type from scratch */ }
+    const newCampaign = await appPrompt(
+      'Used by Financial Modeling Updater to map ROAS from ads (English) to this Arabic product.',
+      {
+        title: 'Campaign name for "' + productName + '"',
+        defaultValue: current,
+        placeholder: 'e.g. Family Pool',
+        okText: 'Save'
+      }
+    );
+    if (newCampaign === null) return; // cancelled
+    try {
+      await api('/products.php', { method: 'PATCH', body: JSON.stringify({ id: parseInt(productId, 10), campaign_name: newCampaign }) });
+      appToast('Campaign name saved.', { type: 'success' });
+    } catch (e) { appToast(e.message, { type: 'error', title: 'Save failed' }); }
+  });
+  menu.querySelector('[data-act="delete"]').addEventListener('click', async () => {
+    close();
+    const ok = await appConfirm(
+      'The Drive folder will also be moved to Trash (recoverable for 30 days).',
+      { title: 'Delete product "' + productName + '"?', okText: 'Delete', danger: true }
+    );
+    if (!ok) return;
+    try {
+      const res = await api('/products.php?id=' + productId + '&drive=1', { method: 'DELETE' });
+      invalidateProductsCache(); loadProducts();
+      if (res && res.drive === 'trashed') {
+        appToast('Product deleted from dashboard and Drive.', { type: 'success' });
+      } else if (res && res.drive === 'unlinked') {
+        // Drive folder owned by someone else (Shared Drive / "shared with
+        // me") so we can't trash it — but we detached it from the brand
+        // folder so the dashboard view is clean. The original file stays.
+        appToast('Product removed from dashboard. The Drive folder is owned by another account, so we unlinked it from the brand instead of trashing it.', { type: 'info', title: 'Unlinked from Drive', duration: 9000 });
+      } else if (res && res.drive === 'failed') {
+        const err = String(res.drive_error || 'unknown');
+        const isPerm = /permission|insufficient|403/i.test(err);
+        appToast(
+          isPerm
+            ? 'Removed from dashboard. To also trash the Drive folder, give the connected Google account Editor access on it (or transfer ownership).'
+            : 'Removed from dashboard, but Drive trash failed: ' + err,
+          { type: 'warn', title: 'Drive sync failed', duration: 9000 }
+        );
+      } else if (res && res.drive === 'no-folder') {
+        appToast('Product had no Drive folder linked.', { type: 'info' });
+      } else {
+        appToast('Product deleted.', { type: 'success' });
+      }
+    } catch (e) { appToast(e.message, { type: 'error', title: 'Delete failed' }); }
+  });
+}
+
+$('newBtn').addEventListener('click', openNewModal);
+
+// ── Import all products from the brand's "PRODUCTS" folder ──────────
+// One-click: find the active brand's PRODUCTS subfolder in Drive, list
+// every product subfolder inside, and create a product row for each
+// (linking to the existing folder — does NOT clone the template).
+async function importProductsFromBrandFolder(){
+  const activeBrandId = readActiveBrandId();
+  if (!activeBrandId) { appToast('Switch to a specific brand in the topbar first.', { type: 'warn', title: 'No active brand' }); return; }
+  if (!window.driveListFolder) { appToast('Drive picker not loaded — refresh the page.', { type: 'error' }); return; }
+  const btn = $('importProductsBtn');
+  const orig = btn.innerHTML;
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Importing…';
+  try {
+    // Look up the brand's drive_folder_id (= the "Products folder" the
+    // user picked in Settings → Configure brand → Brand assets).
+    const brandsData = await api('/brands.php?id=' + activeBrandId);
+    const brand = brandsData && brandsData.id ? brandsData : null;
+    if (!brand || !brand.drive_folder_id) {
+      appToast('Set a Products folder in Settings → Brands → Configure.', { type: 'warn', title: 'No Products folder' });
+      return;
+    }
+    // List ONLY direct subfolders of the chosen Products folder. Each
+    // subfolder = one product. Files at this level are ignored.
+    const productsFolderId = brand.drive_folder_id;
+    const items = await window.driveListFolder(productsFolderId);
+    const subfolders = items.filter(i => i.mimeType === 'application/vnd.google-apps.folder');
+    if (!subfolders.length) {
+      appToast('No product subfolders found in "' + brand.name + '".', { type: 'info' });
+      return;
+    }
+    // Dedup PER BRAND — only skip folders already linked to THIS brand.
+    // (Global dedup would silently miss legitimate cases where the same
+    // folder id appears in two brands' product lists due to bad past data.)
+    const existing = await api('/products.php?brand_id=' + activeBrandId);
+    const existingFolders = new Set((existing.rows || []).map(p => p.drive_folder_id).filter(Boolean));
+    const fresh = subfolders.filter(f => !existingFolders.has(f.id));
+    const skipped = subfolders.length - fresh.length;
+    if (!fresh.length) {
+      appToast('All ' + subfolders.length + ' product folder' + (subfolders.length===1?'':'s') + ' already linked to ' + brand.name + '.', { type: 'info', title: 'Nothing to import' });
+      return;
+    }
+    // Bulk POST — link existing folders (no template clone). The server
+    // re-verifies each folder's parent matches THIS brand's Drive folder
+    // (anti-cross-brand) — any folder living under a different brand is
+    // refused with a 400 and counted as a rejection so the user sees it.
+    let ok = 0, fail = 0, rejected = 0;
+    const failures = [];
+    for (const f of fresh) {
+      try {
+        await api('/products.php', { method: 'POST', body: JSON.stringify({
+          brand_id: activeBrandId, name: f.name, drive_folder_id: f.id
+        }) });
+        ok++;
+      } catch (e) {
+        const msg = (e && e.message) || '';
+        if (msg.indexOf('cross-brand') !== -1 || msg.indexOf('not inside') !== -1) {
+          rejected++; failures.push(f.name + ' — wrong brand folder');
+        } else {
+          fail++; failures.push(f.name + ' — ' + msg);
+        }
+        console.warn('Import failed for', f.name, e);
+      }
+    }
+    const parts = [ok + ' new product' + (ok===1?'':'s') + ' added'];
+    if (skipped)  parts.push(skipped + ' already linked');
+    if (rejected) parts.push(rejected + ' rejected (not inside ' + brand.name + ')');
+    if (fail)     parts.push(fail + ' failed');
+    appToast(parts.join(' · '), {
+      type: (fail || rejected) ? 'warn' : 'success',
+      title: 'Import complete',
+    });
+    if (failures.length) console.warn('Import failures:\n' + failures.join('\n'));
+    invalidateProductsCache(); loadProducts();
+  } catch (e) {
+    appToast(e.message, { type: 'error', title: 'Import failed' });
+  } finally {
+    btn.disabled = false; btn.innerHTML = orig;
+  }
+}
+$('importProductsBtn').addEventListener('click', importProductsFromBrandFolder);
+
+loadProducts();
+// Re-load products instantly when the user switches brand from the topbar
+// (no page reload needed — the new brand's products appear immediately).
+window.addEventListener('app:brandChanged', () => { invalidateProductsCache(); loadProducts(); });
+</script>
+</body>
+</html>

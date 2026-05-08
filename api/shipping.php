@@ -1,0 +1,336 @@
+<?php
+// /api/shipping.php — Server-side proxy for shipping carrier APIs.
+// Routes by saved connector (connectors.provider) to the right carrier integration.
+//
+// GET ?action=fetch&connector_id=X[&since=YYYY-MM-DD&until=YYYY-MM-DD]
+//   → returns a normalized array of shipping orders so the dashboard can
+//     ingest them the same way it ingests an Excel/CSV upload.
+//
+// Normalized row schema:
+//   {
+//     order_id:  string,
+//     product:   string,
+//     city:      string,
+//     status:    string  (DELIVERED | RETURNED | OUT_FOR_DELIVERY | PENDING | ...)
+//     cod:       number,
+//     fees:      number,
+//     net:       number,
+//     date:      "YYYY-MM-DD",
+//     source:    "Bosta" | "J&T" | "QP" | "ShipBlu" | "Turbo",
+//     employee:  string|null,
+//     raw:       object   — the original carrier payload, for debugging
+//   }
+require_once __DIR__ . '/_db.php';
+require_token();
+
+const HTTP_TIMEOUT = 60;
+
+function http_request($method, $url, $headers = [], $body = null) {
+  $ch = curl_init($url);
+  $opts = [
+    CURLOPT_RETURNTRANSFER => true,
+    CURLOPT_TIMEOUT        => HTTP_TIMEOUT,
+    CURLOPT_CUSTOMREQUEST  => strtoupper($method),
+    CURLOPT_HTTPHEADER     => $headers,
+    CURLOPT_SSL_VERIFYPEER => true,
+    CURLOPT_FOLLOWLOCATION => true,
+  ];
+  if ($body !== null) $opts[CURLOPT_POSTFIELDS] = is_string($body) ? $body : json_encode($body, JSON_UNESCAPED_UNICODE);
+  curl_setopt_array($ch, $opts);
+  $res = curl_exec($ch);
+  $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+  $err = curl_error($ch);
+  curl_close($ch);
+  return ['code' => $code, 'body' => $res, 'err' => $err];
+}
+
+function map_status($carrier, $statusStr, $statusCode = null) {
+  $s = strtoupper(trim((string)$statusStr));
+  // Common keywords across carriers
+  if (preg_match('/(DELIVERED|تم التسليم|سُلِّم)/iu', $s)) return 'DELIVERED';
+  if (preg_match('/(RETURN|RTO|راجع|مرتجع|إرجاع)/iu', $s)) return 'RETURNED';
+  if (preg_match('/(OUT FOR DELIVERY|في الطريق|للتوصيل)/iu', $s)) return 'OUT_FOR_DELIVERY';
+  if (preg_match('/(CANCEL|ملغي)/iu', $s)) return 'CANCELED';
+  if (preg_match('/(PENDING|قيد الانتظار|جاهز)/iu', $s)) return 'PENDING';
+  return $s ?: 'UNKNOWN';
+}
+
+function err($msg, $code = 400, $extra = []) { send_json(array_merge(['error' => $msg], $extra), $code); }
+
+/* ─── BOSTA ─────────────────────────────────────────────────────────── */
+// Bosta returns dates in JS Date.toString() form, e.g.
+//   "Sun Apr 05 2026 13:50:16 GMT+0000 (Coordinated Universal Time)"
+// PHP's strtotime() chokes on the trailing "(Coordinated…)" text — extract via regex.
+function bosta_parse_date($d) {
+  $months = ['Jan'=>1,'Feb'=>2,'Mar'=>3,'Apr'=>4,'May'=>5,'Jun'=>6,
+             'Jul'=>7,'Aug'=>8,'Sep'=>9,'Oct'=>10,'Nov'=>11,'Dec'=>12];
+  $candidates = ['createdAt','creationTimestamp','updatedAt','collectedAt','pickedUpTime','deliveryTime'];
+  foreach ($candidates as $f) {
+    if (empty($d[$f])) continue;
+    $v = $d[$f];
+    if (is_numeric($v)) {           // unix millis
+      $ts = (int)$v / 1000;
+      if ($ts > 0) return date('Y-m-d', $ts);
+    }
+    $s = (string)$v;
+    // ISO 8601 fast-path
+    if (preg_match('/^(\d{4})-(\d{2})-(\d{2})/', $s, $m)) return $m[1].'-'.$m[2].'-'.$m[3];
+    // JS toString: "Sun Apr 05 2026 13:50:16 GMT+0000 (...)"
+    if (preg_match('/\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d{1,2})\s+(\d{4})/', $s, $m)) {
+      return $m[3].'-'.str_pad($months[$m[1]],2,'0',STR_PAD_LEFT).'-'.str_pad($m[2],2,'0',STR_PAD_LEFT);
+    }
+    // Last-ditch: strip the parenthesised TZ name and try strtotime
+    $clean = trim(preg_replace('/\([^)]+\)/', '', $s));
+    $ts = strtotime($clean);
+    if ($ts) return date('Y-m-d', $ts);
+  }
+  if (!empty($d['updates'][0]['timestamp'])) {
+    $ts = strtotime((string)$d['updates'][0]['timestamp']);
+    if ($ts) return date('Y-m-d', $ts);
+  }
+  return null;
+}
+
+function fetch_bosta($conn, $since, $until) {
+  $token = $conn['token'] ?? '';
+  if (!$token) err('Bosta connector is missing the API key.');
+  $rows = [];
+  $page = 1; $limit = 100; $safety = 0;
+  while ($safety++ < 50) {
+    $payload = ['limit' => $limit, 'page' => $page];
+    if ($since) $payload['createdAtStart'] = $since . 'T00:00:00.000Z';
+    if ($until) $payload['createdAtEnd']   = $until . 'T23:59:59.000Z';
+    $r = http_request('POST', 'https://app.bosta.co/api/v0/deliveries/search',
+      ['Authorization: ' . $token, 'Content-Type: application/json'],
+      $payload
+    );
+    if ($r['code'] >= 400 || !$r['body']) break;
+    $j = json_decode($r['body'], true);
+    $list = $j['deliveries'] ?? $j['data'] ?? [];
+    if (!$list) break;
+    foreach ($list as $d) {
+      $cod = (float)($d['cod'] ?? 0);
+      $fees = 0;
+      if (isset($d['priceAfterVat']))      $fees = (float)$d['priceAfterVat'];
+      elseif (isset($d['shippingFee']))    $fees = (float)$d['shippingFee'];
+      elseif (isset($d['priceBeforeVat'])) $fees = (float)$d['priceBeforeVat'];
+      $status = $d['state']['value'] ?? $d['type']['value'] ?? '';
+      $city = $d['dropOffAddress']['city']['name'] ?? $d['receiver']['city'] ?? '';
+      $product = $d['specs']['packageDetails']['description'] ?? '';
+      $orderId = $d['trackingNumber'] ?? $d['_id'] ?? '';
+      $dateOut = bosta_parse_date($d);
+      $rows[] = [
+        'order_id' => $orderId,
+        'product'  => $product,
+        'city'     => $city,
+        'status'   => map_status('bosta', $status),
+        'cod'      => $cod,
+        'fees'     => $fees,
+        'net'      => max(0, $cod - $fees),
+        'date'     => $dateOut,
+        'source'   => 'Bosta',
+        'employee' => null,
+        'raw'      => $d
+      ];
+    }
+    if (count($list) < $limit) break;
+    $page++;
+  }
+  return $rows;
+}
+
+/* ─── J&T Egypt (openapi.jtjms-eg.com) ──────────────────────────────────
+ *  Per the official docs:
+ *    Host           : https://openapi.jtjms-eg.com (sandbox: demoopenapi.jtjms-eg.com)
+ *    Content-Type   : application/x-www-form-urlencoded
+ *    Body           : bizContent=<json-string>
+ *    Headers        : apiAccount, digest, timestamp(ms)
+ *    Digest formula : Base64( MD5_RAW(bizContent + privateKey) )
+ *
+ *  Note: J&T's openAPI does NOT expose a "list all orders for the customer"
+ *  endpoint — it provides per-waybill query / tracking endpoints. To pull
+ *  bulk data for analytics we need either (a) the customer's order-numbers
+ *  list, or (b) the J&T webhook ("订单状态回传") configured to push every
+ *  status update to our server.
+ *
+ *  Until we have the bulk-list endpoint name, this function calls
+ *  /webopenplatformapi/api/order/getOrders (the most common pattern J&T uses
+ *  in other regions). If J&T Egypt uses a different path we'll surface the
+ *  exact API error so we can adjust.
+ */
+function jt_call($conn, $path, $bizPayload) {
+  $apiAcc = $conn['consumer_key'] ?? '';
+  $priv   = $conn['token']        ?? '';
+  if (!$apiAcc || !$priv) err('J&T connector is missing API Account / Private Key.');
+  $useDemo = (strpos($apiAcc, '292508') === 0); // J&T's published sandbox account starts with this
+  $base = $useDemo ? 'https://demoopenapi.jtjms-eg.com' : 'https://openapi.jtjms-eg.com';
+  $bizContent = json_encode($bizPayload, JSON_UNESCAPED_UNICODE);
+  $digest     = base64_encode(md5($bizContent . $priv, true));
+  $form       = 'bizContent=' . urlencode($bizContent);
+  $r = http_request('POST', $base . $path, [
+    'apiAccount: ' . $apiAcc,
+    'digest: '     . $digest,
+    'timestamp: '  . (int)(microtime(true) * 1000),
+    'Content-Type: application/x-www-form-urlencoded'
+  ], $form);
+  return $r;
+}
+
+function fetch_jt($conn, $since, $until) {
+  // Default biz payload — kept minimal so we can iterate when J&T gives us
+  // the exact field names (J&T regional APIs differ slightly).
+  $payload = [
+    'customerCode' => $conn['url'] ?? '',  // Some J&T installs require customerCode
+    'startTime'    => $since . ' 00:00:00',
+    'endTime'      => $until . ' 23:59:59',
+    'pageNo'       => 1,
+    'pageSize'     => 200
+  ];
+  // Try the most common bulk-query endpoints in order until one returns data.
+  $candidates = [
+    '/webopenplatformapi/api/order/getOrders',
+    '/webopenplatformapi/api/order/searchOrder',
+    '/webopenplatformapi/api/order/selectOrder',
+    '/webopenplatformapi/api/order/queryOrder',
+  ];
+  $lastErr = null;
+  foreach ($candidates as $path) {
+    $r = jt_call($conn, $path, $payload);
+    if ($r['err']) { $lastErr = $r['err']; continue; }
+    $j = json_decode($r['body'], true);
+    // J&T returns code:"1" on success, anything else is an error
+    if (is_array($j) && isset($j['code'])) {
+      if ($j['code'] === '1' || $j['code'] === 1) {
+        $list = $j['data'] ?? [];
+        if (isset($list['list'])) $list = $list['list'];        // some endpoints wrap in {list:[...]}
+        if (isset($list['records'])) $list = $list['records'];
+        $rows = [];
+        foreach ((array)$list as $d) {
+          $rows[] = [
+            'order_id' => $d['billCode']       ?? $d['waybillNo']       ?? $d['txlogisticId'] ?? '',
+            'product'  => $d['itemName']       ?? $d['goodsType']       ?? '',
+            'city'     => $d['receiverCity']   ?? $d['receiver']['city'] ?? '',
+            'status'   => map_status('jt', $d['stateName'] ?? $d['waybillStatus'] ?? $d['orderStatus'] ?? ''),
+            'cod'      => (float)($d['itemsValue'] ?? $d['codAmount'] ?? 0),
+            'fees'     => (float)($d['sumFreight'] ?? $d['shipFee']   ?? 0),
+            'net'      => (float)($d['itemsValue'] ?? 0) - (float)($d['sumFreight'] ?? 0),
+            'date'     => isset($d['createOrderTime']) ? substr($d['createOrderTime'], 0, 10) : null,
+            'source'   => 'J&T',
+            'employee' => null,
+            'raw'      => $d
+          ];
+        }
+        return $rows;
+      }
+      // Real J&T error response — surface the exact code + message so the
+      // user can share it back so we can pin down the right endpoint.
+      $lastErr = '['.$j['code'].'] '.($j['msg'] ?? 'Unknown error').' (path: '.$path.')';
+      // Not 404-style — break early; keep iterating only if path was unknown
+      if (!preg_match('/path|notfound|404|not.*exist/i', (string)$j['msg'])) break;
+    }
+  }
+  err('J&T returned no usable data. Last response: ' . ($lastErr ?: 'empty'), 502, [
+    'hint' => 'J&T Egypt openAPI does not expose a generic "list orders" endpoint by default. Either share the exact bulk-query endpoint name (look for "查询订单" / Query Order in your J&T docs portal) or set up the J&T order-status webhook to push updates to our /api/jt-webhook.php receiver.'
+  ]);
+}
+
+/* ─── ShipBlu ───────────────────────────────────────────────────────── */
+function fetch_shipblu($conn, $since, $until) {
+  $key = $conn['token'] ?? '';
+  if (!$key) err('ShipBlu connector is missing the API key.');
+  // Endpoint: GET https://api.shipblu.com/api/v1/orders
+  $url = 'https://api.shipblu.com/api/v1/orders?limit=100';
+  if ($since) $url .= '&created_after=' . urlencode($since);
+  if ($until) $url .= '&created_before=' . urlencode($until);
+  $r = http_request('GET', $url, ['Authorization: Token ' . $key, 'Accept: application/json']);
+  if ($r['code'] >= 400) err('ShipBlu API error', 502, ['detail' => substr($r['body'] ?: '', 0, 300)]);
+  $j = json_decode($r['body'], true);
+  $rows = [];
+  foreach (($j['results'] ?? $j['orders'] ?? []) as $d) {
+    $rows[] = [
+      'order_id' => $d['tracking_number'] ?? $d['id'] ?? '',
+      'product'  => $d['description'] ?? '',
+      'city'     => $d['customer']['city'] ?? '',
+      'status'   => map_status('shipblu', $d['status'] ?? ''),
+      'cod'      => (float)($d['cash_amount'] ?? 0),
+      'fees'     => (float)($d['shipping_fees'] ?? 0),
+      'net'      => (float)($d['cash_amount'] ?? 0) - (float)($d['shipping_fees'] ?? 0),
+      'date'     => isset($d['created_at']) ? substr($d['created_at'], 0, 10) : null,
+      'source'   => 'ShipBlu',
+      'employee' => null,
+      'raw'      => $d
+    ];
+  }
+  return $rows;
+}
+
+/* ─── Turbo ─────────────────────────────────────────────────────────── */
+function fetch_turbo($conn, $since, $until) {
+  $key  = $conn['token']         ?? '';
+  $cust = $conn['consumer_key']  ?? '';
+  if (!$key || !$cust) err('Turbo connector is missing API Key / Customer Code.');
+  $url  = 'https://app.turbo-eg.com/api/v1/orders?customer_code=' . urlencode($cust) . '&limit=100';
+  if ($since) $url .= '&from=' . urlencode($since);
+  if ($until) $url .= '&to='   . urlencode($until);
+  $r = http_request('GET', $url, ['x-api-key: ' . $key, 'Accept: application/json']);
+  if ($r['code'] >= 400) err('Turbo API error', 502, ['detail' => substr($r['body'] ?: '', 0, 300)]);
+  $j = json_decode($r['body'], true);
+  $rows = [];
+  foreach (($j['orders'] ?? $j['data'] ?? []) as $d) {
+    $rows[] = [
+      'order_id' => $d['order_id'] ?? $d['awb'] ?? '',
+      'product'  => $d['description'] ?? '',
+      'city'     => $d['city'] ?? '',
+      'status'   => map_status('turbo', $d['status'] ?? ''),
+      'cod'      => (float)($d['cod'] ?? 0),
+      'fees'     => (float)($d['shipping_fee'] ?? 0),
+      'net'      => (float)($d['cod'] ?? 0) - (float)($d['shipping_fee'] ?? 0),
+      'date'     => isset($d['created_at']) ? substr($d['created_at'], 0, 10) : null,
+      'source'   => 'Turbo',
+      'employee' => null,
+      'raw'      => $d
+    ];
+  }
+  return $rows;
+}
+
+/* ─── QP (login + scrape — placeholder, requires reverse-engineering) ─ */
+function fetch_qp($conn, $since, $until) {
+  err('QP integration is in development — please import the QP export file (CSV/XLSX) for now.', 501);
+}
+
+function dispatch_provider($conn, $since, $until) {
+  switch ($conn['provider']) {
+    case 'bosta':   return fetch_bosta($conn, $since, $until);
+    case 'jt':      return fetch_jt($conn, $since, $until);
+    case 'shipblu': return fetch_shipblu($conn, $since, $until);
+    case 'turbo':   return fetch_turbo($conn, $since, $until);
+    case 'qp':      return fetch_qp($conn, $since, $until);
+    default:        err('Unknown shipping provider: ' . $conn['provider']);
+  }
+}
+
+/* ─── ROUTING ───────────────────────────────────────────────────────── */
+$pdo    = db();
+$action = $_GET['action'] ?? '';
+
+if ($action === 'fetch') {
+  $cid = (int)($_GET['connector_id'] ?? 0);
+  if (!$cid) err('connector_id required');
+  $stmt = $pdo->prepare("SELECT * FROM connectors WHERE id = ? AND active = 1 AND type = 'shipping' LIMIT 1");
+  $stmt->execute([$cid]);
+  $conn = $stmt->fetch();
+  if (!$conn) err('Shipping connector not found', 404);
+  $since = $_GET['since'] ?? '';
+  $until = $_GET['until'] ?? '';
+  if ($since && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $since)) err('Invalid since (YYYY-MM-DD)');
+  if ($until && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $until)) err('Invalid until (YYYY-MM-DD)');
+  try {
+    $rows = dispatch_provider($conn, $since, $until);
+    send_json(['count' => count($rows), 'provider' => $conn['provider'], 'connector' => ['id' => $conn['id'], 'name' => $conn['name']], 'rows' => $rows]);
+  } catch (Throwable $e) {
+    err('Fetch failed: ' . $e->getMessage(), 500);
+  }
+}
+
+err('Unknown action');

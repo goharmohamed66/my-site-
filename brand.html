@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Brand</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html,body{min-height:100vh;background:#F1F1F1;font-family:'Inter',system-ui,sans-serif;color:#1A1A1A;font-size:14px;}
+  .app-shell{display:flex;min-height:100vh;}
+  .app-sidebar{width:240px;min-width:240px;background:#EBEBEB;border-right:1px solid #DCDCDC;display:flex;flex-direction:column;height:calc(100vh - 48px);position:sticky;top:48px;}
+  .app-sidebar-items{padding:10px 8px;flex:1;display:flex;flex-direction:column;gap:2px;overflow-y:auto;}
+  .app-sidebar-item{padding:7px 12px;border-radius:8px;font-size:13px;color:#303030;display:flex;align-items:center;gap:10px;cursor:pointer;text-decoration:none;font-weight:800;}
+  .app-sidebar-item:hover{background:#E2E2E2;}
+  .app-sidebar-divider{height:1px;background:#DCDCDC;margin:8px 4px;}
+  .app-main{flex:1;min-width:0;}
+  .page{padding:24px 32px;width:100%;}
+  .page-bread{font-size:12px;color:#6D7175;margin-bottom:6px;}
+  .page-bread a{color:#6D7175;text-decoration:none;}
+  .page-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;gap:12px;flex-wrap:wrap;}
+  .page h1{font-size:22px;font-weight:700;}
+  .btn{display:inline-flex;align-items:center;gap:8px;padding:0 16px;height:36px;border-radius:8px;border:1px solid #1A1A1A;background:#1A1A1A;color:#FFFFFF;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;text-decoration:none;}
+  .btn-ghost{background:#FFFFFF;color:#1A1A1A;border-color:#DCDCDC;}
+  .section{background:#FFFFFF;border:1px solid #E1E3E5;border-radius:12px;padding:20px 24px;margin-bottom:16px;}
+  .section-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:8px;flex-wrap:wrap;}
+  .section-title{font-size:16px;font-weight:700;color:#1A1A1A;}
+  .kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;}
+  .kpi{background:#F8FAFC;border:1px solid #E1E3E5;border-radius:8px;padding:14px 16px;}
+  .kpi .lbl{font-size:11px;color:#6D7175;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px;}
+  .kpi .val{font-size:20px;font-weight:700;color:#1A1A1A;font-variant-numeric:tabular-nums;}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px;}
+  .card{background:#FFFFFF;border:1px solid #E1E3E5;border-radius:10px;padding:16px;cursor:pointer;transition:border-color .12s,box-shadow .12s;}
+  .card:hover{border-color:#1A1A1A;box-shadow:0 2px 6px rgba(0,0,0,0.06);}
+  .card .name{font-size:14px;font-weight:700;margin-bottom:6px;}
+  .card .badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;}
+  .badge.draft{background:#F1F1F1;color:#6D7175;}
+  .badge.ready{background:#FEF3C7;color:#92400E;}
+  .badge.sent{background:#D1FAE5;color:#065F46;}
+  .sheets-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;}
+  .sheet-card{position:relative;background:#FFFFFF;border:1px solid #E1E3E5;border-radius:10px;padding:16px;cursor:pointer;transition:border-color .12s,box-shadow .12s,transform .12s;text-align:left;}
+  .sheet-card:hover{border-color:#1A1A1A;box-shadow:0 4px 12px rgba(0,0,0,0.08);transform:translateY(-1px);}
+  .sheet-card .icn{font-size:30px;margin-bottom:10px;display:block;}
+  .sheet-card .ttl{font-size:13px;font-weight:700;color:#1A1A1A;line-height:1.3;}
+  .sheet-card .sub{font-size:11px;color:#6D7175;margin-top:4px;}
+  .sheet-card.disabled{opacity:0.55;cursor:not-allowed;border-style:dashed;}
+  .sheet-card .dot{position:absolute;top:10px;right:10px;width:8px;height:8px;border-radius:50%;background:#10B981;}
+  .sheet-card.disabled .dot{background:#9CA3AF;}
+  .sheet-card.add-card{display:flex;align-items:center;justify-content:center;flex-direction:column;border-style:dashed;background:#FAFAFA;color:#6D7175;}
+  .sheet-card.add-card:hover{background:#F1F1F1;color:#1A1A1A;border-color:#1A1A1A;}
+  .sheet-card.add-card .icn{font-size:24px;color:#9CA3AF;margin-bottom:6px;}
+  .sheet-card.add-card .ttl{font-size:12px;font-weight:600;}
+  .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:center;justify-content:center;}
+  .modal{background:#FFFFFF;border-radius:12px;width:420px;max-width:92vw;padding:22px 24px;}
+  .modal h3{font-size:16px;font-weight:700;margin-bottom:14px;}
+  .modal input{width:100%;padding:10px 12px;border:1px solid #DCDCDC;border-radius:8px;font-size:13px;margin-bottom:14px;}
+  .modal-foot{display:flex;justify-content:flex-end;gap:8px;}
+  .err{background:#FEF2F2;border:1px solid #FECACA;color:#991B1B;border-radius:8px;padding:10px 12px;font-size:13px;margin-bottom:14px;}
+  .spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(0,0,0,0.15);border-top-color:#1A1A1A;border-radius:50%;animation:spin .7s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+</style>
+<link rel="stylesheet" href="app-shared.css?v=1777854724">
+<script src="topbar.js?v=1777854724"></script>
+<script src="sidebar-tools.js?v=1777854724"></script>
+<script src="drive-viewer.js?v=1777854724"></script>
+</head>
+<body>
+<div class="app-shell">
+  <aside class="app-sidebar">
+    <nav class="app-sidebar-items">
+      <a href="index.html" class="app-sidebar-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/></svg><span>Orders</span></a>
+      <a href="shipping.html" class="app-sidebar-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg><span>Shipping Analytics</span></a>
+      <a href="ads.html" class="app-sidebar-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg><span>Ads Analysis</span></a>
+    </nav>
+  </aside>
+  <div class="app-main">
+    <div class="page">
+      <div class="page-bread"><a href="clients.html">Clients</a> › <a href="#" id="bcClient">…</a> › <span id="bcBrand">…</span></div>
+      <div class="page-head">
+        <h1 id="title">Brand</h1>
+        <button class="btn" id="newProductBtn">+ New Product</button>
+      </div>
+      <div id="errBox"></div>
+
+      <!-- Products -->
+      <div class="section">
+        <div class="section-head">
+          <div class="section-title">Products</div>
+        </div>
+        <div id="productsGrid" class="grid"><div class="empty"><span class="spinner"></span> Loading products…</div></div>
+      </div>
+
+      <!-- Sheets -->
+      <div class="section">
+        <div class="section-head">
+          <div class="section-title">Sheets</div>
+        </div>
+        <div id="sheetsList"><div class="empty"><span class="spinner"></span> Loading sheets…</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const API_BASE  = 'https://indigo-dog-836598.hostingersite.com/api';
+const API_TOKEN = 'tk_4d2b9f7a8c6e1530a4f2d9b7e8c6a1f5';
+const brandId = parseInt(new URLSearchParams(location.search).get('id') || '0', 10);
+async function api(path, opts = {}) {
+  const headers = Object.assign({ 'Authorization': 'Bearer ' + API_TOKEN }, opts.headers || {});
+  if (opts.body && !headers['Content-Type']) headers['Content-Type'] = 'application/json';
+  const r = await fetch(API_BASE + path, { ...opts, headers });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(d.error || ('HTTP ' + r.status));
+  return d;
+}
+function escapeHtml(s){return String(s ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
+function showErr(msg){ $('errBox').innerHTML = msg ? '<div class="err">⚠ ' + escapeHtml(msg) + '</div>' : ''; }
+
+// Order matches Brand workflow: financial → benchmarks → competition →
+// outcomes → media plan → content strategy → copywriting.
+const SHEET_LABELS = {
+  financial_modeling:    'Financial Modeling (Monetization)',
+  benchmarking:          'S5 Benchmarking & Forecasting',
+  competitive_analysis:  'Competitive Analysis (HIT & RUN)',
+  outcomes:              'Executed Solutions & Outcomes',
+  media_plan:            'S5 Media Plan',
+  content_plan_strategy: 'Content Plan Strategy',
+  copywriting:           'Copywriting easyT',
+};
+
+// Find connector id (for /google-drive.php?action=read_sheet)
+let connectorId = null;
+async function loadConnectorId() {
+  if (connectorId) return connectorId;
+  const d = await api('/connectors.php?type=storage&provider=google_drive');
+  const c = (d.rows || [])[0];
+  if (c) connectorId = c.id;
+  return connectorId;
+}
+
+let brand = null;
+
+async function loadBrand() {
+  brand = await api('/brands.php?id=' + brandId);
+  $('title').textContent = brand.name;
+  document.title = brand.name;
+  $('bcBrand').textContent = brand.name;
+  $('bcClient').textContent = brand.client_name || 'Client';
+  $('bcClient').href = '/client.html?id=' + brand.client_id;
+}
+
+async function loadProducts() {
+  try {
+    const d = await api('/products.php?brand_id=' + brandId);
+    const rows = d.rows || [];
+    if (!rows.length) { $('productsGrid').innerHTML = '<div class="empty">No products yet — click "+ New Product".</div>'; return; }
+    $('productsGrid').innerHTML = rows.map(p => `
+      <div class="card" data-id="${p.id}">
+        <div class="name">${escapeHtml(p.name)}</div>
+        <span class="badge ${p.status}">${p.status}</span>
+      </div>`).join('');
+    $('productsGrid').querySelectorAll('.card').forEach(card => {
+      card.addEventListener('click', () => { window.location.href = '/product.html?id=' + card.dataset.id; });
+    });
+  } catch (e) { $('productsGrid').innerHTML = '<div class="empty">' + escapeHtml(e.message) + '</div>'; }
+}
+
+// Map sheet key → mime type so the embedded viewer picks the right Drive UI.
+const SHEET_MIME = {
+  copywriting:           'application/vnd.google-apps.document',
+  content_plan_strategy: 'application/vnd.google-apps.presentation',
+  // everything else defaults to spreadsheet
+};
+const SHEET_ICON = {
+  financial_modeling: '💰', benchmarking: '📊', competitive_analysis: '🥊',
+  outcomes: '✅', media_plan: '📅', content_plan_strategy: '📽', copywriting: '📝',
+};
+
+function renderSheets() {
+  const sheets = (brand && brand.sheets) || {};
+  const customs = (brand && brand.meta && brand.meta.custom_sheets) || [];
+  const keys = Object.keys(SHEET_LABELS);
+  const cards = keys.map(k => {
+    const id = sheets[k];
+    const linked = !!id;
+    const icon = SHEET_ICON[k] || '📄';
+    return `<button type="button" class="sheet-card ${linked?'':'disabled'}" data-key="${k}" data-id="${id||''}">
+      <span class="dot"></span>
+      <span class="icn">${icon}</span>
+      <span class="ttl">${escapeHtml(SHEET_LABELS[k])}</span>
+      <span class="sub">${linked?'Open inside dashboard':'Not linked yet'}</span>
+    </button>`;
+  });
+  // Custom sheets the user added beyond the 7 templates
+  customs.forEach((c, i) => {
+    cards.push(`<button type="button" class="sheet-card" data-custom="${i}" data-id="${escapeHtml(c.id)}">
+      <span class="dot"></span>
+      <span class="icn">${SHEET_ICON.financial_modeling}</span>
+      <span class="ttl">${escapeHtml(c.name||'Custom sheet')}</span>
+      <span class="sub">Custom — added by you</span>
+    </button>`);
+  });
+  // "+ Add custom sheet" tile always last
+  cards.push(`<button type="button" class="sheet-card add-card" id="addSheetCard">
+    <span class="icn">＋</span>
+    <span class="ttl">Add custom sheet</span>
+  </button>`);
+  $('sheetsList').innerHTML = '<div class="sheets-grid">' + cards.join('') + '</div>';
+
+  // Wire clicks — open in embedded Drive viewer
+  $('sheetsList').querySelectorAll('.sheet-card[data-key]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const k = btn.dataset.key;
+      const id = btn.dataset.id;
+      if (!id) { alert('This sheet is not linked yet. Add the template ID in Settings → Connectors → Google Drive.'); return; }
+      window.openDriveViewer({ id, name: SHEET_LABELS[k] + ' — ' + brand.name, mimeType: SHEET_MIME[k] || 'application/vnd.google-apps.spreadsheet' });
+    });
+  });
+  $('sheetsList').querySelectorAll('.sheet-card[data-custom]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const i = parseInt(btn.dataset.custom, 10);
+      const c = customs[i];
+      if (!c) return;
+      window.openDriveViewer({ id: c.id, name: c.name || 'Custom sheet', mimeType: c.mimeType || 'application/vnd.google-apps.spreadsheet' });
+    });
+  });
+  $('addSheetCard').addEventListener('click', openAddCustomSheet);
+}
+
+function openAddCustomSheet(){
+  document.body.insertAdjacentHTML('beforeend', `
+    <div class="modal-bg" id="addSheetModal">
+      <div class="modal">
+        <h3>Add custom sheet</h3>
+        <div id="addErr"></div>
+        <label style="display:block;font-size:12px;font-weight:600;margin-bottom:6px;">Sheet name</label>
+        <input type="text" id="newSheetName" placeholder="e.g. Inventory tracker" autofocus>
+        <label style="display:block;font-size:12px;font-weight:600;margin-bottom:6px;">Drive URL or file ID</label>
+        <input type="text" id="newSheetUrl" placeholder="https://docs.google.com/spreadsheets/d/...">
+        <div style="font-size:11px;color:#6D7175;margin-bottom:14px;">Paste the full Drive URL or just the file ID. Spreadsheet, doc, or slides — all supported.</div>
+        <div class="modal-foot">
+          <button class="btn btn-ghost" id="addCancel">Cancel</button>
+          <button class="btn" id="addSave">Add</button>
+        </div>
+      </div>
+    </div>`);
+  $('addCancel').addEventListener('click', () => $('addSheetModal').remove());
+  $('addSave').addEventListener('click', async () => {
+    const name = $('newSheetName').value.trim();
+    const raw  = $('newSheetUrl').value.trim();
+    if (!name || !raw) { $('addErr').innerHTML = '<div class="err">Name and URL/ID are required.</div>'; return; }
+    // Extract id from URL if user pasted a full URL
+    const m = raw.match(/\/d\/([a-zA-Z0-9_-]+)/) || raw.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+    const id = m ? m[1] : raw;
+    let mimeType = 'application/vnd.google-apps.spreadsheet';
+    if (/\/document\//.test(raw))     mimeType = 'application/vnd.google-apps.document';
+    if (/\/presentation\//.test(raw)) mimeType = 'application/vnd.google-apps.presentation';
+    const meta = Object.assign({}, brand.meta || {});
+    meta.custom_sheets = (meta.custom_sheets || []).concat([{ id, name, mimeType }]);
+    const btn = $('addSave'); btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Adding…';
+    try {
+      await api('/brands.php', { method: 'PATCH', body: JSON.stringify({ id: brand.id, meta }) });
+      brand.meta = meta;
+      $('addSheetModal').remove();
+      renderSheets();
+    } catch (e) {
+      $('addErr').innerHTML = '<div class="err">⚠ ' + escapeHtml(e.message) + '</div>';
+      btn.disabled = false; btn.textContent = 'Add';
+    }
+  });
+}
+
+function openNewProductModal() {
+  document.body.insertAdjacentHTML('beforeend', `
+    <div class="modal-bg" id="newModal">
+      <div class="modal">
+        <h3>New Product</h3>
+        <div id="modalErr"></div>
+        <input type="text" id="newName" placeholder="Product name" autofocus>
+        <div class="modal-foot">
+          <button class="btn btn-ghost" id="modalCancel">Cancel</button>
+          <button class="btn" id="modalSave">Create</button>
+        </div>
+      </div>
+    </div>`);
+  $('modalCancel').addEventListener('click', () => $('newModal').remove());
+  $('modalSave').addEventListener('click', async () => {
+    const name = $('newName').value.trim();
+    if (!name) { $('modalErr').innerHTML = '<div class="err">Name is required.</div>'; return; }
+    $('modalSave').disabled = true; $('modalSave').innerHTML = '<span class="spinner"></span> Copying template…';
+    try {
+      await api('/products.php', { method: 'POST', body: JSON.stringify({ brand_id: brandId, name }) });
+      $('newModal').remove();
+      loadProducts();
+    } catch (e) { $('modalErr').innerHTML = '<div class="err">⚠ ' + escapeHtml(e.message) + '</div>'; $('modalSave').disabled = false; $('modalSave').innerHTML = 'Create'; }
+  });
+}
+$('newProductBtn').addEventListener('click', openNewProductModal);
+
+(async () => {
+  if (!brandId) { showErr('Missing brand id'); return; }
+  try {
+    await loadBrand();
+    renderSheets();
+    loadProducts();
+  } catch (e) { showErr(e.message); }
+})();
+
+// Topbar brand switch → navigate to the new brand's page (or the all-brands
+// list when "All brands" is selected). Avoids forcing a manual refresh.
+window.addEventListener('app:brandChanged', (e) => {
+  const newId = (e.detail && e.detail.brandId) || 0;
+  if (!newId) { window.location.href = 'clients.html'; return; }
+  if (newId === brandId) return;
+  window.location.href = 'brand.html?id=' + newId;
+});
+</script>
+</body>
+</html>

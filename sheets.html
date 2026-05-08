@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Sheets</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html,body{min-height:100vh;background:#F1F1F1;font-family:'Inter',system-ui,sans-serif;color:#1A1A1A;font-size:14px;}
+  .app-shell{display:flex;min-height:100vh;}
+  .app-sidebar{width:240px;min-width:240px;background:#EBEBEB;border-right:1px solid #DCDCDC;display:flex;flex-direction:column;height:calc(100vh - 48px);position:sticky;top:48px;}
+  .app-sidebar-items{padding:10px 8px;flex:1;display:flex;flex-direction:column;gap:2px;overflow-y:auto;}
+  .app-sidebar-item{padding:7px 12px;border-radius:8px;font-size:13px;color:#303030;display:flex;align-items:center;gap:10px;cursor:pointer;text-decoration:none;font-weight:800;}
+  .app-sidebar-item:hover{background:#E2E2E2;}
+  .app-sidebar-divider{height:1px;background:#DCDCDC;margin:8px 4px;}
+  .app-main{flex:1;min-width:0;}
+  .page{padding:24px 32px;width:100%;max-width:none;}
+  .page-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;gap:12px;flex-wrap:wrap;}
+  .page h1{font-size:22px;font-weight:700;}
+  .picker{display:flex;align-items:center;gap:10px;background:#FFFFFF;border:1px solid #E1E3E5;border-radius:10px;padding:10px 14px;margin-bottom:18px;}
+  .picker label{font-size:12px;color:#6D7175;font-weight:600;}
+  .picker select{flex:1;padding:6px 10px;border:1px solid #DCDCDC;border-radius:6px;font-size:13px;font-family:inherit;background:#FFFFFF;}
+  .section{background:transparent;border:none;border-radius:0;padding:0;margin-bottom:16px;}
+  .section-title{font-size:16px;font-weight:700;color:#1A1A1A;margin-bottom:14px;}
+  /* Drive-style sheet cards — clean modern look matching Google Drive's
+     spreadsheet tile design. Header (icon + name + ⋯), big thumbnail below. */
+  .sheets-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px;}
+  .sheet-card{position:relative;background:#F1F1F1;border:1px solid #E0E0E0;border-radius:12px;padding:12px;cursor:pointer;transition:border-color .12s,box-shadow .12s,transform .12s;display:flex;flex-direction:column;gap:8px;font-family:Inter,Roboto,system-ui,"Segoe UI",sans-serif;color:#202124;}
+  .sheet-card:hover{border-color:#1A1A1A;box-shadow:0 4px 12px rgba(0,0,0,0.08);transform:translateY(-1px);}
+  .sheet-card .head{display:flex;align-items:center;gap:8px;min-width:0;}
+  .sheet-card .head-ic{flex-shrink:0;width:18px;height:18px;display:inline-flex;align-items:center;justify-content:center;font-size:15px;line-height:1;}
+  .sheet-card .head-name{flex:1;min-width:0;font-size:13px;font-weight:600;color:#202124;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.3;}
+  .sheet-card .more{flex-shrink:0;width:24px;height:24px;border:none;background:transparent;border-radius:50%;cursor:pointer;color:#5F6368;font-size:16px;line-height:1;display:flex;align-items:center;justify-content:center;font-family:inherit;padding:0;}
+  .sheet-card .more:hover{background:rgba(0,0,0,0.06);color:#202124;}
+  .sheet-card .thumb-wrap{width:100%;background:#FFFFFF;border:1px solid #E0E0E0;border-radius:8px;overflow:hidden;display:flex;align-items:center;justify-content:center;aspect-ratio:4/3;}
+  .sheet-card .thumb-wrap img{width:100%;height:100%;object-fit:cover;object-position:top center;display:block;}
+  .sheet-card .thumb-wrap .icn-fallback{font-size:140px;line-height:1;opacity:0.85;display:flex;align-items:center;justify-content:center;width:100%;height:100%;}
+  .sheet-menu{position:fixed;background:#FFFFFF;border:1px solid #E1E3E5;border-radius:8px;box-shadow:0 8px 20px rgba(0,0,0,0.12);padding:6px;z-index:9000;min-width:200px;font-family:inherit;}
+  .sheet-menu button{display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:8px 12px;border:none;background:transparent;cursor:pointer;font-size:13px;color:#1A1A1A;border-radius:6px;font-family:inherit;}
+  .sheet-menu button:hover{background:#F5F5F5;}
+  .sheet-menu button.danger{color:#D72C0D;font-weight:600;}
+  .sheet-menu .sep{height:1px;background:#F1F1F1;margin:4px 0;}
+  .btn-drive{display:inline-flex;align-items:center;gap:8px;padding:0 14px;height:36px;border-radius:8px;border:1px solid #DCDCDC;background:#FFFFFF;color:#1A1A1A;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;}
+  .btn-drive:hover{border-color:#1A1A1A;background:#FAFAFA;}
+  .btn-drive img{width:18px;height:18px;}
+  .err{background:#FEF2F2;border:1px solid #FECACA;color:#991B1B;border-radius:8px;padding:10px 12px;font-size:13px;margin-bottom:14px;}
+  .spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(0,0,0,0.15);border-top-color:#1A1A1A;border-radius:50%;animation:spin .7s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  /* All-brands drill-down: client → brand → sheets */
+  .tree-head{display:flex;align-items:center;gap:10px;padding:14px 16px;background:#FFFFFF;border:1px solid #E1E3E5;border-radius:10px;cursor:pointer;margin-bottom:10px;transition:border-color .12s,background .12s;}
+  .tree-head:hover{border-color:#1A1A1A;background:#FAFAFA;}
+  .tree-head .ch-icon{font-size:20px;}
+  .tree-head .ch-name{font-size:14px;font-weight:700;color:#1A1A1A;}
+  .tree-head .ch-meta{margin-left:auto;font-size:11px;color:#6D7175;font-weight:500;}
+  .tree-head .ch-chevron{font-size:18px;color:#9CA3AF;margin-left:6px;}
+  .tree-brand-head{display:flex;align-items:center;gap:8px;padding:12px 14px;background:#FFFFFF;border:1px solid #E1E3E5;border-radius:10px;cursor:pointer;margin-bottom:10px;transition:border-color .12s,background .12s;}
+  .tree-brand-head:hover{border-color:#1A1A1A;background:#FAFAFA;}
+  .tree-brand-head .bh-icon{font-size:18px;color:#FBBF24;}
+  .tree-brand-head .bh-name{font-size:14px;font-weight:700;color:#1A1A1A;}
+  .tree-brand-head .bh-meta{margin-left:auto;font-size:11px;color:#6D7175;}
+  /* Breadcrumb bar */
+  .bc-bar{display:flex;align-items:center;gap:6px;font-size:12px;margin-bottom:14px;flex-wrap:wrap;}
+  .bc-link{color:#005BD3;text-decoration:none;font-weight:600;cursor:pointer;}
+  .bc-link:hover{text-decoration:underline;}
+  .bc-sep{color:#9CA3AF;}
+  .bc-cur{color:#1A1A1A;font-weight:700;}
+</style>
+<link rel="stylesheet" href="app-shared.css?v=1777852667">
+<script src="topbar.js?v=1777852667"></script>
+<script src="google-picker.js?v=1777852667"></script>
+<script src="sidebar-tools.js?v=1777852667"></script>
+<script src="drive-viewer.js?v=1777852667"></script>
+<script src="app-ui.js?v=1777852667"></script>
+</head>
+<body>
+<div class="app-shell">
+  <aside class="app-sidebar">
+    <nav class="app-sidebar-items">
+      <a href="index.html" class="app-sidebar-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/></svg><span>Orders</span></a>
+      <a href="shipping.html" class="app-sidebar-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg><span>Shipping Analytics</span></a>
+      <a href="ads.html" class="app-sidebar-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg><span>Ads Analysis</span></a>
+    </nav>
+  </aside>
+  <div class="app-main">
+    <div class="page">
+      <div class="page-head">
+        <h1>Sheets</h1>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn-drive" id="pickFromDriveBtn">
+            <img src="logos/google-drive.svg" alt="">
+            <span>Pick from Drive</span>
+          </button>
+          <button class="btn-drive" id="importAllBtn" title="Import every sheet/doc inside this brand's Drive folder">
+            <span style="font-size:16px;">⤓</span>
+            <span>Import sheets</span>
+          </button>
+        </div>
+      </div>
+      <div id="errBox"></div>
+      <div class="section">
+        <div class="section-title" id="sectionTitle">Sheets</div>
+        <div id="sheetsList"><div class="empty"><span class="spinner"></span> Loading…</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const API_BASE  = 'https://indigo-dog-836598.hostingersite.com/api';
+const API_TOKEN = 'tk_4d2b9f7a8c6e1530a4f2d9b7e8c6a1f5';
+async function api(path, opts = {}) {
+  const headers = Object.assign({ 'Authorization': 'Bearer ' + API_TOKEN }, opts.headers || {});
+  if (opts.body && !headers['Content-Type']) headers['Content-Type'] = 'application/json';
+  const r = await fetch(API_BASE + path, { ...opts, headers });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(d.error || ('HTTP ' + r.status));
+  return d;
+}
+function escapeHtml(s){return String(s ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
+function showErr(msg){ $('errBox').innerHTML = msg ? '<div class="err">⚠ ' + escapeHtml(msg) + '</div>' : ''; }
+
+// Sheets the user has linked from Drive (any number of any type).
+// Each entry: {id, name, mimeType}
+function sheetIcon(mime){
+  if (!mime) return '📄';
+  if (mime.includes('spreadsheet')) return '📊';
+  if (mime.includes('presentation')) return '📽';
+  if (mime.includes('document')) return '📝';
+  if (mime === 'application/vnd.google-apps.folder') return '📁';
+  return '📄';
+}
+function sheetTypeLabel(mime){
+  if (!mime) return 'File';
+  if (mime.includes('spreadsheet')) return 'Sheet';
+  if (mime.includes('presentation')) return 'Slides';
+  if (mime.includes('document')) return 'Doc';
+  return 'File';
+}
+// Two-stage thumbnail: 1) Drive's CDN URL (works if user is signed in),
+// 2) our backend proxy as fallback (uses the OAuth token server-side so
+// private files work too). Emoji is the last resort.
+function sheetThumbHtml(s){
+  const m = s ? (s.mimeType || '') : '';
+  const fallback = '<span class="icn-fallback">' + sheetIcon(m) + '</span>';
+  if (!s || !s.id) return fallback;
+  const direct = 'https://drive.google.com/thumbnail?id=' + encodeURIComponent(s.id) + '&sz=w400';
+  const proxy = API_BASE + '/google-drive.php?action=thumb&sz=600&token='
+    + encodeURIComponent(API_TOKEN) + '&file_id=' + encodeURIComponent(s.id);
+  // referrerpolicy=no-referrer lets Drive serve the thumbnail without
+  // requiring a same-site referrer (browsers strip it for cross-origin
+  // requests with strict-origin-when-cross-origin).
+  return '<img src="' + direct + '" data-fid="' + escapeHtml(s.id) + '" '
+    + 'loading="lazy" referrerpolicy="no-referrer" alt="" '
+    + 'onerror="if(!this.dataset.tried){this.dataset.tried=\'1\';this.src=\'' + proxy + '\';}'
+    + 'else{this.outerHTML=\'<span class=&quot;icn-fallback&quot;>' + sheetIcon(m) + '</span>\';}">';
+}
+function sheetTypeIcon(mime){
+  // Mini colored icon shown in the bottom meta-row (mirrors Drive layout).
+  if (!mime) return '📄';
+  if (mime.includes('spreadsheet')) return '<span style="color:#0F993E;">📊</span>';
+  if (mime.includes('presentation')) return '<span style="color:#F4B400;">📽</span>';
+  if (mime.includes('document')) return '<span style="color:#4285F4;">📝</span>';
+  return '📄';
+}
+
+let brands = [];
+
+let allClients = [];
+async function loadBrands(){
+  const [bData, cData] = await Promise.all([
+    api('/brands.php'),
+    api('/clients.php').catch(() => ({ rows: [] })),
+  ]);
+  brands = (bData.rows || []).filter(b => b.id);
+  allClients = (cData.rows || []).filter(c => c && c.id);
+  if (!brands.length) {
+    $('sheetsList').innerHTML = '<div class="empty">No brands yet — create one from <a href="settings.html#brands" style="color:#005BD3;">Settings → Brands</a>.</div>';
+    return;
+  }
+  // Active brand from topbar (or directly from localStorage if topbar.js
+  // hasn't finished init yet — load order can vary). 0 = Admin "All brands"
+  // view → render the client/brand tree.
+  function readActiveBrandId(){
+    if (typeof window.getActiveBrandId === 'function') return window.getActiveBrandId();
+    try { return parseInt(localStorage.getItem('app.activeBrandId') || '0', 10) || 0; } catch(e){ return 0; }
+  }
+  const fromTopbar = readActiveBrandId();
+  if (!fromTopbar) renderAllBrandsTree();
+  else if (brands.some(b => b.id === fromTopbar)) renderSheets(fromTopbar);
+  else renderSheets(brands[0].id);
+  // Re-render whenever the user switches brand from the topbar.
+  window.addEventListener('app:brandChanged', (e) => {
+    const id = (e.detail && e.detail.brandId) || 0;
+    if (!id) renderAllBrandsTree();
+    else if (brands.some(b => b.id === id)) renderSheets(id);
+    else renderAllBrandsTree();
+  });
+}
+
+// ── All-brands drill-down: client list → click → brand list → click → sheets ──
+// Navigation state lives in URL hash so back/forward + reload preserve it:
+//   #              → clients list
+//   #c/12          → brands of client 12
+//   #c/12/b/34     → sheets of brand 34 (under client 12)
+function readNav(){
+  const h = (location.hash || '').replace(/^#/, '');
+  const m1 = h.match(/^c\/(\d+)(?:\/b\/(\d+))?$/);
+  if (!m1) return { level: 0 };
+  return { level: m1[2] ? 2 : 1, clientId: parseInt(m1[1], 10), brandId: m1[2] ? parseInt(m1[2], 10) : 0 };
+}
+function setNav(state){
+  let h = '';
+  if (state.level === 1) h = 'c/' + state.clientId;
+  else if (state.level === 2) h = 'c/' + state.clientId + '/b/' + state.brandId;
+  if (h) location.hash = h; else history.replaceState(null, '', location.pathname + location.search);
+  renderAllBrandsTree();
+}
+window.addEventListener('hashchange', () => renderAllBrandsTree());
+
+function renderBreadcrumbs(state){
+  const parts = ['<a href="#" data-nav="root" class="bc-link">All brands</a>'];
+  if (state.level >= 1) {
+    const c = allClients.find(x => x.id === state.clientId);
+    parts.push('<span class="bc-sep">›</span>');
+    if (state.level === 1) parts.push('<span class="bc-cur">' + escapeHtml(c ? c.name : 'Client') + '</span>');
+    else parts.push('<a href="#c/' + state.clientId + '" data-nav="client" class="bc-link">' + escapeHtml(c ? c.name : 'Client') + '</a>');
+  }
+  if (state.level >= 2) {
+    const b = brands.find(x => x.id === state.brandId);
+    parts.push('<span class="bc-sep">›</span>');
+    parts.push('<span class="bc-cur">' + escapeHtml(b ? b.name : 'Brand') + '</span>');
+  }
+  return '<div class="bc-bar">' + parts.join('') + '</div>';
+}
+
+function renderAllBrandsTree(){
+  const state = readNav();
+  // Group brands by client (used by every level).
+  const byClient = new Map();
+  brands.forEach(b => {
+    const cid = b.client_id || 0;
+    if (!byClient.has(cid)) byClient.set(cid, []);
+    byClient.get(cid).push(b);
+  });
+  let html = renderBreadcrumbs(state);
+  if (state.level === 0) {
+    // ── Level 0: list of clients ────────────────────────────────
+    $('sectionTitle').textContent = 'All brands — Sheets';
+    const clientsWithBrands = allClients.filter(c => (byClient.get(c.id) || []).length > 0);
+    const orphans = byClient.get(0) || [];
+    if (!clientsWithBrands.length && !orphans.length) {
+      html += '<div class="empty">No clients yet.</div>';
+    } else {
+      clientsWithBrands.forEach(c => {
+        const myBrands = byClient.get(c.id) || [];
+        let total = 0; myBrands.forEach(b => total += ((b.meta && b.meta.linked_sheets) || []).length);
+        html += `<div class="tree-head" data-nav="client" data-client-id="${c.id}">
+          <span class="ch-icon">👤</span>
+          <span class="ch-name">${escapeHtml(c.name)}</span>
+          <span class="ch-meta">${myBrands.length} brand${myBrands.length===1?'':'s'} · ${total} sheet${total===1?'':'s'}</span>
+          <span class="ch-chevron">›</span>
+        </div>`;
+      });
+      if (orphans.length) {
+        let total = 0; orphans.forEach(b => total += ((b.meta && b.meta.linked_sheets) || []).length);
+        html += `<div class="tree-head" data-nav="client" data-client-id="0">
+          <span class="ch-icon">👤</span>
+          <span class="ch-name">Unassigned</span>
+          <span class="ch-meta">${orphans.length} brand${orphans.length===1?'':'s'} · ${total} sheet${total===1?'':'s'}</span>
+          <span class="ch-chevron">›</span>
+        </div>`;
+      }
+    }
+  } else if (state.level === 1) {
+    // ── Level 1: brands of the chosen client ───────────────────
+    const c = allClients.find(x => x.id === state.clientId);
+    $('sectionTitle').textContent = (c ? c.name : 'Client') + ' — Brands';
+    const myBrands = byClient.get(state.clientId) || [];
+    if (!myBrands.length) {
+      html += '<div class="empty">No brands under this client.</div>';
+    } else {
+      myBrands.forEach(b => {
+        const sheets = (b.meta && b.meta.linked_sheets) || [];
+        html += `<div class="tree-brand-head" data-nav="brand" data-client-id="${state.clientId}" data-brand-id="${b.id}">
+          <span class="bh-icon">📁</span>
+          <span class="bh-name">${escapeHtml(b.name)}</span>
+          <span class="bh-meta">${sheets.length} sheet${sheets.length===1?'':'s'}</span>
+          <span class="ch-chevron">›</span>
+        </div>`;
+      });
+    }
+  } else if (state.level === 2) {
+    // ── Level 2: sheets of the chosen brand ────────────────────
+    const b = brands.find(x => x.id === state.brandId);
+    $('sectionTitle').textContent = (b ? b.name : 'Brand') + ' — Sheets';
+    const sheets = (b && b.meta && b.meta.linked_sheets) || [];
+    if (!sheets.length) {
+      html += '<div class="empty">No sheets linked yet for this brand.</div>';
+    } else {
+      html += '<div class="sheets-grid">' + sheets.map((s, i) => `
+        <div class="sheet-card" role="button" tabindex="0" data-bid="${b.id}" data-idx="${i}">
+          <div class="head">
+            <span class="head-ic">${sheetTypeIcon(s.mimeType)}</span>
+            <span class="head-name" title="${escapeHtml(s.name)}">${escapeHtml(s.name)}</span>
+          </div>
+          <div class="thumb-wrap">${sheetThumbHtml(s)}</div>
+        </div>`).join('') + '</div>';
+    }
+  }
+  $('sheetsList').innerHTML = html;
+  // Breadcrumb navigation
+  $('sheetsList').querySelectorAll('.bc-link').forEach(a => {
+    a.addEventListener('click', e => {
+      e.preventDefault();
+      if (a.dataset.nav === 'root') setNav({ level: 0 });
+      else if (a.dataset.nav === 'client') setNav({ level: 1, clientId: state.clientId });
+    });
+  });
+  // Drill-in: client → brands
+  $('sheetsList').querySelectorAll('[data-nav="client"]').forEach(row => {
+    row.addEventListener('click', () => setNav({ level: 1, clientId: parseInt(row.dataset.clientId, 10) }));
+  });
+  // Drill-in: brand → sheets
+  $('sheetsList').querySelectorAll('[data-nav="brand"]').forEach(row => {
+    row.addEventListener('click', () => setNav({ level: 2, clientId: parseInt(row.dataset.clientId, 10), brandId: parseInt(row.dataset.brandId, 10) }));
+  });
+  // Sheet card → open in viewer
+  $('sheetsList').querySelectorAll('.sheet-card').forEach(card => {
+    card.addEventListener('click', () => {
+      const bid = parseInt(card.dataset.bid, 10);
+      const idx = parseInt(card.dataset.idx, 10);
+      const b = brands.find(x => x.id === bid); if (!b) return;
+      const s = ((b.meta && b.meta.linked_sheets) || [])[idx]; if (!s) return;
+      if (window.openDriveViewer) window.openDriveViewer({ id: s.id, name: s.name, mimeType: s.mimeType });
+      else window.open('https://drive.google.com/file/d/' + s.id + '/view', '_blank');
+    });
+  });
+}
+
+let activeBrand = null;
+let connectorId = null;
+async function loadConnectorId(){
+  if (connectorId) return connectorId;
+  const d = await api('/connectors.php?type=storage&provider=google_drive');
+  const c = (d.rows || [])[0];
+  if (c) connectorId = c.id;
+  return connectorId;
+}
+
+function getLinkedSheets(brand){
+  // Linked sheets stored in meta.linked_sheets (an array of {id, name, mimeType}).
+  return (brand && brand.meta && brand.meta.linked_sheets) || [];
+}
+
+function renderSheets(brandId){
+  const brand = brands.find(b => b.id === brandId);
+  if (!brand) { $('sheetsList').innerHTML = '<div class="empty">Brand not found.</div>'; return; }
+  activeBrand = brand;
+  $('sectionTitle').textContent = brand.name + ' — Sheets';
+  const sheets = getLinkedSheets(brand);
+  if (!sheets.length) {
+    $('sheetsList').innerHTML = `<div class="empty">No sheets linked yet — click <b>Pick from Drive</b> to add yours.</div>`;
+    return;
+  }
+  const cards = sheets.map((s, i) => `
+    <div class="sheet-card" role="button" tabindex="0" data-idx="${i}">
+      <div class="head">
+        <span class="head-ic">${sheetTypeIcon(s.mimeType)}</span>
+        <span class="head-name" title="${escapeHtml(s.name)}">${escapeHtml(s.name)}</span>
+        <button type="button" class="more" data-more="${i}" title="More actions">⋯</button>
+      </div>
+      <div class="thumb-wrap">${sheetThumbHtml(s)}</div>
+    </div>`).join('');
+  $('sheetsList').innerHTML = '<div class="sheets-grid">' + cards + '</div>';
+  $('sheetsList').querySelectorAll('.sheet-card').forEach(card => {
+    card.addEventListener('click', e => {
+      if (e.target.closest('.more')) return;
+      const i = parseInt(card.dataset.idx, 10);
+      const s = sheets[i]; if (!s) return;
+      // Always open inside the full-screen in-app viewer so the user
+      // never leaves the dashboard for a sheet/doc/folder.
+      if (window.openDriveViewer) {
+        window.openDriveViewer({ id: s.id, name: s.name, mimeType: s.mimeType });
+      } else {
+        window.open('https://drive.google.com/file/d/' + s.id + '/view', '_blank');
+      }
+    });
+  });
+  $('sheetsList').querySelectorAll('button.more').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const i = parseInt(btn.dataset.more, 10);
+      openSheetMenu(btn, i, sheets[i], brand);
+    });
+  });
+}
+
+// ── Per-sheet action menu (matches Products card menu) ──────────────
+function openSheetMenu(anchor, idx, sheet, brand){
+  document.querySelectorAll('.sheet-menu').forEach(m => m.remove());
+  const rect = anchor.getBoundingClientRect();
+  const driveUrl = (sheet.mimeType||'').includes('document')     ? 'https://docs.google.com/document/d/'     + sheet.id + '/edit'
+                : (sheet.mimeType||'').includes('presentation') ? 'https://docs.google.com/presentation/d/' + sheet.id + '/edit'
+                : 'https://docs.google.com/spreadsheets/d/' + sheet.id + '/edit';
+  const dlUrl = (sheet.mimeType||'').includes('document')     ? 'https://docs.google.com/document/d/'     + sheet.id + '/export?format=docx'
+              : (sheet.mimeType||'').includes('presentation') ? 'https://docs.google.com/presentation/d/' + sheet.id + '/export/pptx'
+              : 'https://docs.google.com/spreadsheets/d/' + sheet.id + '/export?format=xlsx';
+  const menu = document.createElement('div');
+  menu.className = 'sheet-menu';
+  menu.style.top = (rect.bottom + 4) + 'px';
+  menu.style.left = Math.max(8, rect.right - 200) + 'px';
+  menu.innerHTML = `
+    <button data-act="download">⬇ Download file</button>
+    <button data-act="rename">✎ Rename</button>
+    <div class="sep"></div>
+    <button data-act="delete" class="danger">🗑 Delete</button>`;
+  document.body.appendChild(menu);
+  const close = () => { menu.remove(); document.removeEventListener('click', closeOut, true); };
+  const closeOut = (ev) => { if (!menu.contains(ev.target)) close(); };
+  setTimeout(() => document.addEventListener('click', closeOut, true), 0);
+
+  menu.querySelector('[data-act="download"]').addEventListener('click', () => { close(); window.open(dlUrl, '_blank'); });
+  menu.querySelector('[data-act="rename"]').addEventListener('click', async () => {
+    close();
+    const newName = await appPrompt(null, {
+      title: 'Rename sheet',
+      description: 'Only the label here changes — the file in Drive keeps its name.',
+      defaultValue: sheet.name,
+      placeholder: 'Sheet label',
+      okText: 'Rename'
+    });
+    if (!newName || newName === sheet.name) return;
+    const next = (brand.meta?.linked_sheets || []).slice();
+    next[idx] = Object.assign({}, next[idx], { name: newName });
+    const meta = Object.assign({}, brand.meta || {}, { linked_sheets: next });
+    try {
+      await api('/brands.php', { method: 'PATCH', body: JSON.stringify({ id: brand.id, meta }) });
+      brand.meta = meta;
+      renderSheets(brand.id);
+      appToast('Renamed.', { type: 'success' });
+    } catch (e) { appToast(e.message, { type: 'error', title: 'Rename failed' }); }
+  });
+  menu.querySelector('[data-act="delete"]').addEventListener('click', async () => {
+    close();
+    const ok = await appConfirm(
+      'The file in Drive will also be moved to Trash (recoverable for 30 days).',
+      { title: 'Delete "' + sheet.name + '"?', okText: 'Delete', danger: true }
+    );
+    if (!ok) return;
+    const next = (brand.meta?.linked_sheets || []).slice(); next.splice(idx, 1);
+    const meta = Object.assign({}, brand.meta || {}, { linked_sheets: next });
+    try {
+      await api('/brands.php', { method: 'PATCH', body: JSON.stringify({ id: brand.id, meta }) });
+      // Trash the file in Drive — surface the real error if it fails so
+      // the user can act on it (permission, quota, expired token, etc.).
+      let driveErr = null;
+      if (sheet.id) {
+        try {
+          await api('/google-drive.php?action=trash&file_id=' + encodeURIComponent(sheet.id), { method: 'POST' });
+        } catch (e) { driveErr = (e && e.message) || String(e); console.warn('Drive trash failed:', driveErr); }
+      }
+      brand.meta = meta;
+      renderSheets(brand.id);
+      if (driveErr) {
+        appToast('Removed from dashboard, but Drive trash failed: ' + driveErr, { type: 'warn', title: 'Drive sync failed', duration: 10000 });
+      } else {
+        appToast('Sheet deleted from dashboard and Drive.', { type: 'success' });
+      }
+    } catch (e) { appToast(e.message, { type: 'error', title: 'Delete failed' }); }
+  });
+}
+
+// ── Pick from Drive modal ───────────────────────────────────────────
+async function openPickFromDriveModal(){
+  if (!activeBrand) { appToast('Pick a brand first.', { type: 'warn' }); return; }
+  document.body.insertAdjacentHTML('beforeend', `
+    <div id="pdModal" style="position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:center;justify-content:center;font-family:inherit;">
+      <div style="background:#FFFFFF;border-radius:12px;width:560px;max-width:96vw;padding:22px 24px;">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+          <img src="logos/google-drive.svg" style="width:24px;height:24px;">
+          <h3 style="font-size:16px;font-weight:700;flex:1;">Pick sheets from Drive</h3>
+          <button id="pdClose" style="background:none;border:none;cursor:pointer;font-size:18px;color:#6D7175;">✕</button>
+        </div>
+        <div style="font-size:12px;color:#6D7175;margin-bottom:12px;line-height:1.6;">Browse Drive folders to grab whole sheets — or paste URLs from sheets you already opened.</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;">
+          <button type="button" id="pdBrowse" style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border:1px solid #DCDCDC;border-radius:6px;background:#FFFFFF;color:#1A1A1A;cursor:pointer;font-size:12px;font-weight:600;font-family:inherit;">
+            <img src="logos/google-drive.svg" style="width:14px;height:14px;"> Open Drive ↗
+          </button>
+        </div>
+        <div style="font-size:11px;color:#6D7175;margin-bottom:6px;font-weight:600;">Or paste URLs (one per line):</div>
+        <textarea id="pdUrls" placeholder="https://docs.google.com/spreadsheets/d/...&#10;https://docs.google.com/document/d/...&#10;https://docs.google.com/presentation/d/..." style="width:100%;min-height:120px;padding:10px 12px;border:1px solid #DCDCDC;border-radius:8px;font-size:12px;font-family:'JetBrains Mono','Courier New',monospace;margin-bottom:8px;resize:vertical;"></textarea>
+        <div id="pdErr" style="font-size:12px;color:#991B1B;min-height:16px;margin-bottom:8px;"></div>
+        <div style="display:flex;justify-content:flex-end;gap:8px;">
+          <button id="pdCancel" style="background:#FFF;color:#1A1A1A;border:1px solid #DCDCDC;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">Cancel</button>
+          <button id="pdAdd" style="background:#1A1A1A;color:#FFF;border:none;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">Add sheets</button>
+        </div>
+      </div>
+    </div>`);
+  const close = () => document.getElementById('pdModal').remove();
+  $('pdClose').addEventListener('click', close);
+  $('pdCancel').addEventListener('click', close);
+  // "Browse Drive" — open the embedded folder picker. When the user picks a
+  // folder, list the Google Sheets / Docs / Slides inside it, fetch each
+  // file's metadata, and add them to the active brand.
+  $('pdBrowse').addEventListener('click', () => {
+    if (!window.pickGoogleDriveFolderId) { appToast('Drive picker not loaded — refresh the page.', { type: 'error' }); return; }
+    window.pickGoogleDriveFolderId(async (folder) => {
+      const btn = $('pdBrowse'); const orig = btn.innerHTML;
+      btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Listing files…';
+      try {
+        await loadConnectorId();
+        // List the folder contents — keep only Google native types
+        const list = await api('/google-drive.php?action=list&connector_id=' + connectorId + '&folder_id=' + encodeURIComponent(folder.id));
+        const native = (list.files || []).filter(f => {
+          const m = f.mimeType || '';
+          return m === 'application/vnd.google-apps.spreadsheet'
+              || m === 'application/vnd.google-apps.document'
+              || m === 'application/vnd.google-apps.presentation';
+        });
+        if (!native.length) { $('pdErr').textContent = 'No Sheets / Docs / Slides found in that folder.'; btn.disabled = false; btn.innerHTML = orig; return; }
+        const existing = getLinkedSheets(activeBrand);
+        const seen = new Set(existing.map(s => s.id));
+        const fresh = native.filter(f => !seen.has(f.id)).map(f => ({ id: f.id, name: f.name, mimeType: f.mimeType }));
+        const merged = existing.concat(fresh);
+        const meta = Object.assign({}, activeBrand.meta || {}, { linked_sheets: merged });
+        await api('/brands.php', { method: 'PATCH', body: JSON.stringify({ id: activeBrand.id, meta }) });
+        activeBrand.meta = meta;
+        document.getElementById('pdModal').remove();
+        renderSheets(activeBrand.id);
+      } catch (e) {
+        $('pdErr').textContent = '⚠ ' + e.message;
+        btn.disabled = false; btn.innerHTML = orig;
+      }
+    });
+  });
+
+  $('pdAdd').addEventListener('click', async () => {
+    const raw = $('pdUrls').value.trim();
+    if (!raw) { $('pdErr').textContent = 'Paste at least one URL or ID.'; return; }
+    const lines = raw.split(/\n+/).map(s => s.trim()).filter(Boolean);
+    const ids = lines.map(line => {
+      const m = line.match(/\/d\/([a-zA-Z0-9_-]+)/) || line.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+      return m ? m[1] : line;
+    });
+    const btn = $('pdAdd'); btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Fetching titles…';
+    try {
+      await loadConnectorId();
+      const fetched = [];
+      for (let i = 0; i < ids.length; i++){
+        try {
+          const info = await api('/google-drive.php?action=file_info&connector_id=' + connectorId + '&file_id=' + encodeURIComponent(ids[i]));
+          fetched.push({ id: info.id, name: info.name || ids[i], mimeType: info.mimeType || '' });
+        } catch (e) {
+          fetched.push({ id: ids[i], name: ids[i], mimeType: '' });
+        }
+      }
+      const existing = getLinkedSheets(activeBrand);
+      const seen = new Set(existing.map(s => s.id));
+      const merged = existing.concat(fetched.filter(s => !seen.has(s.id)));
+      const meta = Object.assign({}, activeBrand.meta || {}, { linked_sheets: merged });
+      await api('/brands.php', { method: 'PATCH', body: JSON.stringify({ id: activeBrand.id, meta }) });
+      activeBrand.meta = meta;
+      close();
+      renderSheets(activeBrand.id);
+    } catch (e) {
+      $('pdErr').textContent = '⚠ ' + e.message;
+      btn.disabled = false; btn.textContent = 'Add sheets';
+    }
+  });
+}
+
+// Pick from Drive: open the files picker directly so the user can
+// click any Sheet / Doc / Slides / xlsx / docx file (multi-select) and
+// add them to the active brand in one shot. Folders are still
+// browsable inside the picker for navigation.
+// Sheets-scoped folder for picker + import. Prefer the brand's dedicated
+// sheets folder (meta.sheets_folder_id) so the picker can't escape into
+// products / other brands. Falls back to the products folder, then the
+// connector default.
+function getSheetsScopeFolderId(brand){
+  if (!brand) return null;
+  if (brand.meta && brand.meta.sheets_folder_id) return brand.meta.sheets_folder_id;
+  return brand.drive_folder_id || null;
+}
+async function pickFilesAndAdd(){
+  if (!activeBrand) { appToast('Pick a brand first.', { type: 'warn' }); return; }
+  if (!window.pickGoogleDriveFiles) { appToast('Drive picker not loaded — refresh the page.', { type: 'error' }); return; }
+  const scopeId = getSheetsScopeFolderId(activeBrand);
+  const opts = {};
+  if (scopeId) {
+    opts.rootFolderId = scopeId;
+    opts.rootLabel = activeBrand.name + (activeBrand.meta && activeBrand.meta.sheets_folder_id ? ' / Sheets' : '');
+  } else {
+    console.warn('Brand has no Drive folder — picker will use connector default root.');
+  }
+  window.pickGoogleDriveFiles(async (files) => {
+    if (!files || !files.length) return;
+    try {
+      const existing = getLinkedSheets(activeBrand);
+      const seen = new Set(existing.map(s => s.id));
+      const fresh = files.filter(f => !seen.has(f.id)).map(f => ({ id: f.id, name: f.name, mimeType: f.mimeType }));
+      if (!fresh.length) { appToast('All selected files are already linked.', { type: 'info' }); return; }
+      const merged = existing.concat(fresh);
+      const meta = Object.assign({}, activeBrand.meta || {}, { linked_sheets: merged });
+      await api('/brands.php', { method: 'PATCH', body: JSON.stringify({ id: activeBrand.id, meta }) });
+      activeBrand.meta = meta;
+      renderSheets(activeBrand.id);
+      appToast(fresh.length + ' file' + (fresh.length===1?'':'s') + ' linked.', { type: 'success' });
+    } catch (e) { appToast(e.message, { type: 'error', title: 'Add failed' }); }
+  }, opts);
+}
+$('pickFromDriveBtn').addEventListener('click', pickFilesAndAdd);
+
+// ── Import all sheets ────────────────────────────────────────────────
+// One-click: list every Google Sheet / Doc / Slides + xlsx/docx file
+// inside the active brand's Drive folder (top-level only) and link
+// them all in a single PATCH. Skips folders and anything already linked.
+async function importAllFromBrandFolder(){
+  if (!activeBrand) { appToast('Pick a brand first.', { type: 'warn' }); return; }
+  const scopeId = getSheetsScopeFolderId(activeBrand);
+  if (!scopeId) { appToast('Set a Sheets folder in Settings → Brands → Configure.', { type: 'warn', title: 'No Sheets folder' }); return; }
+  if (!window.driveListFolder) { appToast('Drive picker not loaded — refresh the page.', { type: 'error' }); return; }
+  const btn = $('importAllBtn');
+  const orig = btn.innerHTML;
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Importing…';
+  try {
+    const items = await window.driveListFolder(scopeId);
+    // Importable = Google native files + Office docs. Excludes folders.
+    const wanted = items.filter(i => {
+      const m = i.mimeType || '';
+      if (m === 'application/vnd.google-apps.folder') return false;
+      if (m.startsWith('application/vnd.google-apps.')) return true; // Sheet/Doc/Slides
+      if (/officedocument/.test(m)) return true; // xlsx/docx/pptx
+      if (/\.(xlsx|docx|pptx|csv|txt)$/i.test(i.name || '')) return true;
+      return false;
+    });
+    if (!wanted.length) { appToast('No importable sheets/docs found in this folder.', { type: 'info' }); return; }
+    // Deduplicate by Drive file id — anything already linked is skipped silently.
+    const existing = getLinkedSheets(activeBrand);
+    const seen = new Set(existing.map(s => s.id));
+    const fresh = wanted.filter(f => !seen.has(f.id)).map(f => ({ id: f.id, name: f.name, mimeType: f.mimeType }));
+    const skipped = wanted.length - fresh.length;
+    if (!fresh.length) {
+      appToast('All ' + wanted.length + ' file' + (wanted.length===1?'':'s') + ' already linked.', { type: 'info', title: 'Nothing to import' });
+      return;
+    }
+    const merged = existing.concat(fresh);
+    const meta = Object.assign({}, activeBrand.meta || {}, { linked_sheets: merged });
+    await api('/brands.php', { method: 'PATCH', body: JSON.stringify({ id: activeBrand.id, meta }) });
+    activeBrand.meta = meta;
+    renderSheets(activeBrand.id);
+    appToast(
+      fresh.length + ' new sheet' + (fresh.length===1?'':'s') + ' added'
+      + (skipped ? ' · ' + skipped + ' skipped' : ''),
+      { type: 'success', title: 'Import complete' }
+    );
+  } catch (e) {
+    appToast(e.message, { type: 'error', title: 'Import failed' });
+  } finally {
+    btn.disabled = false; btn.innerHTML = orig;
+  }
+}
+$('importAllBtn').addEventListener('click', importAllFromBrandFolder);
+
+(async () => {
+  try { await loadBrands(); }
+  catch (e) { showErr(e.message); $('sheetsList').innerHTML = ''; }
+})();
+</script>
+</body>
+</html>
