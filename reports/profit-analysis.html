@@ -1245,11 +1245,16 @@ async function computeProfitForBrand(brand, from, to){
     : new Set();
   if (brandPrefixes.size > 0) {
     const sizeBefore = orders.length;
-    let droppedNoPrefix = 0, droppedOtherBrand = 0;
+    let droppedOtherBrand = 0, keptNoPrefix = 0;
     const droppedSamples = [];
     orders = orders.filter(r => {
       const m = String(r.product || '').match(/\(\s*([a-z0-9]{1,4})-([a-z0-9]{1,4})\s*\)/i);
-      if (!m) { droppedNoPrefix++; return false; }
+      // Rows without a (prefix-mkt) marker — carrier API pulls (Bosta /
+      // QP / Mylerz / …) return product names straight from the carrier,
+      // which never carry our marker. Trust /orders.php's server-side
+      // brand_id scoping for these: dropping them silently would zero
+      // out every Delivered / Returned figure from an API pull.
+      if (!m) { keptNoPrefix++; return true; }
       const pref = m[1].toLowerCase();
       if (!brandPrefixes.has(pref)) {
         droppedOtherBrand++;
@@ -1258,10 +1263,11 @@ async function computeProfitForBrand(brand, from, to){
       }
       return true;
     });
-    console.log('[profit][' + brand.name + '] prefix gate (STRICT):',
+    console.log('[profit][' + brand.name + '] prefix gate:',
                 sizeBefore + ' → ' + orders.length + ' rows',
                 '· brand prefixes=[' + Array.from(brandPrefixes).join(',') + ']',
-                '· dropped: no-prefix=' + droppedNoPrefix + ' · other-brand=' + droppedOtherBrand);
+                '· no-marker (kept, trust server brand_id)=' + keptNoPrefix,
+                '· dropped other-brand=' + droppedOtherBrand);
     if (droppedSamples.length) {
       console.log('[profit][' + brand.name + '] sample dropped (other-brand prefix):', droppedSamples);
     }
