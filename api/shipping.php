@@ -669,15 +669,21 @@ if ($action === 'enrich_fees') {
   @set_time_limit(0);
   @ignore_user_abort(true);
 
+  // Bosta rate-limits hard — too many parallel hits and the API blanket-
+  // returns HTTP 429 with a 99s "retryAfter" cooldown that affects ALL
+  // subsequent requests, not just the ones over the limit. Keep
+  // parallelism conservative AND back off automatically on 429.
   $fees = [];
-  $batch = 30;  // 30 parallel cURL handles — balances throughput vs Bosta rate-limit risk
+  $rateLimitHits = 0;
+  $batch = 5;
+  $pauseMs = 250;  // small breather between batches so we don't drift over the per-second cap
   for ($i = 0; $i < count($ids); $i += $batch) {
     $slice = array_slice($ids, $i, $batch);
     $multi = curl_multi_init();
     $handles = [];
     foreach ($slice as $id) {
       $id = (string)$id;
-      if (!preg_match('/^[A-Za-z0-9_-]{1,40}$/', $id)) continue;  // guard against injection / weird ids
+      if (!preg_match('/^[A-Za-z0-9_-]{1,40}$/', $id)) continue;
       $ch = curl_init('https://app.bosta.co/api/v0/deliveries/' . $id);
       curl_setopt_array($ch, [
         CURLOPT_RETURNTRANSFER => true,
@@ -693,10 +699,19 @@ if ($action === 'enrich_fees') {
       curl_multi_exec($multi, $running);
       if ($running) curl_multi_select($multi);
     } while ($running > 0);
+    $batchHadRateLimit = false; $batchRetryAfter = 0;
     foreach ($handles as $id => $ch) {
       $body = curl_multi_getcontent($ch);
+      $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
       curl_multi_remove_handle($multi, $ch);
       curl_close($ch);
+      if ($code == 429) {
+        $batchHadRateLimit = true;
+        $j = json_decode($body ?: '{}', true);
+        $ra = (int)($j['retryAfter'] ?? 0);
+        if ($ra > $batchRetryAfter) $batchRetryAfter = $ra;
+        continue;
+      }
       if (!$body) continue;
       $j = json_decode($body, true);
       if (isset($j['shipmentFees'])) {
@@ -706,27 +721,19 @@ if ($action === 'enrich_fees') {
       }
     }
     curl_multi_close($multi);
+
+    if ($batchHadRateLimit) {
+      $rateLimitHits++;
+      // Bail with the fees we already have so the caller can decide
+      // whether to retry. Tells the frontend exactly how long to wait
+      // before sending the next chunk.
+      if ($rateLimitHits >= 1) {
+        send_json(['fees' => $fees, 'rate_limited' => true, 'retry_after' => max(60, $batchRetryAfter), 'processed' => $i + count($slice)]);
+      }
+    }
+    if ($pauseMs > 0) usleep($pauseMs * 1000);
   }
   send_json(['fees' => $fees]);
-}
-
-if ($action === 'enrich_debug') {
-  $cid = (int)($_GET['connector_id'] ?? 0);
-  $stmt = $pdo->prepare("SELECT * FROM connectors WHERE id = ? AND active = 1 LIMIT 1");
-  $stmt->execute([$cid]);
-  $conn = $stmt->fetch();
-  $token = $conn['token'] ?? '';
-  $id    = $_GET['id'] ?? '6slcsjvlFUQ4VKkwj3F20';
-  $r = http_request('GET', 'https://app.bosta.co/api/v0/deliveries/' . $id,
-    ['Authorization: ' . $token, 'Content-Type: application/json'], null);
-  $j = json_decode($r['body'] ?: '{}', true);
-  send_json([
-    'id'           => $id,
-    'http_code'    => $r['code'],
-    'shipmentFees' => $j['shipmentFees'] ?? null,
-    'top_keys'     => is_array($j) ? array_keys($j) : null,
-    'snippet'      => substr((string)$r['body'], 0, 300),
-  ]);
 }
 
 if ($action === 'bosta_breakdown') {

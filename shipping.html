@@ -1305,37 +1305,49 @@ function App(){
         // Bosta enrichment — fetch shipmentFees per delivery in chunks of 200.
         var ids = apiRows.map(function(r){ return r.raw && r.raw._id; }).filter(Boolean);
         if (!ids.length) { doPersist(apiRows); return; }
-        var CHUNK = 200;
+        // Bosta rate-limits the per-delivery endpoint aggressively (HTTP
+        // 429 with a 60-99s cooldown that affects subsequent requests
+        // too). Use small chunks AND honour the server's retry_after
+        // before continuing.
+        var CHUNK = 25;
         var idToRow = {};
         apiRows.forEach(function(r){ if (r.raw && r.raw._id) idToRow[r.raw._id] = r; });
+        var applyFees = function(fees){
+          Object.keys(fees).forEach(function(id){
+            var row = idToRow[id]; if (!row) return;
+            row.fees = parseFloat(fees[id]) || 0;
+            row.net  = Math.max(0, (row.cod || 0) - row.fees);
+          });
+          setDs(function(prev){
+            return prev.map(function(d){
+              if (d.connectorId !== conn.id) return d;
+              return Object.assign({}, d, { rows: apiRows.map(apiRowToRow) });
+            });
+          });
+        };
         var enrichOne = function(chunk){
           return apiFetch("/shipping.php?action=enrich_fees&connector_id="+conn.id,
             { method: "POST", body: JSON.stringify({ ids: chunk }) }
           ).then(function(res){
             var fees = (res && res.fees) || {};
-            // Mutate apiRows in-place + push the same data into ds so
-            // useStats reruns with the new fees → Avg Shipping Cost ticks
-            // up live as each chunk returns.
-            Object.keys(fees).forEach(function(id){
-              var row = idToRow[id]; if (!row) return;
-              row.fees = parseFloat(fees[id]) || 0;
-              row.net  = Math.max(0, (row.cod || 0) - row.fees);
-            });
-            // Trigger React re-render by cloning the dataset rows array.
-            setDs(function(prev){
-              return prev.map(function(d){
-                if (d.connectorId !== conn.id) return d;
-                return Object.assign({}, d, { rows: apiRows.map(apiRowToRow) });
+            applyFees(fees);
+            if (res && res.rate_limited) {
+              var wait = Math.max(60, (res.retry_after || 60)) * 1000;
+              console.log("[carrier-sync] "+conn.name+" → rate-limited, sleeping "+(wait/1000)+"s");
+              return new Promise(function(rs){ setTimeout(rs, wait); }).then(function(){
+                // Retry the IDs that weren't covered by `fees` in this batch.
+                var done = new Set(Object.keys(fees));
+                var leftover = chunk.filter(function(id){ return !done.has(id); });
+                if (leftover.length) return enrichOne(leftover);
               });
-            });
+            }
           }).catch(function(err){
             console.error("[carrier-sync] "+conn.name+" enrich chunk failed:", err);
           });
         };
-        // Sequential per chunk to keep the load steady; Bosta rate-limits
-        // hard when too many parallel waves land at once.
         var chunks = [];
         for (var i = 0; i < ids.length; i += CHUNK) chunks.push(ids.slice(i, i + CHUNK));
+        console.log("[carrier-sync] "+conn.name+" → enriching "+ids.length+" deliveries in "+chunks.length+" chunks…");
         var p = Promise.resolve();
         chunks.forEach(function(c){ p = p.then(function(){ return enrichOne(c); }); });
         p.then(function(){
