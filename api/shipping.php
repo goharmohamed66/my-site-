@@ -148,10 +148,12 @@ function bosta_sheet_state_candidates($d) {
   //
   // So map state.code → canonical sheet label FIRST, and only fall
   // back to state.value when the code is missing / unknown.
-  // Code 45 = delivered to destination. For Send shipments that's a
-  // real delivery; for Return-direction shipments it means "delivered
-  // back to merchant" — i.e. a return from the merchant's POV.
-  // Code 46 = returned (regardless of type).
+  // RETURNED here means "this shipment is a Bosta RTO" — i.e. its TYPE
+  // is a return direction. That matches what Bosta portal's RTO filter
+  // counts. Forward shipments that failed to deliver (state.code=46 on
+  // a Send) are NOT counted as RTO yet: Bosta creates a separate RTO
+  // shipment with its own _id once the return leg starts, and the
+  // merchant sees only that second row under "RTO".
   $retLabel = ($type === 'return to origin') ? 'Returned to Origin' : 'Returned';
   $codeLabel = null;
   switch ($stateCode) {
@@ -162,17 +164,20 @@ function bosta_sheet_state_candidates($d) {
     case 30: $codeLabel = $isReturnType ? $retLabel : 'Out for delivery';      break;
     case 41: $codeLabel = $isReturnType ? $retLabel : 'Out for delivery';      break;
     case 45: $codeLabel = $isReturnType ? $retLabel : 'Delivered';             break;
-    case 46: $codeLabel = $retLabel;              break;
+    // Code 46 on a Send shipment = "delivery failed, returning" —
+    // intermediate state that Bosta portal counts neither as Delivered
+    // nor under RTO. Map it to a distinct label so it falls through
+    // both delivered_values and returned_values matching.
+    case 46: $codeLabel = $isReturnType ? $retLabel : 'Returning';             break;
     case 47: $codeLabel = $isReturnType ? $retLabel : 'Awaiting for Action';   break;
     case 48: $codeLabel = 'Canceled';             break;
     case 49: $codeLabel = 'Terminated';           break;
   }
 
   // When state.code yielded a definitive label, USE ONLY THAT — don't
-  // append state.value, otherwise a code=46 Send shipment (semantically
-  // "Returned") gets BOTH "Returned" AND state.value="Delivered" as
-  // candidates, and the matcher checks delivered_values first → flips
-  // the row to DELIVERED. State.value is misleading for code 46.
+  // append state.value, otherwise an in-transit shipment with state.value
+  // set to a "Delivered" alias gets candidates ['Returning', 'Delivered']
+  // and the matcher flips it to DELIVERED.
   $cands = [];
   if ($codeLabel !== null) {
     $cands[] = $codeLabel;

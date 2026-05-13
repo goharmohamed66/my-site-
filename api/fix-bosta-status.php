@@ -37,7 +37,7 @@ function bs_sheet_state_candidates($d) {
     case 30: $codeLabel = $isReturnType ? $retLabel : 'Out for delivery';      break;
     case 41: $codeLabel = $isReturnType ? $retLabel : 'Out for delivery';      break;
     case 45: $codeLabel = $isReturnType ? $retLabel : 'Delivered';             break;
-    case 46: $codeLabel = $retLabel;              break;
+    case 46: $codeLabel = $isReturnType ? $retLabel : 'Returning';             break;
     case 47: $codeLabel = $isReturnType ? $retLabel : 'Awaiting for Action';   break;
     case 48: $codeLabel = 'Canceled';             break;
     case 49: $codeLabel = 'Terminated';           break;
