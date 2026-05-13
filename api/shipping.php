@@ -130,7 +130,12 @@ function bosta_normalize_row($d) {
 }
 
 function bosta_make_handle($token, $since, $until, $page, $limit) {
-  $payload = ['limit' => $limit, 'page' => $page];
+  // IMPORTANT: Bosta's /deliveries/search uses `pageNumber` / `pageLimit`
+  // (camelCase) — NOT `page` / `limit`. With the wrong names the server
+  // silently returns page 1 every time, which made parallel pagination
+  // look like Bosta was repeating itself when in fact our params were
+  // being ignored entirely.
+  $payload = ['pageLimit' => $limit, 'pageNumber' => $page];
   if ($since) $payload['createdAtStart'] = $since . 'T00:00:00.000+02:00';
   if ($until) $payload['createdAtEnd']   = $until . 'T23:59:59.999+02:00';
   $ch = curl_init('https://app.bosta.co/api/v0/deliveries/search');
@@ -162,13 +167,14 @@ function fetch_bosta($conn, $since, $until) {
   $limit = 50;       // Bosta's /deliveries/search caps each page at 50.
   $batch = 12;       // Pages fetched in parallel via cURL multi.
 
-  // Page 1 sequentially so we can learn the total count and decide
-  // how many pages to spin up in parallel.
+  // Page 1 sequentially so we can detect when pagination naturally ends.
+  // Same camelCase param names as bosta_make_handle — see comment there
+  // for the gotcha with `page`/`limit`.
   $r = http_request('POST', 'https://app.bosta.co/api/v0/deliveries/search',
     ['Authorization: ' . $token, 'Content-Type: application/json'],
     array_filter([
-      'limit'           => $limit,
-      'page'            => 1,
+      'pageLimit'       => $limit,
+      'pageNumber'      => 1,
       'createdAtStart'  => $since ? $since . 'T00:00:00.000+02:00' : null,
       'createdAtEnd'    => $until ? $until . 'T23:59:59.999+02:00' : null,
     ], function($v){ return $v !== null; })
@@ -564,65 +570,6 @@ function dispatch_provider($conn, $since, $until) {
 /* ─── ROUTING ───────────────────────────────────────────────────────── */
 $pdo    = db();
 $action = $_GET['action'] ?? '';
-
-if ($action === 'bosta_debug') {
-  // Temporary: hit Bosta directly for pages 1 + 2 of the requested range,
-  // surface the raw response shapes so we can see what `count` actually
-  // means and whether page 2 is unique vs a duplicate of page 1.
-  $cid = (int)($_GET['connector_id'] ?? 0);
-  $stmt = $pdo->prepare("SELECT * FROM connectors WHERE id = ? AND active = 1 LIMIT 1");
-  $stmt->execute([$cid]);
-  $conn = $stmt->fetch();
-  if (!$conn) err('Connector not found', 404);
-  $token = $conn['token'] ?? '';
-  $since = $_GET['since'] ?? '';
-  $until = $_GET['until'] ?? '';
-  $out = [];
-  // Try every common param name pair Bosta might accept for pagination.
-  $variants = [
-    'page/limit'         => ['page' => 2, 'limit' => 50],
-    'pageNumber/pageLimit' => ['pageNumber' => 2, 'pageLimit' => 50],
-    'pageNumber/limit'   => ['pageNumber' => 2, 'limit' => 50],
-    'page/pageSize'      => ['page' => 2, 'pageSize' => 50],
-    'pageNumber/pageSize'=> ['pageNumber' => 2, 'pageSize' => 50],
-    'offset/limit'       => ['offset' => 50, 'limit' => 50],
-    'skip/limit'         => ['skip' => 50, 'limit' => 50],
-  ];
-  // Baseline page 1 for comparison
-  $base = ['page' => 1, 'limit' => 50];
-  if ($since) $base['createdAtStart'] = $since . 'T00:00:00.000+02:00';
-  if ($until) $base['createdAtEnd']   = $until . 'T23:59:59.999+02:00';
-  $r0 = http_request('POST', 'https://app.bosta.co/api/v0/deliveries/search',
-    ['Authorization: ' . $token, 'Content-Type: application/json'], $base);
-  $j0 = json_decode($r0['body'] ?: '{}', true);
-  $list0 = $j0['deliveries'] ?? $j0['data'] ?? [];
-  $firstP1 = $list0 ? ($list0[0]['trackingNumber'] ?? null) : null;
-  $lastP1  = $list0 ? ($list0[count($list0)-1]['trackingNumber'] ?? null) : null;
-  $out['page1_baseline'] = ['first' => $firstP1, 'last' => $lastP1, 'count' => count($list0), 'pageNumber_echo' => $j0['pageNumber'] ?? null, 'pageLimit_echo' => $j0['pageLimit'] ?? null];
-
-  foreach ($variants as $name => $extra) {
-    $payload = $extra;
-    if ($since) $payload['createdAtStart'] = $since . 'T00:00:00.000+02:00';
-    if ($until) $payload['createdAtEnd']   = $until . 'T23:59:59.999+02:00';
-    $r = http_request('POST', 'https://app.bosta.co/api/v0/deliveries/search',
-      ['Authorization: ' . $token, 'Content-Type: application/json'], $payload);
-    $j = json_decode($r['body'] ?: '{}', true);
-    $list = $j['deliveries'] ?? $j['data'] ?? [];
-    $first = $list ? ($list[0]['trackingNumber'] ?? null) : null;
-    $last  = $list ? ($list[count($list)-1]['trackingNumber'] ?? null) : null;
-    $out[$name] = [
-      'sent'           => $extra,
-      'http_code'      => $r['code'],
-      'rows'           => count($list),
-      'first'          => $first,
-      'last'           => $last,
-      'same_as_page1'  => ($first === $firstP1 && $last === $lastP1),
-      'pageNumber_echo'=> $j['pageNumber'] ?? null,
-      'pageLimit_echo' => $j['pageLimit']  ?? null,
-    ];
-  }
-  send_json($out);
-}
 
 if ($action === 'fetch') {
   $cid = (int)($_GET['connector_id'] ?? 0);
