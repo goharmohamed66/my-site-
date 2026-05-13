@@ -177,22 +177,33 @@ function fetch_bosta($conn, $since, $until) {
   $j = json_decode($r['body'], true);
   $list = $j['deliveries'] ?? $j['data'] ?? [];
 
+  // Dedup by tracking number — Bosta's /deliveries/search will happily
+  // serve the LAST page over and over when you request pages past the
+  // real end of the result set, instead of returning empty. Without
+  // dedup we'd return tens of thousands of duplicate rows for a real
+  // ~3,000-row month and the page-1 `count` field doesn't always
+  // reflect the date-filtered total (observed in production).
   $rows = [];
-  foreach ($list as $d) $rows[] = bosta_normalize_row($d);
+  $seen = [];
+  foreach ($list as $d) {
+    $key = $d['trackingNumber'] ?? $d['_id'] ?? null;
+    if ($key && isset($seen[$key])) continue;
+    if ($key) $seen[$key] = 1;
+    $rows[] = bosta_normalize_row($d);
+  }
+
+  // Page 1 came back short → we already have everything.
+  if (count($list) < $limit) return $rows;
 
   $total = (int)($j['count'] ?? $j['totalCount'] ?? $j['total'] ?? 0);
-  if ($total > 0) {
-    $totalPages = (int)ceil($total / $limit);
-  } else {
-    $totalPages = (count($list) < $limit) ? 1 : 200;  // unknown — cap at safety bound
-  }
-  if ($totalPages <= 1) return $rows;
+  $safetyPages = 400;  // hard ceiling regardless of what Bosta reports
+  $totalPages = $total > 0 ? min((int)ceil($total / $limit), $safetyPages) : $safetyPages;
 
   // Pages 2..N in parallel batches. cURL multi keeps a small pool of
-  // HTTP requests in flight at once so a 3,750-row pull (75 pages)
-  // finishes in ~12 round-trip waves instead of 75 — the difference
+  // HTTP requests in flight at once so a 3,000-row pull (60 pages)
+  // finishes in ~5 round-trip waves instead of 60 — the difference
   // between "fits in nginx's 60s timeout" and a 504.
-  $emptyHits = 0;
+  $allDupBatches = 0;
   for ($start = 2; $start <= $totalPages; $start += $batch) {
     $end = min($start + $batch - 1, $totalPages);
     $multi = curl_multi_init();
@@ -207,7 +218,8 @@ function fetch_bosta($conn, $since, $until) {
       if ($running) curl_multi_select($multi);
     } while ($running > 0);
 
-    $gotAnyRow = false;
+    $batchNew = 0;
+    $batchShortPage = false;
     foreach ($handles as $p => $ch) {
       $body = curl_multi_getcontent($ch);
       curl_multi_remove_handle($multi, $ch);
@@ -215,21 +227,27 @@ function fetch_bosta($conn, $since, $until) {
       if (!$body) continue;
       $pj = json_decode($body, true);
       $pList = $pj['deliveries'] ?? $pj['data'] ?? [];
-      if (!$pList) continue;
-      $gotAnyRow = true;
-      foreach ($pList as $d) $rows[] = bosta_normalize_row($d);
+      if (!$pList) { $batchShortPage = true; continue; }
+      if (count($pList) < $limit) $batchShortPage = true;
+      foreach ($pList as $d) {
+        $key = $d['trackingNumber'] ?? $d['_id'] ?? null;
+        if ($key && isset($seen[$key])) continue;
+        if ($key) $seen[$key] = 1;
+        $rows[] = bosta_normalize_row($d);
+        $batchNew++;
+      }
     }
     curl_multi_close($multi);
 
-    // Stop early if a whole batch came back empty — covers the case
-    // where Bosta's reported `count` is stale and the real result set
-    // is shorter than $totalPages.
-    if (!$gotAnyRow) {
-      $emptyHits++;
-      if ($emptyHits >= 2) break;
-    } else {
-      $emptyHits = 0;
+    // Bail when Bosta starts serving us nothing new — either every
+    // tracking number in the batch was already seen (the "last page
+    // on repeat" behavior) or one of the pages came back short, which
+    // marks the real end of the result set.
+    if ($batchNew === 0) {
+      $allDupBatches++;
+      if ($allDupBatches >= 1) break;
     }
+    if ($batchShortPage && $batchNew === 0) break;
     if ($total > 0 && count($rows) >= $total) break;
   }
   return $rows;
