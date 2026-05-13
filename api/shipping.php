@@ -104,52 +104,70 @@ function bosta_parse_date($d) {
   return null;
 }
 
-function bosta_status($d) {
-  // Bosta uses BOTH `type` and `state` to describe a shipment:
-  //   type.value = direction of the shipment
-  //     "Send"                   = outbound to customer
-  //     "Return to Origin"       = inbound back to merchant (RTO)
-  //     "Customer Return Pickup" = customer-initiated return
-  //     "Exchange"               = exchange flow
-  //   state.value = where it is now
-  //     "Delivered" = handed over at its destination
-  //     "Canceled" / "Terminated" = killed
-  //     anything else = still in transit
-  //
-  // Merchant-side mapping (what Bosta portal shows under "Returned"):
-  //   Send + Delivered                      → DELIVERED   (real delivery)
-  //   Exchange + Delivered                  → DELIVERED
-  //   Return to Origin + Delivered          → RETURNED    (came back)
-  //   Customer Return Pickup + Delivered    → RETURNED    (customer return finished)
-  //   any + Canceled / Terminated           → CANCELED
-  //   any + Pending / created               → PENDING
-  $type  = (string)($d['type']['value']  ?? '');
-  $state = (string)($d['state']['value'] ?? '');
-  $sU = strtoupper(trim($state));
-  $tU = strtoupper(trim($type));
-
-  if (preg_match('/^(CANCEL|TERMINAT)/i', $sU)) return 'CANCELED';
-  $isReturnType = (stripos($tU, 'RETURN') !== false);
-  if (strcasecmp($sU, 'Delivered') === 0) {
-    return $isReturnType ? 'RETURNED' : 'DELIVERED';
+// Build the "sheet-equivalent" State label for a Bosta delivery — i.e.
+// the value that would appear in the "State" column of a Bosta export
+// for this row. Lets the connector's column_map.delivered_values /
+// returned_values (which the user enters in sheet terms) drive matching
+// against API data too, so toggling them in Settings updates the
+// dashboard instantly without code changes.
+//
+// Bosta sheets flatten the API's two-field schema (type + state) into a
+// single column; the mapping below mirrors what a Bosta export shows:
+//   API type=Send + state=Delivered                      → "Delivered"
+//   API type=Exchange + state=Delivered                  → "Delivered"
+//   API type="Return to Origin" + state=Delivered        → "Returned to Origin"
+//   API type="Customer Return Pickup" + state=Delivered  → "Returned"
+//   API state=Canceled / Terminated                      → "Canceled"
+//   anything else                                        → API state.value
+function bosta_sheet_state($d) {
+  $type  = strtolower(trim((string)($d['type']['value']  ?? '')));
+  $state = strtolower(trim((string)($d['state']['value'] ?? '')));
+  if ($state === 'canceled' || $state === 'terminated') return 'Canceled';
+  if ($state === 'delivered') {
+    if ($type === 'return to origin')         return 'Returned to Origin';
+    if (strpos($type, 'return') !== false)    return 'Returned';
+    return 'Delivered';
   }
-  // Anything else: defer to the generic mapper. Mark return-direction
-  // shipments still in transit as RETURN_IN_TRANSIT so the dashboard
-  // can decide whether to lump them with RETURNED.
-  $generic = map_status('bosta', $state);
-  if ($isReturnType && in_array($generic, ['UNDELIVERED','OUT_FOR_DELIVERY','PENDING','UNKNOWN'])) {
-    return 'RETURN_IN_TRANSIT';
-  }
-  return $generic;
+  return (string)($d['state']['value'] ?? '');
 }
 
-function bosta_normalize_row($d) {
+// Decide DELIVERED / RETURNED / etc. for a Bosta row. Reads the
+// connector's column_map (delivered_values / returned_values, comma-
+// separated) first — those are sheet-style labels and are matched
+// against bosta_sheet_state(). Falls back to a hardcoded type+state
+// heuristic when the connector has no overrides.
+function bosta_status($d, $conn = null) {
+  $sheetState = bosta_sheet_state($d);
+  $sheetU     = strtoupper(trim($sheetState));
+
+  $cm = null;
+  if ($conn && isset($conn['meta'])) {
+    $meta = is_string($conn['meta']) ? (json_decode($conn['meta'], true) ?: []) : $conn['meta'];
+    $cm = $meta['column_map'] ?? null;
+  }
+  if ($cm) {
+    $matchAny = function($values, $needle){
+      if (!$values) return false;
+      foreach (array_filter(array_map('trim', explode(',', (string)$values))) as $v) {
+        if ($v !== '' && strcasecmp($v, $needle) === 0) return true;
+      }
+      return false;
+    };
+    if ($matchAny($cm['delivered_values'] ?? '', $sheetState)) return 'DELIVERED';
+    if ($matchAny($cm['returned_values']  ?? '', $sheetState)) return 'RETURNED';
+  }
+
+  // Hardcoded fallback — keeps things sensible when the connector has
+  // no column_map (e.g. a fresh Bosta connection before the user has
+  // visited Settings).
+  if (strcasecmp($sheetU, 'CANCELED') === 0) return 'CANCELED';
+  if (strcasecmp($sheetU, 'DELIVERED') === 0) return 'DELIVERED';
+  if (preg_match('/^RETURN/i', $sheetU)) return 'RETURNED';
+  return map_status('bosta', $sheetState);
+}
+
+function bosta_normalize_row($d, $conn = null) {
   $cod = (float)($d['cod'] ?? 0);
-  // Bosta's /deliveries/search doesn't expose shipping fees in the list
-  // payload (it lives on the per-delivery GET endpoint as
-  // `shipmentFees`). bosta_enrich_fees() fills this in afterwards if
-  // the caller asks for it; default to 0 here so the basic pull stays
-  // fast.
   $fees = 0;
   if (isset($d['shipmentFees']))       $fees = (float)$d['shipmentFees'];
   elseif (isset($d['priceAfterVat']))  $fees = (float)$d['priceAfterVat'];
@@ -159,11 +177,11 @@ function bosta_normalize_row($d) {
   $city = $d['dropOffAddress']['city']['name'] ?? $d['receiver']['city'] ?? '';
   $product = $d['specs']['packageDetails']['description'] ?? '';
   $orderId = $d['trackingNumber'] ?? $d['_id'] ?? '';
-  $row = [
+  return [
     'order_id' => $orderId,
     'product'  => $product,
     'city'     => $city,
-    'status'   => bosta_status($d),
+    'status'   => bosta_status($d, $conn),
     'cod'      => $cod,
     'fees'     => $fees,
     'net'      => max(0, $cod - $fees),
@@ -172,7 +190,6 @@ function bosta_normalize_row($d) {
     'employee' => null,
     'raw'      => $d
   ];
-  return $row;
 }
 
 function bosta_make_handle($token, $since, $until, $page, $limit) {
@@ -241,7 +258,7 @@ function fetch_bosta($conn, $since, $until) {
     $key = $d['trackingNumber'] ?? $d['_id'] ?? null;
     if ($key && isset($seen[$key])) continue;
     if ($key) $seen[$key] = 1;
-    $rows[] = bosta_normalize_row($d);
+    $rows[] = bosta_normalize_row($d, $conn);
   }
 
   // Page 1 came back short → we already have everything.
@@ -285,7 +302,7 @@ function fetch_bosta($conn, $since, $until) {
         $key = $d['trackingNumber'] ?? $d['_id'] ?? null;
         if ($key && isset($seen[$key])) continue;
         if ($key) $seen[$key] = 1;
-        $rows[] = bosta_normalize_row($d);
+        $rows[] = bosta_normalize_row($d, $conn);
         $batchNew++;
       }
     }
