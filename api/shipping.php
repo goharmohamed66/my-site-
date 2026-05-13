@@ -736,6 +736,40 @@ if ($action === 'enrich_fees') {
   send_json(['fees' => $fees]);
 }
 
+if ($action === 'state_probe_full') {
+  $cid = (int)($_GET['connector_id'] ?? 0);
+  $stmt = $pdo->prepare("SELECT * FROM connectors WHERE id = ? AND active = 1 LIMIT 1");
+  $stmt->execute([$cid]);
+  $conn = $stmt->fetch();
+  $token = $conn['token'] ?? '';
+  // Grab a handful of delivery _ids with diverse type/state, then fetch
+  // each one's full record to see what maskedState / code maps to in the
+  // rich per-delivery payload.
+  $r1 = http_request('POST', 'https://app.bosta.co/api/v0/deliveries/search',
+    ['Authorization: ' . $token, 'Content-Type: application/json'],
+    ['pageLimit'=>50, 'pageNumber'=>20]);
+  $j1 = json_decode($r1['body'] ?: '{}', true);
+  $ids = array_slice(array_map(function($d){ return $d['_id'] ?? null; }, $j1['deliveries'] ?? []), 0, 8);
+  $out = [];
+  foreach ($ids as $id) {
+    if (!$id) continue;
+    $r = http_request('GET', 'https://app.bosta.co/api/v0/deliveries/' . $id,
+      ['Authorization: ' . $token, 'Content-Type: application/json'], null);
+    $j = json_decode($r['body'] ?: '{}', true);
+    if (!is_array($j)) continue;
+    $out[] = [
+      'tn'           => $j['trackingNumber'] ?? '?',
+      'type'         => $j['type']['value']  ?? null,
+      'state_value'  => $j['state']['value'] ?? null,
+      'state_code'   => $j['state']['code']  ?? null,
+      'childState'   => $j['state']['childState'] ?? null,
+      'maskedState'  => $j['maskedState'] ?? null,
+      'state_subkeys'=> array_keys($j['state'] ?? []),
+    ];
+  }
+  send_json($out);
+}
+
 if ($action === 'state_probe') {
   $cid = (int)($_GET['connector_id'] ?? 0);
   $stmt = $pdo->prepare("SELECT * FROM connectors WHERE id = ? AND active = 1 LIMIT 1");
