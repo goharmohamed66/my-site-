@@ -68,16 +68,25 @@ foreach ($pStmt as $p) {
     if ($k !== '' && !isset($nameMap[$k])) $nameMap[$k] = (int)$p['brand_id'];
 }
 
-// Per-row idempotency: if this batch contains a Waybill (J&T's per-shipment
-// id) that we've already stored, skip the insert. Catches the common case
-// where the user clicks Upload twice or the frontend triggers two POSTs.
-// Pre-load existing waybills in ONE query so we don't pay 18k JSON_EXTRACTs.
+// Per-row idempotency: skip rows we've already stored. Two layers:
+//   1. Waybill (raw.Waybill) — historical J&T sheet path. Pre-loaded in
+//      bulk so we don't pay 18k JSON_EXTRACTs per upload.
+//   2. (source, order_id) — covers every carrier API pull. The Shipping
+//      Analytics page POSTs the API rows here after every pull, so
+//      refetching the same date range must not duplicate rows.
 $existingWb = [];
 $wbStmt = $pdo->query("SELECT JSON_UNQUOTE(JSON_EXTRACT(raw, '$.Waybill')) AS w
                         FROM shipping_orders
                         WHERE JSON_EXTRACT(raw, '$.Waybill') IS NOT NULL");
 foreach ($wbStmt as $r) {
     if (!empty($r['w'])) $existingWb[$r['w']] = 1;
+}
+
+$existingKey = [];
+$keyStmt = $pdo->query("SELECT source, order_id FROM shipping_orders
+                         WHERE order_id IS NOT NULL AND order_id <> ''");
+foreach ($keyStmt as $r) {
+    $existingKey[strtolower((string)$r['source']) . '|' . (string)$r['order_id']] = 1;
 }
 
 $pdo->beginTransaction();
@@ -97,6 +106,15 @@ foreach ($body as $i => $r) {
     }
     if ($wb !== '' && isset($existingWb[$wb])) { $skippedDup++; continue; }
     if ($wb !== '') $existingWb[$wb] = 1; // dedupe within the same batch too
+    // (source, order_id) dedup — covers carrier API pulls where raw has
+    // no .Waybill field but order_id is the per-shipment unique id.
+    $oid = isset($r['order_id']) ? trim((string)$r['order_id']) : '';
+    $src = isset($r['source'])   ? trim((string)$r['source'])   : '';
+    if ($oid !== '' && $src !== '') {
+        $k = strtolower($src) . '|' . $oid;
+        if (isset($existingKey[$k])) { $skippedDup++; continue; }
+        $existingKey[$k] = 1;
+    }
     // Resolution priority — strongest signal first. Carrier export sheets
     // contain orders from ALL brands mixed (the upload's "active brand"
     // doesn't override each row's actual owner). Order:

@@ -46,12 +46,16 @@ function http_request($method, $url, $headers = [], $body = null) {
 
 function map_status($carrier, $statusStr, $statusCode = null) {
   $s = strtoupper(trim((string)$statusStr));
-  // Common keywords across carriers
+  // Common keywords across carriers (Bosta, J&T, ShipBlu, Turbo, QP,
+  // Hashtag, Mylerz, Speedaf, Flextock). Treat "rejected"/"refused"
+  // as RETURNED so the customer-refusal cases roll into the same
+  // dashboard bucket as RTO shipments.
   if (preg_match('/(DELIVERED|تم التسليم|سُلِّم)/iu', $s)) return 'DELIVERED';
-  if (preg_match('/(RETURN|RTO|راجع|مرتجع|إرجاع)/iu', $s)) return 'RETURNED';
-  if (preg_match('/(OUT FOR DELIVERY|في الطريق|للتوصيل)/iu', $s)) return 'OUT_FOR_DELIVERY';
+  if (preg_match('/(RETURN|RTO|REJECT|REFUSE|راجع|مرتجع|إرجاع|رفض)/iu', $s)) return 'RETURNED';
+  if (preg_match('/(OUT[ \-]?FOR[ \-]?DELIVERY|IN[ \-]?TRANSIT|في الطريق|للتوصيل)/iu', $s)) return 'OUT_FOR_DELIVERY';
   if (preg_match('/(CANCEL|ملغي)/iu', $s)) return 'CANCELED';
-  if (preg_match('/(PENDING|قيد الانتظار|جاهز)/iu', $s)) return 'PENDING';
+  if (preg_match('/(PENDING|HOLD|SCHEDULED|قيد الانتظار|جاهز)/iu', $s)) return 'PENDING';
+  if (preg_match('/(UN[ \-]?DELIVERED|FAILED|EXCEPTION)/iu', $s)) return 'UNDELIVERED';
   return $s ?: 'UNKNOWN';
 }
 

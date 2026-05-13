@@ -6,7 +6,7 @@
 // before kicking off any AI request, so the first run after page load doesn't
 // race the network.
 (function (global) {
-  const API_BASE  = 'https://indigo-dog-836598.hostingersite.com/api';
+  const API_BASE  = 'https://indigo-dog-836598.hostingersite.com/github/api';
   const API_TOKEN = 'tk_4d2b9f7a8c6e1530a4f2d9b7e8c6a1f5';
   const KEYS = {
     claude:     'app.anthropicApiKey',

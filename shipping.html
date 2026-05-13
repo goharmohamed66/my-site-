@@ -33,7 +33,7 @@ import * as XLSX from "xlsx";
 import {ResponsiveContainer, LineChart as RcLineChart, XAxis, YAxis, Tooltip as RcTooltip, CartesianGrid, Line} from "recharts";
 
 // ── API CONFIG (Hostinger) ────────────────────────────────────────────────
-var API_BASE = "https://indigo-dog-836598.hostingersite.com/api";
+var API_BASE = "https://indigo-dog-836598.hostingersite.com/github/api";
 var API_TOKEN = "tk_4d2b9f7a8c6e1530a4f2d9b7e8c6a1f5";
 
 function apiFetch(path, opts) {
@@ -1268,7 +1268,8 @@ function App(){
     return apiFetch("/shipping.php"+qs).then(function(res){
       // Discard if Clear All ran while we were in flight.
       if(myEpoch!==fetchEpoch.current)return;
-      var rows=(res.rows||[]).map(apiRowToRow);
+      var apiRows=res.rows||[];
+      var rows=apiRows.map(apiRowToRow);
       var provName=(SHIP_PROVIDERS[conn.provider]||{}).name||conn.provider;
       setDs(function(prev){
         var filtered=prev.filter(function(d){return d.connectorId!==conn.id;});
@@ -1280,6 +1281,24 @@ function App(){
         }]);
       });
       setLastUp(new Date());
+      // Persist the API rows to the database so every other page
+      // (Profit Analysis, Amount Spent, FM Update…) sees the same data
+      // a sheet upload would have produced. /upload.php deduplicates on
+      // (source, order_id) so re-pulling the same range is safe.
+      if (apiRows.length) {
+        var bidUp = window.getActiveBrandId ? (window.getActiveBrandId()||0) : 0;
+        var qsUp  = bidUp ? ("?brand_id="+bidUp) : "";
+        apiFetch("/upload.php"+qsUp, {method:"POST", body:JSON.stringify(apiRows)})
+          .then(function(up){
+            console.log("[carrier-sync] "+conn.name+" → /upload.php:", up);
+            // Refresh the DB-backed main dataset so Profit Analysis etc.
+            // see the new rows immediately on next nav.
+            if (typeof loadOrders === "function") loadOrders();
+          })
+          .catch(function(err){
+            console.error("[carrier-sync] "+conn.name+" persist failed:", err);
+          });
+      }
     }).catch(function(err){
       if(myEpoch!==fetchEpoch.current)return;
       setCarrierErr((conn.name||conn.provider)+" — "+(err.message||String(err)));

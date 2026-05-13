@@ -92,7 +92,7 @@
   var __brandsCache = null;
   function brandsApiBase(){
     // Same host the rest of the app uses. Falls back to current origin in dev.
-    return 'https://indigo-dog-836598.hostingersite.com/api';
+    return 'https://indigo-dog-836598.hostingersite.com/github/api';
   }
   function brandsApiToken(){ return 'tk_4d2b9f7a8c6e1530a4f2d9b7e8c6a1f5'; }
   async function loadBrands(){
