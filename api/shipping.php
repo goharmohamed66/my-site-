@@ -710,6 +710,25 @@ if ($action === 'enrich_fees') {
   send_json(['fees' => $fees]);
 }
 
+if ($action === 'enrich_debug') {
+  $cid = (int)($_GET['connector_id'] ?? 0);
+  $stmt = $pdo->prepare("SELECT * FROM connectors WHERE id = ? AND active = 1 LIMIT 1");
+  $stmt->execute([$cid]);
+  $conn = $stmt->fetch();
+  $token = $conn['token'] ?? '';
+  $id    = $_GET['id'] ?? '6slcsjvlFUQ4VKkwj3F20';
+  $r = http_request('GET', 'https://app.bosta.co/api/v0/deliveries/' . $id,
+    ['Authorization: ' . $token, 'Content-Type: application/json'], null);
+  $j = json_decode($r['body'] ?: '{}', true);
+  send_json([
+    'id'           => $id,
+    'http_code'    => $r['code'],
+    'shipmentFees' => $j['shipmentFees'] ?? null,
+    'top_keys'     => is_array($j) ? array_keys($j) : null,
+    'snippet'      => substr((string)$r['body'], 0, 300),
+  ]);
+}
+
 if ($action === 'bosta_breakdown') {
   // Temporary: pull page 1 (50 rows) raw and report the distribution of
   // (type.value, state.value, fee field availability) so we can mirror
