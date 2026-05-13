@@ -246,13 +246,16 @@ function bosta_status($d, $conn = null) {
     if ($matchAny($cm['returned_values']  ?? '', $candidates)) return 'RETURNED';
   }
 
-  // Hardcoded fallback for connectors without a column_map: the first
-  // candidate is the most specific verdict.
+  // No match in user's lists — emit the code-derived label verbatim so
+  // it doesn't get silently routed via map_status(state.value), which
+  // would happily turn an intermediate code=46 Send ("Delivery Failed")
+  // into "DELIVERED" because state.value=Delivered.
   $top   = $candidates ? $candidates[0] : '';
   $topU  = strtoupper(trim($top));
-  if (strcasecmp($topU, 'CANCELED') === 0)         return 'CANCELED';
-  if (strcasecmp($topU, 'DELIVERED') === 0)        return 'DELIVERED';
-  if (preg_match('/^RETURN/i', $topU))             return 'RETURNED';
+  if (strcasecmp($topU, 'CANCELED') === 0)  return 'CANCELED';
+  if (strcasecmp($topU, 'DELIVERED') === 0) return 'DELIVERED';
+  if (preg_match('/^RETURN/i', $topU))      return 'RETURNED';
+  if ($top !== '')                          return $topU;
   return map_status('bosta', (string)($d['state']['value'] ?? ''));
 }
 

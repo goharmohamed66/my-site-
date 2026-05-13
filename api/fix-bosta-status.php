@@ -90,6 +90,7 @@ function bs_bosta_status($d, $cm = null) {
   if (strcasecmp($topU, 'CANCELED') === 0)  return 'CANCELED';
   if (strcasecmp($topU, 'DELIVERED') === 0) return 'DELIVERED';
   if (preg_match('/^RETURN/i', $topU))      return 'RETURNED';
+  if ($top !== '')                          return $topU;
   return bs_map_status((string)($d['state']['value'] ?? ''));
 }
 
