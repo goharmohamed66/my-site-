@@ -168,7 +168,7 @@ function bosta_sheet_state_candidates($d) {
     // intermediate state that Bosta portal counts neither as Delivered
     // nor under RTO. Map it to a distinct label so it falls through
     // both delivered_values and returned_values matching.
-    case 46: $codeLabel = $isReturnType ? $retLabel : 'Returning';             break;
+    case 46: $codeLabel = $isReturnType ? $retLabel : 'Delivery Failed';       break;
     case 47: $codeLabel = $isReturnType ? $retLabel : 'Awaiting for Action';   break;
     case 48: $codeLabel = 'Canceled';             break;
     case 49: $codeLabel = 'Terminated';           break;
