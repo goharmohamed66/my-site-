@@ -43,7 +43,13 @@ function gd_token(PDO $pdo, array $conn): string {
     ]);
     $resp = curl_exec($ch); $code = curl_getinfo($ch, CURLINFO_HTTP_CODE); curl_close($ch);
     $tok = json_decode($resp, true);
-    if ($code !== 200 || empty($tok['access_token'])) send_json(['error' => 'Drive token refresh failed'], 401);
+    if ($code !== 200 || empty($tok['access_token'])) {
+      $detail = isset($tok['error']) ? ($tok['error'] . ': ' . ($tok['error_description'] ?? '')) : substr((string)$resp, 0, 200);
+      send_json([
+        'error'  => 'Drive token expired — open https://indigo-dog-836598.hostingersite.com/api/google-oauth-start.php to re-connect Google Drive, then try again. (' . trim($detail) . ')',
+        'reauth_url' => '/api/google-oauth-start.php',
+      ], 401);
+    }
     $meta['token_expires_at'] = date('Y-m-d H:i:s', time() + (int)($tok['expires_in'] ?? 3600));
     $upd = $pdo->prepare("UPDATE connectors SET token=?, meta=? WHERE id=?");
     $upd->execute([$tok['access_token'], json_encode($meta, JSON_UNESCAPED_UNICODE), (int)$conn['id']]);
