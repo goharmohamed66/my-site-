@@ -23,11 +23,28 @@ function bs_map_status($s) {
 function bs_sheet_state_candidates($d) {
   $typeRaw  = (string)($d['type']['value']  ?? '');
   $stateRaw = (string)($d['state']['value'] ?? '');
+  $stateCode = isset($d['state']['code']) ? (int)$d['state']['code'] : null;
   $type  = strtolower(trim($typeRaw));
   $state = strtolower(trim($stateRaw));
   $isReturnType = (strpos($type, 'return') !== false);
+  $codeLabel = null;
+  switch ($stateCode) {
+    case 10: $codeLabel = 'Created';              break;
+    case 20: $codeLabel = 'Route assigned';       break;
+    case 22: $codeLabel = 'Picked up';            break;
+    case 24: $codeLabel = 'Received at warehouse';break;
+    case 30: $codeLabel = 'Out for delivery';     break;
+    case 41: $codeLabel = 'Out for delivery';     break;
+    case 45: $codeLabel = 'Delivered';            break;
+    case 46: $codeLabel = $isReturnType ? 'Returned to Origin' : 'Returned'; break;
+    case 47: $codeLabel = 'Awaiting for Action';  break;
+    case 48: $codeLabel = 'Canceled';             break;
+    case 49: $codeLabel = 'Terminated';           break;
+  }
   $cands = [];
-  if ($state === 'canceled' || $state === 'terminated') {
+  if ($codeLabel !== null) {
+    $cands[] = $codeLabel;
+  } elseif ($state === 'canceled' || $state === 'terminated') {
     $cands[] = 'Canceled';
   } elseif ($state === 'delivered') {
     if ($type === 'return to origin')      $cands[] = 'Returned to Origin';
