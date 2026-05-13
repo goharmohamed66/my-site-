@@ -108,11 +108,20 @@ function fetch_bosta($conn, $since, $until) {
   $token = $conn['token'] ?? '';
   if (!$token) err('Bosta connector is missing the API key.');
   $rows = [];
-  $page = 1; $limit = 100; $safety = 0;
-  while ($safety++ < 50) {
+  // Bosta's /deliveries/search caps the page size at 50 — asking for
+  // more silently returns 50. The old loop stopped the moment count <
+  // requested limit, so it bailed after one page and lost everything
+  // past row 50. Stay below the cap and only stop when Bosta returns
+  // an empty page (or we hit the safety bound).
+  $page = 1; $limit = 50; $safety = 0; $totalReported = null;
+  // Use UTC+02:00 (Africa/Cairo, no DST since 2015) so a Cairo-local
+  // date like 2026-04-01 maps to the right midnight on Bosta's side
+  // rather than 03:00 Cairo (which would silently drop the first
+  // 3 hours of orders).
+  while ($safety++ < 500) {
     $payload = ['limit' => $limit, 'page' => $page];
-    if ($since) $payload['createdAtStart'] = $since . 'T00:00:00.000Z';
-    if ($until) $payload['createdAtEnd']   = $until . 'T23:59:59.000Z';
+    if ($since) $payload['createdAtStart'] = $since . 'T00:00:00.000+02:00';
+    if ($until) $payload['createdAtEnd']   = $until . 'T23:59:59.999+02:00';
     $r = http_request('POST', 'https://app.bosta.co/api/v0/deliveries/search',
       ['Authorization: ' . $token, 'Content-Type: application/json'],
       $payload
@@ -120,6 +129,9 @@ function fetch_bosta($conn, $since, $until) {
     if ($r['code'] >= 400 || !$r['body']) break;
     $j = json_decode($r['body'], true);
     $list = $j['deliveries'] ?? $j['data'] ?? [];
+    if ($totalReported === null) {
+      $totalReported = $j['count'] ?? $j['totalCount'] ?? $j['total'] ?? null;
+    }
     if (!$list) break;
     foreach ($list as $d) {
       $cod = (float)($d['cod'] ?? 0);
@@ -146,8 +158,11 @@ function fetch_bosta($conn, $since, $until) {
         'raw'      => $d
       ];
     }
-    if (count($list) < $limit) break;
+    // Don't bail on "count < limit" — Bosta sometimes returns a short
+    // page in the middle of the result set. Only stop on empty pages
+    // or when we've already collected as many rows as Bosta reported.
     $page++;
+    if ($totalReported && count($rows) >= (int)$totalReported) break;
   }
   return $rows;
 }
