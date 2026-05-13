@@ -27,35 +27,42 @@ function bs_sheet_state_candidates($d) {
   $type  = strtolower(trim($typeRaw));
   $state = strtolower(trim($stateRaw));
   $isReturnType = (strpos($type, 'return') !== false);
+  $retLabel = ($type === 'return to origin') ? 'Returned to Origin' : 'Returned';
   $codeLabel = null;
   switch ($stateCode) {
     case 10: $codeLabel = 'Created';              break;
-    case 20: $codeLabel = 'Route assigned';       break;
-    case 22: $codeLabel = 'Picked up';            break;
-    case 24: $codeLabel = 'Received at warehouse';break;
-    case 30: $codeLabel = 'Out for delivery';     break;
-    case 41: $codeLabel = 'Out for delivery';     break;
-    case 45: $codeLabel = 'Delivered';            break;
-    case 46: $codeLabel = $isReturnType ? 'Returned to Origin' : 'Returned'; break;
-    case 47: $codeLabel = 'Awaiting for Action';  break;
+    case 20: $codeLabel = $isReturnType ? $retLabel : 'Route assigned';        break;
+    case 22: $codeLabel = $isReturnType ? $retLabel : 'Picked up';             break;
+    case 24: $codeLabel = $isReturnType ? $retLabel : 'Received at warehouse'; break;
+    case 30: $codeLabel = $isReturnType ? $retLabel : 'Out for delivery';      break;
+    case 41: $codeLabel = $isReturnType ? $retLabel : 'Out for delivery';      break;
+    case 45: $codeLabel = $isReturnType ? $retLabel : 'Delivered';             break;
+    case 46: $codeLabel = $retLabel;              break;
+    case 47: $codeLabel = $isReturnType ? $retLabel : 'Awaiting for Action';   break;
     case 48: $codeLabel = 'Canceled';             break;
     case 49: $codeLabel = 'Terminated';           break;
   }
   $cands = [];
   if ($codeLabel !== null) {
     $cands[] = $codeLabel;
-  } elseif ($state === 'canceled' || $state === 'terminated') {
-    $cands[] = 'Canceled';
-  } elseif ($state === 'delivered') {
-    if ($type === 'return to origin')      $cands[] = 'Returned to Origin';
-    elseif ($isReturnType)                 $cands[] = 'Returned';
-    else                                   $cands[] = 'Delivered';
+    if ($isReturnType) {
+      if ($codeLabel !== 'Returned')                                            $cands[] = 'Returned';
+      if ($codeLabel !== 'Returned to Origin' && $type === 'return to origin')  $cands[] = 'Returned to Origin';
+    }
+  } else {
+    if ($state === 'canceled' || $state === 'terminated') {
+      $cands[] = 'Canceled';
+    } elseif ($state === 'delivered') {
+      if ($type === 'return to origin')      $cands[] = 'Returned to Origin';
+      elseif ($isReturnType)                 $cands[] = 'Returned';
+      else                                   $cands[] = 'Delivered';
+    }
+    if ($isReturnType) {
+      $cands[] = 'Returned';
+      if ($type === 'return to origin') $cands[] = 'Returned to Origin';
+    }
+    if ($stateRaw !== '') $cands[] = $stateRaw;
   }
-  if ($isReturnType) {
-    $cands[] = 'Returned';
-    if ($type === 'return to origin') $cands[] = 'Returned to Origin';
-  }
-  if ($stateRaw !== '') $cands[] = $stateRaw;
   $seen = []; $out = [];
   foreach ($cands as $c) { $k = strtolower($c); if (isset($seen[$k])) continue; $seen[$k] = 1; $out[] = $c; }
   return $out;
