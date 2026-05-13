@@ -104,65 +104,133 @@ function bosta_parse_date($d) {
   return null;
 }
 
+function bosta_normalize_row($d) {
+  $cod = (float)($d['cod'] ?? 0);
+  $fees = 0;
+  if (isset($d['priceAfterVat']))      $fees = (float)$d['priceAfterVat'];
+  elseif (isset($d['shippingFee']))    $fees = (float)$d['shippingFee'];
+  elseif (isset($d['priceBeforeVat'])) $fees = (float)$d['priceBeforeVat'];
+  $status = $d['state']['value'] ?? $d['type']['value'] ?? '';
+  $city = $d['dropOffAddress']['city']['name'] ?? $d['receiver']['city'] ?? '';
+  $product = $d['specs']['packageDetails']['description'] ?? '';
+  $orderId = $d['trackingNumber'] ?? $d['_id'] ?? '';
+  return [
+    'order_id' => $orderId,
+    'product'  => $product,
+    'city'     => $city,
+    'status'   => map_status('bosta', $status),
+    'cod'      => $cod,
+    'fees'     => $fees,
+    'net'      => max(0, $cod - $fees),
+    'date'     => bosta_parse_date($d),
+    'source'   => 'Bosta',
+    'employee' => null,
+    'raw'      => $d
+  ];
+}
+
+function bosta_make_handle($token, $since, $until, $page, $limit) {
+  $payload = ['limit' => $limit, 'page' => $page];
+  if ($since) $payload['createdAtStart'] = $since . 'T00:00:00.000+02:00';
+  if ($until) $payload['createdAtEnd']   = $until . 'T23:59:59.999+02:00';
+  $ch = curl_init('https://app.bosta.co/api/v0/deliveries/search');
+  curl_setopt_array($ch, [
+    CURLOPT_POST           => true,
+    CURLOPT_POSTFIELDS     => json_encode($payload, JSON_UNESCAPED_UNICODE),
+    CURLOPT_RETURNTRANSFER => true,
+    CURLOPT_TIMEOUT        => HTTP_TIMEOUT,
+    CURLOPT_SSL_VERIFYPEER => true,
+    CURLOPT_FOLLOWLOCATION => true,
+    CURLOPT_HTTPHEADER     => [
+      'Authorization: ' . $token,
+      'Content-Type: application/json',
+    ],
+  ]);
+  return $ch;
+}
+
 function fetch_bosta($conn, $since, $until) {
   $token = $conn['token'] ?? '';
   if (!$token) err('Bosta connector is missing the API key.');
+
+  // Give the request as much time as it needs — Hostinger's PHP cap is
+  // already covered by nginx's upstream timeout; this just stops PHP
+  // from killing the loop while we wait on Bosta.
+  @set_time_limit(0);
+  @ignore_user_abort(true);
+
+  $limit = 50;       // Bosta's /deliveries/search caps each page at 50.
+  $batch = 12;       // Pages fetched in parallel via cURL multi.
+
+  // Page 1 sequentially so we can learn the total count and decide
+  // how many pages to spin up in parallel.
+  $r = http_request('POST', 'https://app.bosta.co/api/v0/deliveries/search',
+    ['Authorization: ' . $token, 'Content-Type: application/json'],
+    array_filter([
+      'limit'           => $limit,
+      'page'            => 1,
+      'createdAtStart'  => $since ? $since . 'T00:00:00.000+02:00' : null,
+      'createdAtEnd'    => $until ? $until . 'T23:59:59.999+02:00' : null,
+    ], function($v){ return $v !== null; })
+  );
+  if ($r['code'] >= 400 || !$r['body']) err('Bosta API error', 502, ['detail' => substr($r['body'] ?: '', 0, 300)]);
+  $j = json_decode($r['body'], true);
+  $list = $j['deliveries'] ?? $j['data'] ?? [];
+
   $rows = [];
-  // Bosta's /deliveries/search caps the page size at 50 — asking for
-  // more silently returns 50. The old loop stopped the moment count <
-  // requested limit, so it bailed after one page and lost everything
-  // past row 50. Stay below the cap and only stop when Bosta returns
-  // an empty page (or we hit the safety bound).
-  $page = 1; $limit = 50; $safety = 0; $totalReported = null;
-  // Use UTC+02:00 (Africa/Cairo, no DST since 2015) so a Cairo-local
-  // date like 2026-04-01 maps to the right midnight on Bosta's side
-  // rather than 03:00 Cairo (which would silently drop the first
-  // 3 hours of orders).
-  while ($safety++ < 500) {
-    $payload = ['limit' => $limit, 'page' => $page];
-    if ($since) $payload['createdAtStart'] = $since . 'T00:00:00.000+02:00';
-    if ($until) $payload['createdAtEnd']   = $until . 'T23:59:59.999+02:00';
-    $r = http_request('POST', 'https://app.bosta.co/api/v0/deliveries/search',
-      ['Authorization: ' . $token, 'Content-Type: application/json'],
-      $payload
-    );
-    if ($r['code'] >= 400 || !$r['body']) break;
-    $j = json_decode($r['body'], true);
-    $list = $j['deliveries'] ?? $j['data'] ?? [];
-    if ($totalReported === null) {
-      $totalReported = $j['count'] ?? $j['totalCount'] ?? $j['total'] ?? null;
+  foreach ($list as $d) $rows[] = bosta_normalize_row($d);
+
+  $total = (int)($j['count'] ?? $j['totalCount'] ?? $j['total'] ?? 0);
+  if ($total > 0) {
+    $totalPages = (int)ceil($total / $limit);
+  } else {
+    $totalPages = (count($list) < $limit) ? 1 : 200;  // unknown — cap at safety bound
+  }
+  if ($totalPages <= 1) return $rows;
+
+  // Pages 2..N in parallel batches. cURL multi keeps a small pool of
+  // HTTP requests in flight at once so a 3,750-row pull (75 pages)
+  // finishes in ~12 round-trip waves instead of 75 — the difference
+  // between "fits in nginx's 60s timeout" and a 504.
+  $emptyHits = 0;
+  for ($start = 2; $start <= $totalPages; $start += $batch) {
+    $end = min($start + $batch - 1, $totalPages);
+    $multi = curl_multi_init();
+    $handles = [];
+    for ($p = $start; $p <= $end; $p++) {
+      $ch = bosta_make_handle($token, $since, $until, $p, $limit);
+      curl_multi_add_handle($multi, $ch);
+      $handles[$p] = $ch;
     }
-    if (!$list) break;
-    foreach ($list as $d) {
-      $cod = (float)($d['cod'] ?? 0);
-      $fees = 0;
-      if (isset($d['priceAfterVat']))      $fees = (float)$d['priceAfterVat'];
-      elseif (isset($d['shippingFee']))    $fees = (float)$d['shippingFee'];
-      elseif (isset($d['priceBeforeVat'])) $fees = (float)$d['priceBeforeVat'];
-      $status = $d['state']['value'] ?? $d['type']['value'] ?? '';
-      $city = $d['dropOffAddress']['city']['name'] ?? $d['receiver']['city'] ?? '';
-      $product = $d['specs']['packageDetails']['description'] ?? '';
-      $orderId = $d['trackingNumber'] ?? $d['_id'] ?? '';
-      $dateOut = bosta_parse_date($d);
-      $rows[] = [
-        'order_id' => $orderId,
-        'product'  => $product,
-        'city'     => $city,
-        'status'   => map_status('bosta', $status),
-        'cod'      => $cod,
-        'fees'     => $fees,
-        'net'      => max(0, $cod - $fees),
-        'date'     => $dateOut,
-        'source'   => 'Bosta',
-        'employee' => null,
-        'raw'      => $d
-      ];
+    do {
+      curl_multi_exec($multi, $running);
+      if ($running) curl_multi_select($multi);
+    } while ($running > 0);
+
+    $gotAnyRow = false;
+    foreach ($handles as $p => $ch) {
+      $body = curl_multi_getcontent($ch);
+      curl_multi_remove_handle($multi, $ch);
+      curl_close($ch);
+      if (!$body) continue;
+      $pj = json_decode($body, true);
+      $pList = $pj['deliveries'] ?? $pj['data'] ?? [];
+      if (!$pList) continue;
+      $gotAnyRow = true;
+      foreach ($pList as $d) $rows[] = bosta_normalize_row($d);
     }
-    // Don't bail on "count < limit" — Bosta sometimes returns a short
-    // page in the middle of the result set. Only stop on empty pages
-    // or when we've already collected as many rows as Bosta reported.
-    $page++;
-    if ($totalReported && count($rows) >= (int)$totalReported) break;
+    curl_multi_close($multi);
+
+    // Stop early if a whole batch came back empty — covers the case
+    // where Bosta's reported `count` is stale and the real result set
+    // is shorter than $totalPages.
+    if (!$gotAnyRow) {
+      $emptyHits++;
+      if ($emptyHits >= 2) break;
+    } else {
+      $emptyHits = 0;
+    }
+    if ($total > 0 && count($rows) >= $total) break;
   }
   return $rows;
 }
