@@ -128,14 +128,12 @@
           <button type="button" id="dateTrigger" class="adp-trigger" data-adp-attached="0"></button>
           <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" multiple style="display:none;">
           <button class="btn" id="uploadBtn" style="background:#FFFFFF;color:#1A1A1A;border-color:#DCDCDC;">📂 رفع شيتات</button>
-          <!-- Carrier API picker — same idea as the "Pull from carrier" dropdown
-               on the Shipping Analytics page. Lets the user pull from one or
-               more saved shipping connectors instead of (or alongside) sheet
-               uploads. -->
-          <div style="position:relative;">
-            <button class="btn" id="carrierBtn" type="button" style="background:#FFFFFF;color:#1A1A1A;border-color:#DCDCDC;">🚚 سحب من شركة شحن</button>
-            <div id="carrierMenu" style="display:none;position:absolute;top:100%;left:0;margin-top:6px;min-width:280px;max-height:340px;overflow:auto;background:#FFFFFF;border:1px solid #DCDCDC;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,0.10);padding:10px;z-index:100;"></div>
-          </div>
+          <!-- Carrier API picker — same component as Shipping Analytics.
+               Built in vanilla DOM here since Profit Analysis isn't a React
+               page, but mirrors CarrierDropdown's behavior 1:1: grouped by
+               account name, auto-pulls on selection change, respects the
+               current date range. -->
+          <div id="carrierDropdown" style="position:relative;"></div>
           <button type="button" id="clearUploadsBtn" style="display:none;height:36px;padding:0 12px;border:1px solid #FFA396;background:#FFFFFF;color:#D72C0D;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">✕ مسح الشيتات</button>
           <button class="btn" id="runBtn">↻ Compute</button>
         </div>
@@ -1169,6 +1167,9 @@ function tryAttachDatePicker(retriesLeft) {
         // Auto-recompute on date change — matches Amount Spent UX so the
         // user never has to click Compute manually after picking dates.
         scheduleAutoRefresh();
+        // If carrier accounts are picked, re-pull them with the new
+        // range so uploadedFiles stays in sync with the date.
+        if (selectedConnIds.length) scheduleCarrierPull(selectedConnIds.slice());
       }
     });
     syncDateRange();
@@ -1775,13 +1776,28 @@ $('clearUploadsBtn').addEventListener('click', () => {
   renderUploads();
 });
 
-// ── Carrier API picker ────────────────────────────────────────────────
-// Mirrors the "Pull from carrier" multi-select on the Shipping Analytics
-// page so the user can feed Profit Analysis with rows fetched live from
-// their carrier accounts instead of (or alongside) uploading sheets.
+// ── Carrier API picker (vanilla port of Shipping Analytics' CarrierDropdown)
+// 1:1 visual match with shipping.html — trigger button, popover panel,
+// account-grouping, indeterminate group checkboxes, Select all / Clear /
+// Done footer, auto-pull on selection change.
 let shippingConnectors = [];
-let carrierMenuOpen = false;
+let selectedConnIds   = [];
 const carrierLoadingIds = new Set();
+let carrierMenuOpen = false;
+// Provider display info — same as SHIP_PROVIDERS in shipping.html. Used
+// for the per-row label inside the dropdown ("J&T", "Bosta", …).
+const PROFIT_SHIP_PROVIDERS = {
+  jt:      { name: 'J&T',      logo: '../logos/jt.svg' },
+  bosta:   { name: 'Bosta',    logo: '../logos/bosta.svg' },
+  qp:      { name: 'QP',       logo: '../logos/qp.svg' },
+  shipblu: { name: 'ShipBlu',  logo: '../logos/shipblu.svg' },
+  turbo:   { name: 'Turbo',    logo: '../logos/turbo.svg' },
+  flextock:{ name: 'Flextock' },
+  hashtag: { name: 'Hashtag'  },
+  mylerz:  { name: 'Mylerz'   },
+  speedaf: { name: 'Speedaf'  }
+};
+
 async function loadShippingConnectors(){
   try {
     const r = await api('/connectors.php?type=shipping');
@@ -1790,60 +1806,164 @@ async function loadShippingConnectors(){
     console.warn('[profit] loadShippingConnectors:', e.message);
     shippingConnectors = [];
   }
+  renderCarrierDropdown();
 }
 loadShippingConnectors();
 
-function renderCarrierMenu(){
-  const m = $('carrierMenu');
-  if (!m) return;
-  if (!shippingConnectors.length) {
-    m.innerHTML = '<div style="padding:8px;font-size:13px;color:#6D7175;">مفيش شركات شحن متوصّلة. روح Settings → Shipping companies وضيف واحدة.</div>';
-    return;
-  }
-  syncDateRange();
-  const range = (dateRange.from || dateRange.to)
-    ? ((dateRange.from || '…') + ' → ' + (dateRange.to || '…'))
-    : 'كل الفترة';
-  m.innerHTML =
-    '<div style="font-size:11px;color:#6D7175;padding:0 4px 8px;border-bottom:1px solid #F1F1F1;margin-bottom:8px;">حدّد شركة شحن (أو أكتر) — التاريخ: <b>' + escapeHtml(range) + '</b></div>' +
-    shippingConnectors.map(c => {
-      const loading = carrierLoadingIds.has(c.id);
-      return '<label style="display:flex;gap:10px;align-items:center;padding:6px 4px;cursor:pointer;border-radius:6px;font-size:13px;">' +
-        '<input type="checkbox" data-cid="' + c.id + '"' + (loading ? ' disabled' : '') + ' style="width:16px;height:16px;cursor:pointer;">' +
-        '<span style="flex:1;"><b>' + escapeHtml(c.name || '') + '</b> <span style="color:#6D7175;font-size:11px;text-transform:uppercase;margin-right:6px;">' + escapeHtml(c.provider || '') + '</span></span>' +
-        (loading ? '<span class="spinner"></span>' : '') +
-      '</label>';
-    }).join('') +
-    '<div style="display:flex;gap:6px;justify-content:flex-end;padding-top:8px;border-top:1px solid #F1F1F1;margin-top:8px;">' +
-      '<button type="button" id="carrierMenuCancel" class="btn" style="background:#FFFFFF;color:#1A1A1A;border-color:#DCDCDC;">إلغاء</button>' +
-      '<button type="button" id="carrierMenuPull" class="btn">↓ اسحب</button>' +
-    '</div>';
-  $('carrierMenuCancel').addEventListener('click', closeCarrierMenu);
-  $('carrierMenuPull').addEventListener('click', async () => {
-    const ids = Array.from(m.querySelectorAll('input[type=checkbox]:checked')).map(cb => parseInt(cb.dataset.cid, 10));
-    closeCarrierMenu();
-    if (!ids.length) return;
-    await pullFromCarriers(ids);
+function renderCarrierDropdown(){
+  const host = $('carrierDropdown');
+  if (!host) return;
+  const hasLoading = Array.from(carrierLoadingIds).length > 0;
+  const sel = new Set(selectedConnIds);
+  let labelText;
+  if (!shippingConnectors.length)        labelText = 'No carriers connected';
+  else if (!selectedConnIds.length)      labelText = 'Select carrier account';
+  else if (selectedConnIds.length === 1) {
+    const c = shippingConnectors.find(x => x.id === selectedConnIds[0]);
+    const p = c ? (PROFIT_SHIP_PROVIDERS[c.provider] || {}) : null;
+    labelText = c ? (c.name + (p ? (' · ' + p.name) : '')) : '1 selected';
+  } else labelText = selectedConnIds.length + ' accounts selected';
+
+  // Group by account name (case-insensitive) — same as CarrierDropdown.
+  const groups = {}; const nameOrder = [];
+  shippingConnectors.forEach(c => {
+    const key = String(c.name || '').trim().toLowerCase() || '(unnamed)';
+    if (!groups[key]) { groups[key] = { display: c.name || '(unnamed)', items: [] }; nameOrder.push(key); }
+    groups[key].items.push(c);
   });
+
+  const truckSvg = '<svg viewBox="0 0 20 20" style="width:14px;height:14px;"><path d="M2 6.5C2 5.67 2.67 5 3.5 5H11.5C12.33 5 13 5.67 13 6.5V13.5H2V6.5Z" stroke="#1A1A1A" stroke-width="1.5" fill="none"></path><path d="M13 8H16L18 10.5V13.5H13V8Z" stroke="#1A1A1A" stroke-width="1.5" fill="none"></path></svg>';
+  const caretSvg = '<svg viewBox="0 0 12 12" style="width:10px;height:10px;margin-left:2px;"><path d="M3 4.5l3 3 3-3" stroke="#1A1A1A" stroke-width="1.5" fill="none" stroke-linecap="round"></path></svg>';
+
+  const triggerStyle = 'display:inline-flex;align-items:center;gap:8px;background:#FFFFFF;border:1px solid '
+    + ((carrierMenuOpen || selectedConnIds.length) ? '#1A1A1A' : '#DCDCDC')
+    + ';border-radius:8px;padding:0 14px;height:36px;cursor:'
+    + (shippingConnectors.length ? 'pointer' : 'not-allowed')
+    + ';font-size:13px;font-weight:600;color:#1A1A1A;box-shadow:0 1px 0 rgba(0,0,0,0.04);white-space:nowrap;opacity:'
+    + (shippingConnectors.length ? '1' : '0.6')
+    + ';outline:none;font-family:inherit;';
+
+  let html = '<button type="button" id="carrierTriggerBtn"'
+    + (shippingConnectors.length ? '' : ' disabled')
+    + ' style="' + triggerStyle + '">'
+    + truckSvg
+    + '<span>' + escapeHtml(labelText) + '</span>'
+    + (hasLoading ? '<span style="font-size:11px;color:#6D7175;font-weight:500;">· loading…</span>' : '')
+    + ((selectedConnIds.length > 0 && !hasLoading) ? '<span style="background:#1A1A1A;color:#FFF;font-size:11px;font-weight:700;padding:1px 7px;border-radius:10px;">' + selectedConnIds.length + '</span>' : '')
+    + caretSvg
+    + '</button>';
+
+  if (carrierMenuOpen) {
+    html += '<div id="carrierPanel" style="position:absolute;top:calc(100% + 6px);right:0;z-index:300;min-width:340px;max-width:420px;background:#F1F1F1;border:1px solid #DCDCDC;border-radius:10px;box-shadow:0 8px 32px rgba(0,0,0,0.16);overflow:hidden;font-family:inherit;">'
+      + '<div style="padding:10px 14px;background:#EBEBEB;border-bottom:1px solid #DCDCDC;font-size:11px;font-weight:700;color:#6D7175;text-transform:uppercase;letter-spacing:0.06em;display:flex;align-items:center;justify-content:space-between;">'
+      +   '<span>Carrier accounts</span>'
+      +   '<span style="font-weight:500;text-transform:none;letter-spacing:0;">Date range applies automatically</span>'
+      + '</div>'
+      + '<div style="max-height:380px;overflow-y:auto;background:#F1F1F1;">';
+
+    nameOrder.forEach(key => {
+      const grp = groups[key];
+      const groupIds = grp.items.map(c => c.id);
+      const allSel  = groupIds.every(id => sel.has(id));
+      const someSel = groupIds.some(id  => sel.has(id));
+      html += '<div style="border-bottom:1px solid #E1E3E5;">'
+        + '<label data-group="' + escapeHtml(key) + '" style="display:flex;align-items:center;gap:10px;padding:9px 14px;cursor:pointer;background:#EBEBEB;user-select:none;">'
+        +   '<input type="checkbox"' + (allSel ? ' checked' : '') + ' data-indet="' + (!allSel && someSel ? '1' : '0') + '" style="margin:0;accent-color:#1A1A1A;flex-shrink:0;width:14px;height:14px;">'
+        +   '<span style="flex:1;min-width:0;font-size:13px;font-weight:800;color:#1A1A1A;">' + escapeHtml(grp.display) + '</span>'
+        +   '<span style="font-size:11px;color:#6D7175;font-weight:500;flex-shrink:0;">' + grp.items.length + ' carrier' + (grp.items.length !== 1 ? 's' : '') + '</span>'
+        + '</label>';
+      grp.items.forEach(c => {
+        const checked = sel.has(c.id);
+        const loading = carrierLoadingIds.has(c.id);
+        const p = PROFIT_SHIP_PROVIDERS[c.provider] || { name: c.provider, logo: '' };
+        html += '<label data-cid="' + c.id + '" style="display:flex;align-items:center;gap:10px;padding:7px 14px 7px 36px;cursor:pointer;background:' + (checked ? '#FFFFFF' : 'transparent') + ';user-select:none;">'
+          +   '<input type="checkbox"' + (checked ? ' checked' : '') + ' style="margin:0;accent-color:#1A1A1A;flex-shrink:0;width:14px;height:14px;">'
+          +   '<div style="width:42px;height:22px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">'
+          +     (p.logo ? '<img src="' + escapeHtml(p.logo) + '" alt="' + escapeHtml(p.name) + '" style="max-width:42px;max-height:20px;object-fit:contain;">' : '')
+          +   '</div>'
+          +   '<span style="flex:1;min-width:0;font-size:13px;font-weight:600;color:#1A1A1A;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + escapeHtml(p.name) + '</span>'
+          +   (loading ? '<span style="font-size:11px;color:#6D7175;font-weight:600;">Loading…</span>' : '')
+          + '</label>';
+      });
+      html += '</div>';
+    });
+
+    html += '</div>'
+      + '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:#EBEBEB;border-top:1px solid #DCDCDC;">'
+      +   '<button type="button" id="carrierSelectAll" style="height:28px;padding:0 12px;background:transparent;border:1px solid #DCDCDC;border-radius:6px;color:#1A1A1A;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">Select all (' + shippingConnectors.length + ')</button>'
+      +   '<div style="display:flex;gap:8px;">'
+      +     '<button type="button" id="carrierClear"' + (selectedConnIds.length ? '' : ' disabled') + ' style="height:28px;padding:0 12px;background:transparent;border:1px solid #DCDCDC;border-radius:6px;color:#1A1A1A;font-size:12px;font-weight:700;cursor:' + (selectedConnIds.length ? 'pointer' : 'default') + ';opacity:' + (selectedConnIds.length ? '1' : '0.5') + ';font-family:inherit;">Clear</button>'
+      +     '<button type="button" id="carrierDone" style="height:28px;padding:0 14px;background:#1A1A1A;color:#FFF;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">Done</button>'
+      +   '</div>'
+      + '</div>'
+      + '</div>';
+  }
+
+  host.innerHTML = html;
+  // Wire up.
+  const trig = $('carrierTriggerBtn');
+  if (trig) trig.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (!shippingConnectors.length) return;
+    carrierMenuOpen = !carrierMenuOpen;
+    renderCarrierDropdown();
+  });
+  if (carrierMenuOpen) {
+    // Set indeterminate state on group checkboxes (can't be done via HTML attr)
+    host.querySelectorAll('input[data-indet="1"]').forEach(el => { el.indeterminate = true; });
+    host.querySelectorAll('label[data-group]').forEach(el => {
+      el.addEventListener('click', (e) => {
+        e.preventDefault();
+        const key = el.getAttribute('data-group');
+        const grp = groups[key];
+        const ids = grp.items.map(c => c.id);
+        const allSel = ids.every(id => sel.has(id));
+        let next = selectedConnIds.filter(id => !ids.includes(id));
+        if (!allSel) next = next.concat(ids);
+        setSelectedConnIds(next);
+      });
+    });
+    host.querySelectorAll('label[data-cid]').forEach(el => {
+      el.addEventListener('click', (e) => {
+        e.preventDefault();
+        const id = parseInt(el.getAttribute('data-cid'), 10);
+        const i  = selectedConnIds.indexOf(id);
+        const next = selectedConnIds.slice();
+        if (i >= 0) next.splice(i, 1); else next.push(id);
+        setSelectedConnIds(next);
+      });
+    });
+    $('carrierSelectAll').addEventListener('click', () => setSelectedConnIds(shippingConnectors.map(c => c.id)));
+    $('carrierClear')   .addEventListener('click', () => setSelectedConnIds([]));
+    $('carrierDone')    .addEventListener('click', () => { carrierMenuOpen = false; renderCarrierDropdown(); });
+  }
 }
-function openCarrierMenu(){
-  carrierMenuOpen = true;
-  $('carrierMenu').style.display = 'block';
-  renderCarrierMenu();
-}
-function closeCarrierMenu(){
-  carrierMenuOpen = false;
-  $('carrierMenu').style.display = 'none';
-}
-$('carrierBtn').addEventListener('click', (e) => {
-  e.stopPropagation();
-  if (carrierMenuOpen) closeCarrierMenu(); else openCarrierMenu();
-});
 document.addEventListener('click', (e) => {
   if (!carrierMenuOpen) return;
-  if ($('carrierMenu').contains(e.target) || $('carrierBtn').contains(e.target)) return;
-  closeCarrierMenu();
+  const host = $('carrierDropdown');
+  if (host && host.contains(e.target)) return;
+  carrierMenuOpen = false;
+  renderCarrierDropdown();
 });
+
+function setSelectedConnIds(next){
+  const before = new Set(selectedConnIds);
+  selectedConnIds = next.slice();
+  renderCarrierDropdown();
+  // Drop any uploads tied to connectors no longer selected.
+  const stillSel = new Set(selectedConnIds);
+  uploadedFiles = uploadedFiles.filter(f => f.__connectorId == null || stillSel.has(f.__connectorId));
+  renderUploads();
+  // Fetch newly added connectors only (debounced — matches Shipping Analytics).
+  const added = selectedConnIds.filter(id => !before.has(id));
+  if (added.length) scheduleCarrierPull(added);
+}
+
+let _pullTimer = null;
+function scheduleCarrierPull(ids){
+  clearTimeout(_pullTimer);
+  _pullTimer = setTimeout(() => pullFromCarriers(ids), 200);
+}
 
 async function pullFromCarriers(ids){
   syncDateRange();
@@ -1856,16 +1976,14 @@ async function pullFromCarriers(ids){
     const conn = shippingConnectors.find(c => c.id === id);
     if (!conn) continue;
     const label = (conn.name || '') + ' (' + (conn.provider || '').toUpperCase() + ')';
+    carrierLoadingIds.add(id);
+    renderCarrierDropdown();
     try {
       let qs = '?action=fetch&connector_id=' + id;
       if (since) qs += '&since=' + encodeURIComponent(since);
       if (until) qs += '&until=' + encodeURIComponent(until);
       const r = await api('/shipping.php' + qs);
       const rows = (r && r.rows) || [];
-      // Attribute brand per row: (prefix-mkt) marker first, then fall
-      // back to the active topbar brand. Carrier API rows usually don't
-      // carry the marker, so without the fallback they'd not count for
-      // any brand and Profit Analysis would silently render empty.
       const brandCounts = new Map();
       const apiRows = rows.map(row => {
         const m = String(row.product || '').match(/\(\s*([a-z0-9]{1,4})-([a-z0-9]{1,4})\s*\)/i);
@@ -1876,8 +1994,6 @@ async function pullFromCarriers(ids){
         if (bid) brandCounts.set(bid, (brandCounts.get(bid) || 0) + 1);
         return out;
       });
-      // Replace any prior pull from the same connector so re-pulling the
-      // same date range doesn't double the rows.
       uploadedFiles = uploadedFiles.filter(f => f.__connectorId !== id);
       uploadedFiles.push({
         name: 'API · ' + label,
@@ -1890,6 +2006,9 @@ async function pullFromCarriers(ids){
     } catch (e) {
       console.error('[profit] pull from', label, e);
       showErr('فشل السحب من ' + label + ': ' + e.message);
+    } finally {
+      carrierLoadingIds.delete(id);
+      renderCarrierDropdown();
     }
   }
   renderUploads();
