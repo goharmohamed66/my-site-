@@ -95,7 +95,14 @@ $stmt = $pdo->prepare("INSERT INTO shipping_orders
   (order_id, product, city, status, cod, fees, net, date, source, brand_id, employee, raw)
   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
 
-$inserted = 0; $errors = []; $skippedDup = 0;
+// update_fees=1 flips this from "skip duplicates" to "if the row
+// already exists, refresh its fees/net/status from the incoming data".
+// Used by Bosta's background fee enrichment so the DB catches up with
+// the per-delivery shipmentFees values fetched after the initial pull.
+$updateMode = !empty($_GET['update_fees']);
+$updateStmt = $pdo->prepare("UPDATE shipping_orders SET fees = ?, net = ?, status = ? WHERE source = ? AND order_id = ?");
+
+$inserted = 0; $updated = 0; $errors = []; $skippedDup = 0;
 foreach ($body as $i => $r) {
   try {
     // Skip if this Waybill is already in the DB — keeps Upload idempotent
@@ -104,16 +111,38 @@ foreach ($body as $i => $r) {
     if (isset($r['raw']) && is_array($r['raw']) && !empty($r['raw']['Waybill'])) {
         $wb = (string)$r['raw']['Waybill'];
     }
-    if ($wb !== '' && isset($existingWb[$wb])) { $skippedDup++; continue; }
-    if ($wb !== '') $existingWb[$wb] = 1; // dedupe within the same batch too
-    // (source, order_id) dedup — covers carrier API pulls where raw has
-    // no .Waybill field but order_id is the per-shipment unique id.
     $oid = isset($r['order_id']) ? trim((string)$r['order_id']) : '';
     $src = isset($r['source'])   ? trim((string)$r['source'])   : '';
+    if ($wb !== '' && isset($existingWb[$wb])) {
+      if ($updateMode && $oid !== '' && $src !== '') {
+        $updateStmt->execute([
+          isset($r['fees'])  ? (float)$r['fees']  : 0,
+          isset($r['net'])   ? (float)$r['net']   : 0,
+          isset($r['status'])? (string)$r['status'] : '',
+          $src, $oid,
+        ]);
+        $updated++;
+      } else { $skippedDup++; }
+      continue;
+    }
+    if ($wb !== '') $existingWb[$wb] = 1;
+    // (source, order_id) dedup — covers carrier API pulls where raw has
+    // no .Waybill field but order_id is the per-shipment unique id.
     if ($oid !== '' && $src !== '') {
-        $k = strtolower($src) . '|' . $oid;
-        if (isset($existingKey[$k])) { $skippedDup++; continue; }
-        $existingKey[$k] = 1;
+      $k = strtolower($src) . '|' . $oid;
+      if (isset($existingKey[$k])) {
+        if ($updateMode) {
+          $updateStmt->execute([
+            isset($r['fees'])  ? (float)$r['fees']  : 0,
+            isset($r['net'])   ? (float)$r['net']   : 0,
+            isset($r['status'])? (string)$r['status'] : '',
+            $src, $oid,
+          ]);
+          $updated++;
+        } else { $skippedDup++; }
+        continue;
+      }
+      $existingKey[$k] = 1;
     }
     // Resolution priority — strongest signal first. Carrier export sheets
     // contain orders from ALL brands mixed (the upload's "active brand"
@@ -162,4 +191,4 @@ foreach ($body as $i => $r) {
 
 $pdo->commit();
 
-send_json(['inserted' => $inserted, 'skipped_duplicates' => $skippedDup, 'errors' => $errors, 'brand_id' => $brandIdQuery ?: null]);
+send_json(['inserted' => $inserted, 'updated' => $updated, 'skipped_duplicates' => $skippedDup, 'errors' => $errors, 'brand_id' => $brandIdQuery ?: null]);
