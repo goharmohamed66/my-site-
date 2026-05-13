@@ -1249,11 +1249,15 @@ function App(){
   },[]);
   // Provider → display info (logo + name)
   var SHIP_PROVIDERS={
-    jt:     {name:"J&T",     logo:"logos/jt.svg"},
-    bosta:  {name:"Bosta",   logo:"logos/bosta.svg"},
-    qp:     {name:"QP",      logo:"logos/qp.svg"},
-    shipblu:{name:"ShipBlu", logo:"logos/shipblu.svg"},
-    turbo:  {name:"Turbo",   logo:"logos/turbo.svg"}
+    jt:      {name:"J&T",     logo:"logos/jt.svg"},
+    bosta:   {name:"Bosta",   logo:"logos/bosta.svg"},
+    qp:      {name:"QP",      logo:"logos/qp.svg"},
+    shipblu: {name:"ShipBlu", logo:"logos/shipblu.svg"},
+    turbo:   {name:"Turbo",   logo:"logos/turbo.svg"},
+    flextock:{name:"Flextock"},
+    hashtag: {name:"Hashtag"},
+    mylerz:  {name:"Mylerz"},
+    speedaf: {name:"Speedaf"}
   };
   var fetchCarrier=useCallback(function(conn,range){
     var myEpoch=fetchEpoch.current;

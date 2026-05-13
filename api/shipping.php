@@ -294,19 +294,156 @@ function fetch_turbo($conn, $since, $until) {
   return $rows;
 }
 
-/* ─── QP (login + scrape — placeholder, requires reverse-engineering) ─ */
+/* ─── QP / QPExpress ────────────────────────────────────────────────
+ *  Auth      : POST {server}/integration/token  body {username,password} → {token}
+ *  List      : GET  {server}/integration/order?page_size=&from_date=&to_date=
+ *  Server URL: https://api.qpxpress.com (override via connector.url)
+ */
 function fetch_qp($conn, $since, $until) {
-  err('QP integration is in development — please import the QP export file (CSV/XLSX) for now.', 501);
+  $user = $conn['consumer_key']    ?? '';
+  $pass = $conn['consumer_secret'] ?? '';
+  $base = rtrim($conn['url'] ?: 'https://api.qpxpress.com', '/');
+  if (!$user || !$pass) err('QP connector is missing username / password.');
+
+  $r = http_request('POST', $base . '/integration/token',
+    ['Content-Type: application/json', 'Accept: application/json'],
+    ['username' => $user, 'password' => $pass]);
+  if ($r['code'] >= 400 || !$r['body']) err('QP login failed', 502, ['detail' => substr($r['body'] ?: '', 0, 300)]);
+  $j = json_decode($r['body'], true);
+  $token = $j['token'] ?? '';
+  if (!$token) err('QP login returned no token', 502, ['detail' => substr($r['body'], 0, 300)]);
+
+  $rows = []; $page = 1; $safety = 0;
+  while ($safety++ < 100) {
+    $qs = 'page_size=200&page=' . $page;
+    if ($since) $qs .= '&from_date=' . urlencode($since);
+    if ($until) $qs .= '&to_date='   . urlencode($until);
+    $r = http_request('GET', $base . '/integration/order?' . $qs,
+      ['Authorization: Bearer ' . $token, 'Accept: application/json']);
+    if ($r['code'] >= 400 || !$r['body']) break;
+    $j = json_decode($r['body'], true);
+    $list = $j['results'] ?? [];
+    if (!$list) break;
+    foreach ($list as $d) {
+      $cod  = (float)($d['total_amount'] ?? 0);
+      $fees = (float)($d['total_fees']   ?? 0);
+      $rows[] = [
+        'order_id' => (string)($d['serial'] ?? $d['referenceID'] ?? ''),
+        'product'  => $d['shipment_contents'] ?? '',
+        'city'     => $d['city'] ?? '',
+        'status'   => map_status('qp', $d['Order_Delivery_Status'] ?? ''),
+        'cod'      => $cod,
+        'fees'     => $fees,
+        'net'      => max(0, $cod - $fees),
+        'date'     => isset($d['order_date']) ? substr((string)$d['order_date'], 0, 10) : null,
+        'source'   => 'QP',
+        'employee' => null,
+        'raw'      => $d
+      ];
+    }
+    if (empty($j['next'])) break;
+    $page++;
+  }
+  return $rows;
+}
+
+/* ─── Flextock ──────────────────────────────────────────────────────
+ *  Auth: POST https://api.flextock.com/base/auth/  body {username,password,key} → {access,refresh}
+ *  Flextock does NOT expose a bulk "list orders" endpoint — only
+ *  order-status takes a known order_code_array. Until we add a way to
+ *  feed the order codes (sheet upload / webhook), pulling for analytics
+ *  is best-effort: we verify credentials and return [] so the user can
+ *  still link the account and use sheet uploads.
+ */
+function fetch_flextock($conn, $since, $until) {
+  $user = $conn['consumer_key']    ?? '';
+  $pass = $conn['consumer_secret'] ?? '';
+  $key  = $conn['token']           ?? '';
+  if (!$user || !$pass || !$key) err('Flextock connector is missing username / password / api key.');
+  $r = http_request('POST', 'https://api.flextock.com/base/auth/',
+    ['Content-Type: application/json', 'Accept: application/json'],
+    ['username' => $user, 'password' => $pass, 'key' => $key]);
+  if ($r['code'] >= 400 || !$r['body']) err('Flextock login failed', 502, ['detail' => substr($r['body'] ?: '', 0, 300)]);
+  $j = json_decode($r['body'], true);
+  if (empty($j['access'])) err('Flextock login returned no access token', 502, ['detail' => substr($r['body'], 0, 300)]);
+  // Credentials verified. Flextock has no bulk-list endpoint — return empty
+  // and let the dashboard tell the user to upload a sheet for now.
+  return [];
+}
+
+/* ─── Hashtag Express ───────────────────────────────────────────────
+ *  Per-request auth: every POST body includes user + password.
+ *  No bulk-list endpoint — only addShipment, getCurrentStatus(waybills[])
+ *  and statusHistory(waybill). We verify by calling getAllGov (cheap)
+ *  and return [] so the user can still save the connector.
+ */
+function fetch_hashtag($conn, $since, $until) {
+  $user = $conn['consumer_key'] ?? '';
+  $pass = $conn['token']        ?? '';
+  if (!$user || !$pass) err('Hashtag connector is missing user / password.');
+  $r = http_request('POST', 'https://hashtag-express.com/api/shipment.php?action=getAllGov',
+    ['Content-Type: application/json', 'Accept: application/json'],
+    ['user' => $user, 'password' => $pass]);
+  if ($r['code'] >= 400) err('Hashtag verify failed', 502, ['detail' => substr($r['body'] ?: '', 0, 300)]);
+  $j = json_decode($r['body'], true);
+  if (!is_array($j) || (isset($j['error']) && stripos($j['error'], 'not found') !== false)) {
+    err('Hashtag credentials rejected (User Not Found).', 401);
+  }
+  return [];
+}
+
+/* ─── Mylerz ────────────────────────────────────────────────────────
+ *  Auth: POST {base}/token (form-urlencoded grant_type=password&username=&password=)
+ *  No bulk list endpoint exposed — GetPackageListDetails takes AWB list.
+ *  Base URL defaults to staging from the docs; override via connector.url.
+ */
+function fetch_mylerz($conn, $since, $until) {
+  $user = $conn['consumer_key']    ?? '';
+  $pass = $conn['consumer_secret'] ?? '';
+  $base = rtrim($conn['url'] ?: 'http://41.33.122.61:8888/MylerzIntegrationStaging', '/');
+  if (!$user || !$pass) err('Mylerz connector is missing username / password.');
+  $body = http_build_query(['grant_type' => 'password', 'username' => $user, 'password' => $pass]);
+  $r = http_request('POST', $base . '/token',
+    ['Content-Type: application/x-www-form-urlencoded', 'Accept: application/json'],
+    $body);
+  if ($r['code'] >= 400 || !$r['body']) err('Mylerz login failed', 502, ['detail' => substr($r['body'] ?: '', 0, 300)]);
+  $j = json_decode($r['body'], true);
+  if (empty($j['access_token'])) err('Mylerz login returned no access_token', 502, ['detail' => substr($r['body'], 0, 300)]);
+  // No bulk-list endpoint — credentials verified, return empty so the
+  // connector can still be saved + used for label / status calls later.
+  return [];
+}
+
+/* ─── Speedaf ──────────────────────────────────────────────────────
+ *  Speedaf uses appCode + secretKey signature (similar to J&T).
+ *  Public docs only document the webhook subscriber + per-AWB tracking
+ *  endpoints. Bulk-listing requires Speedaf account-manager activation
+ *  — we verify credentials are present and return [] until the
+ *  per-merchant list endpoint is enabled.
+ */
+function fetch_speedaf($conn, $since, $until) {
+  $app  = $conn['consumer_key'] ?? '';
+  $sec  = $conn['token']        ?? '';
+  $cust = $conn['consumer_secret'] ?? '';
+  if (!$app || !$sec) err('Speedaf connector is missing App Code / Secret Key.');
+  // No bulk-list call yet — keep the row in place so the connector is
+  // usable from the dashboard the moment Speedaf enables the merchant
+  // list endpoint on this app.
+  return [];
 }
 
 function dispatch_provider($conn, $since, $until) {
   switch ($conn['provider']) {
-    case 'bosta':   return fetch_bosta($conn, $since, $until);
-    case 'jt':      return fetch_jt($conn, $since, $until);
-    case 'shipblu': return fetch_shipblu($conn, $since, $until);
-    case 'turbo':   return fetch_turbo($conn, $since, $until);
-    case 'qp':      return fetch_qp($conn, $since, $until);
-    default:        err('Unknown shipping provider: ' . $conn['provider']);
+    case 'bosta':    return fetch_bosta($conn, $since, $until);
+    case 'jt':       return fetch_jt($conn, $since, $until);
+    case 'shipblu':  return fetch_shipblu($conn, $since, $until);
+    case 'turbo':    return fetch_turbo($conn, $since, $until);
+    case 'qp':       return fetch_qp($conn, $since, $until);
+    case 'flextock': return fetch_flextock($conn, $since, $until);
+    case 'hashtag':  return fetch_hashtag($conn, $since, $until);
+    case 'mylerz':   return fetch_mylerz($conn, $since, $until);
+    case 'speedaf':  return fetch_speedaf($conn, $since, $until);
+    default:         err('Unknown shipping provider: ' . $conn['provider']);
   }
 }
 

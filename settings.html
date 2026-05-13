@@ -286,11 +286,15 @@ const PROVIDERS = {
     { id: 'shopify', name: 'Shopify', icon: '🛍️' },
   ],
   shipping: [
-    { id: 'jt',      name: 'J&T',     logo: 'logos/jt.svg' },
-    { id: 'bosta',   name: 'Bosta',   logo: 'logos/bosta.svg' },
-    { id: 'qp',      name: 'QP',      logo: 'logos/qp.svg' },
-    { id: 'shipblu', name: 'ShipBlu', logo: 'logos/shipblu.svg' },
-    { id: 'turbo',   name: 'Turbo',   logo: 'logos/turbo.svg' },
+    { id: 'jt',       name: 'J&T',      logo: 'logos/jt.svg' },
+    { id: 'bosta',    name: 'Bosta',    logo: 'logos/bosta.svg' },
+    { id: 'qp',       name: 'QP',       logo: 'logos/qp.svg' },
+    { id: 'shipblu',  name: 'ShipBlu',  logo: 'logos/shipblu.svg' },
+    { id: 'turbo',    name: 'Turbo',    logo: 'logos/turbo.svg' },
+    { id: 'flextock', name: 'Flextock', icon: '📦' },
+    { id: 'hashtag',  name: 'Hashtag',  icon: '🏷️' },
+    { id: 'mylerz',   name: 'Mylerz',   icon: '🚚' },
+    { id: 'speedaf',  name: 'Speedaf',  icon: '⚡' },
     // Generic — any other shipping carrier. Same flow as the named ones
     // above (sample upload + column mapping). Saves as type=shipping
     // provider=custom; the parser uses meta.column_map to read sheets/API.
@@ -381,12 +385,53 @@ const PROVIDER_GUIDES = {
     ]
   },
   qp: {
-    title: 'How to connect QP',
-    note: 'QP has no public REST API — the tool will sign in with these credentials and pull orders from the orders page directly.',
+    title: 'How to connect QP (QPExpress)',
+    note: 'QPExpress exposes a public REST API — login with your dashboard credentials and the tool will list your orders directly. Server URL defaults to https://api.qpxpress.com (override only if QP gives you a different host).',
     steps: [
-      'Use the email and password you normally log in to the QP dashboard with.',
-      'For safety, create a dedicated read-only user inside QP and use those credentials here.',
-      'Note: QP integration is in active development — for now please import a CSV/XLSX export from QP if Pull-from-carrier returns an error.'
+      'Use the username and password you sign in to the QP portal with (<a href="https://qpxpress.com" target="_blank" rel="noopener">qpxpress.com</a>).',
+      'Recommended: create a dedicated read-only user inside QP and paste those credentials here.',
+      'Leave the Server URL empty unless QP support gave you a custom host.',
+      'Save, then test from <strong>Shipping Analytics → Pull from carrier</strong>.'
+    ]
+  },
+  flextock: {
+    title: 'How to connect Flextock',
+    note: 'Flextock issues a per-merchant API key alongside your username and password. All three fields are required for the JWT login at <code>POST /base/auth/</code>.',
+    steps: [
+      'Email Flextock support and request <strong>API access</strong> — they will provide an API key tied to your merchant account.',
+      'Use the same username + password you log in to the Flextock merchant portal with.',
+      'Paste username, password and the API key below, then Save.',
+      'Note: Flextock has no bulk "list orders" endpoint — once linked, the connector verifies credentials. For analytics today, also upload a Flextock export sheet in the dashboard.'
+    ]
+  },
+  hashtag: {
+    title: 'How to connect Hashtag Express',
+    note: 'Hashtag Express does <em>not</em> use OAuth — every request carries <code>user</code> and <code>password</code> in the body. Rate limit: 120 requests/minute.',
+    steps: [
+      'Email Hashtag support (<a href="https://hashtag-express.com" target="_blank" rel="noopener">hashtag-express.com</a>) to request API credentials.',
+      'They will send back an <strong>API Name</strong> (user) and an <strong>API Password</strong>.',
+      'Paste both below and Save. The tool will validate by calling <code>getAllGov</code> on save.',
+      'Note: Hashtag exposes status-by-waybill but no merchant-wide order list — for analytics, upload a Hashtag export sheet too.'
+    ]
+  },
+  mylerz: {
+    title: 'How to connect Mylerz',
+    note: 'Mylerz uses OAuth2 password grant. Bearer token lives ~14 days and refreshes automatically on each pull.',
+    steps: [
+      'Mylerz issues credentials per merchant — contact your Mylerz account manager and ask for API access.',
+      'You will receive a <strong>username</strong> and <strong>password</strong> for the integration user.',
+      'Leave the Base URL field empty to use staging, or paste the production base URL Mylerz gives you (e.g. <code>https://api.mylerz.net</code>).',
+      'Paste credentials and Save. The integration calls <code>POST /token</code> (form-urlencoded) to sign in.'
+    ]
+  },
+  speedaf: {
+    title: 'How to connect Speedaf',
+    note: 'Speedaf uses signature-based auth (App Code + Secret Key, similar to J&T). Public docs cover webhook tracking — bulk listing requires Speedaf to enable the per-merchant list endpoint on your App Code.',
+    steps: [
+      'Login to <a href="https://apis.speedaf.com" target="_blank" rel="noopener">apis.speedaf.com</a> and open the developer console.',
+      'Create an application — Speedaf will issue an <strong>App Code</strong> and <strong>Secret Key</strong> for it.',
+      'Optionally set a <strong>Customer Code</strong> if Speedaf segments your data by sub-account.',
+      'Paste all three below and Save. Ask Speedaf to enable "Merchant order list" on your App Code before pulling analytics.'
     ]
   },
   shipblu: {
@@ -511,10 +556,13 @@ const PROVIDER_FIELDS = {
      help: 'Bosta REST API key — used for tracking, label generation and order sync.'},
   ],
   qp: [
-    {key: 'name',            label: 'Customer name', placeholder: 'e.g. Motaz, Ahmed Yasser', required: true},
+    {key: 'name',            label: 'Customer name', placeholder: 'e.g. Motaz, Ahmed Yasser', required: true,
+     help: 'Display name for this QP account — shown in Shipping Analytics under QP.'},
     {key: 'consumer_key',    label: 'Username',      placeholder: 'qp.user@example.com', required: true},
     {key: 'consumer_secret', label: 'Password',      required: true, secret: true,
-     help: 'QP is open-source — the tool will sign in with these credentials and pull orders straight from the orders page.'},
+     help: 'Same credentials you sign in to the QP portal with. Recommended: a read-only user.'},
+    {key: 'url',             label: 'Server URL (optional)', placeholder: 'https://api.qpxpress.com',
+     help: 'Leave empty to use the default. Only change it if QP support gave you a custom host.'},
   ],
   shipblu: [
     {key: 'name',  label: 'Customer name', placeholder: 'e.g. Motaz, Ahmed Yasser', required: true},
@@ -524,6 +572,41 @@ const PROVIDER_FIELDS = {
     {key: 'name',         label: 'Customer name', placeholder: 'e.g. Motaz, Ahmed Yasser', required: true},
     {key: 'token',        label: 'API Key',       placeholder: 'tk_...', required: true, secret: true, multiline: true},
     {key: 'consumer_key', label: 'Customer Code', placeholder: 'CUST-12345', required: true},
+  ],
+  flextock: [
+    {key: 'name',            label: 'Customer name', placeholder: 'e.g. Motaz, Ahmed Yasser', required: true,
+     help: 'Display name for this Flextock merchant account.'},
+    {key: 'consumer_key',    label: 'Username',      placeholder: 'merchant-user', required: true,
+     help: 'Same username you sign in to the Flextock merchant portal with.'},
+    {key: 'consumer_secret', label: 'Password',      required: true, secret: true},
+    {key: 'token',           label: 'API Key',       placeholder: 'flx_...', required: true, secret: true, multiline: true,
+     help: 'API key Flextock support issues for your merchant account — passed in the auth body.'},
+  ],
+  hashtag: [
+    {key: 'name',         label: 'Customer name', placeholder: 'e.g. Motaz, Ahmed Yasser', required: true,
+     help: 'Display name for this Hashtag account.'},
+    {key: 'consumer_key', label: 'API Name (user)', placeholder: 'merchant_user', required: true,
+     help: 'The API name Hashtag support issued — sent as <code>user</code> in every request.'},
+    {key: 'token',        label: 'API Password',   required: true, secret: true, multiline: true,
+     help: 'API password Hashtag support issued — sent in every request body.'},
+  ],
+  mylerz: [
+    {key: 'name',            label: 'Customer name',  placeholder: 'e.g. Motaz, Ahmed Yasser', required: true,
+     help: 'Display name for this Mylerz merchant account.'},
+    {key: 'consumer_key',    label: 'Username',       placeholder: 'merchant-user', required: true},
+    {key: 'consumer_secret', label: 'Password',       required: true, secret: true},
+    {key: 'url',             label: 'Base URL (optional)', placeholder: 'https://api.mylerz.net',
+     help: 'Leave empty to use the Mylerz staging server. Set this to the production base URL Mylerz gives you.'},
+  ],
+  speedaf: [
+    {key: 'name',            label: 'Customer name', placeholder: 'e.g. Motaz, Ahmed Yasser', required: true,
+     help: 'Display name for this Speedaf account.'},
+    {key: 'consumer_key',    label: 'App Code',      placeholder: 'SF-APP-...', required: true,
+     help: 'App Code generated from <a href="https://apis.speedaf.com" target="_blank" rel="noopener">apis.speedaf.com</a>.'},
+    {key: 'token',           label: 'Secret Key',    required: true, secret: true, multiline: true,
+     help: 'Secret Key paired with the App Code — used to sign each request.'},
+    {key: 'consumer_secret', label: 'Customer Code (optional)', placeholder: 'CUST-...',
+     help: 'Only required if Speedaf segments your data into sub-accounts.'},
   ],
   // Generic custom confirmation — only collects a name. All parsing rules
   // come from the column-mapping panel injected below the standard fields.
