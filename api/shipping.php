@@ -571,6 +571,50 @@ function dispatch_provider($conn, $since, $until) {
 $pdo    = db();
 $action = $_GET['action'] ?? '';
 
+if ($action === 'bosta_breakdown') {
+  // Temporary: pull page 1 (50 rows) raw and report the distribution of
+  // (type.value, state.value, fee field availability) so we can mirror
+  // Bosta's portal categorisation exactly.
+  $cid = (int)($_GET['connector_id'] ?? 0);
+  $stmt = $pdo->prepare("SELECT * FROM connectors WHERE id = ? AND active = 1 LIMIT 1");
+  $stmt->execute([$cid]);
+  $conn = $stmt->fetch();
+  if (!$conn) err('Connector not found', 404);
+  $token = $conn['token'] ?? '';
+  $since = $_GET['since'] ?? '';
+  $until = $_GET['until'] ?? '';
+  // Get a slice with diverse statuses by sampling 4 spread-out pages.
+  $payloads = [];
+  foreach ([1, 10, 25, 50] as $p) {
+    $payloads[] = [
+      'pageLimit'      => 50,
+      'pageNumber'     => $p,
+      'createdAtStart' => $since ? $since . 'T00:00:00.000+02:00' : null,
+      'createdAtEnd'   => $until ? $until . 'T23:59:59.999+02:00' : null,
+    ];
+  }
+  $combos = []; $feeFields = []; $codHist = ['zero'=>0,'>0'=>0]; $sampleRow = null;
+  foreach ($payloads as $payload) {
+    $payload = array_filter($payload, function($v){ return $v !== null; });
+    $r = http_request('POST', 'https://app.bosta.co/api/v0/deliveries/search',
+      ['Authorization: ' . $token, 'Content-Type: application/json'], $payload);
+    $j = json_decode($r['body'] ?: '{}', true);
+    $list = $j['deliveries'] ?? [];
+    foreach ($list as $d) {
+      $type  = $d['type']['value']  ?? '(none)';
+      $state = $d['state']['value'] ?? '(none)';
+      $key = $type . ' || ' . $state;
+      $combos[$key] = ($combos[$key] ?? 0) + 1;
+      foreach (['priceAfterVat','shippingFee','priceBeforeVat','price'] as $f) {
+        if (isset($d[$f])) $feeFields[$f] = ($feeFields[$f] ?? 0) + 1;
+      }
+      if (((float)($d['cod'] ?? 0)) > 0) $codHist['>0']++; else $codHist['zero']++;
+      if (!$sampleRow) $sampleRow = array_intersect_key($d, array_flip(['_id','trackingNumber','cod','priceAfterVat','shippingFee','priceBeforeVat','price','type','state']));
+    }
+  }
+  send_json(['combos' => $combos, 'fee_fields_present' => $feeFields, 'cod_histogram' => $codHist, 'sample_row' => $sampleRow]);
+}
+
 if ($action === 'fetch') {
   $cid = (int)($_GET['connector_id'] ?? 0);
   if (!$cid) err('connector_id required');
