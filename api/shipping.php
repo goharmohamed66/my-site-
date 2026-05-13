@@ -223,6 +223,8 @@ function bosta_sheet_state($d) {
 // heuristic when the connector has no overrides.
 function bosta_status($d, $conn = null) {
   $candidates = bosta_sheet_state_candidates($d);
+  $type  = strtolower(trim((string)($d['type']['value']  ?? '')));
+  $isReturnType = (strpos($type, 'return') !== false);
 
   $cm = null;
   if ($conn && isset($conn['meta'])) {
@@ -242,8 +244,14 @@ function bosta_status($d, $conn = null) {
       }
       return false;
     };
+    // Type-aware matching: returned_values applies ONLY to shipments
+    // whose TYPE is a return direction (RTO / Customer Return Pickup).
+    // The same sheet label ("Received at warehouse", "Route assigned",
+    // "On Hold", …) can appear on both forward and return shipments —
+    // forward ones are intermediate states, NOT returns, and the user
+    // doesn't expect them in the RTO bucket.
     if ($matchAny($cm['delivered_values'] ?? '', $candidates)) return 'DELIVERED';
-    if ($matchAny($cm['returned_values']  ?? '', $candidates)) return 'RETURNED';
+    if ($isReturnType && $matchAny($cm['returned_values'] ?? '', $candidates)) return 'RETURNED';
   }
 
   // No match in user's lists — emit the code-derived label verbatim so

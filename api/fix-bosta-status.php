@@ -70,6 +70,8 @@ function bs_sheet_state_candidates($d) {
 
 function bs_bosta_status($d, $cm = null) {
   $candidates = bs_sheet_state_candidates($d);
+  $type  = strtolower(trim((string)($d['type']['value']  ?? '')));
+  $isReturnType = (strpos($type, 'return') !== false);
   if ($cm) {
     $matchAny = function($values, $candidates){
       if (!$values) return false;
@@ -83,7 +85,7 @@ function bs_bosta_status($d, $cm = null) {
       return false;
     };
     if ($matchAny($cm['delivered_values'] ?? '', $candidates)) return 'DELIVERED';
-    if ($matchAny($cm['returned_values']  ?? '', $candidates)) return 'RETURNED';
+    if ($isReturnType && $matchAny($cm['returned_values'] ?? '', $candidates)) return 'RETURNED';
   }
   $top   = $candidates ? $candidates[0] : '';
   $topU  = strtoupper(trim($top));
