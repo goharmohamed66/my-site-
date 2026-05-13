@@ -565,6 +565,42 @@ function dispatch_provider($conn, $since, $until) {
 $pdo    = db();
 $action = $_GET['action'] ?? '';
 
+if ($action === 'bosta_debug') {
+  // Temporary: hit Bosta directly for pages 1 + 2 of the requested range,
+  // surface the raw response shapes so we can see what `count` actually
+  // means and whether page 2 is unique vs a duplicate of page 1.
+  $cid = (int)($_GET['connector_id'] ?? 0);
+  $stmt = $pdo->prepare("SELECT * FROM connectors WHERE id = ? AND active = 1 LIMIT 1");
+  $stmt->execute([$cid]);
+  $conn = $stmt->fetch();
+  if (!$conn) err('Connector not found', 404);
+  $token = $conn['token'] ?? '';
+  $since = $_GET['since'] ?? '';
+  $until = $_GET['until'] ?? '';
+  $out = [];
+  foreach ([1, 2, 3] as $p) {
+    $payload = ['limit' => 50, 'page' => $p];
+    if ($since) $payload['createdAtStart'] = $since . 'T00:00:00.000+02:00';
+    if ($until) $payload['createdAtEnd']   = $until . 'T23:59:59.999+02:00';
+    $r = http_request('POST', 'https://app.bosta.co/api/v0/deliveries/search',
+      ['Authorization: ' . $token, 'Content-Type: application/json'], $payload);
+    $j = json_decode($r['body'] ?: '{}', true);
+    $list = $j['deliveries'] ?? $j['data'] ?? [];
+    $out[] = [
+      'page' => $p,
+      'http_code' => $r['code'],
+      'top_level_keys' => is_array($j) ? array_keys($j) : null,
+      'count_field'    => $j['count']      ?? null,
+      'totalCount'     => $j['totalCount'] ?? null,
+      'total'          => $j['total']      ?? null,
+      'rows_returned'  => count($list),
+      'first_tracking' => $list ? ($list[0]['trackingNumber'] ?? null) : null,
+      'last_tracking'  => $list ? ($list[count($list)-1]['trackingNumber'] ?? null) : null,
+    ];
+  }
+  send_json($out);
+}
+
 if ($action === 'fetch') {
   $cid = (int)($_GET['connector_id'] ?? 0);
   if (!$cid) err('connector_id required');
