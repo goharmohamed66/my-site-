@@ -579,27 +579,22 @@ if ($action === 'bosta_endpoint_probe') {
   $conn = $stmt->fetch();
   $token = $conn['token'] ?? '';
   $tn    = $_GET['tn'] ?? '55358119';
-  $endpoints = [
-    'v2_search'    => ['POST', 'https://app.bosta.co/api/v2/deliveries/search', ['pageLimit'=>5,'pageNumber'=>1]],
-    'v0_by_track'  => ['GET',  'https://app.bosta.co/api/v0/deliveries/business/' . $tn, null],
-    'v0_track'     => ['GET',  'https://app.bosta.co/api/v0/deliveries/track/' . $tn, null],
-    'v2_by_track'  => ['GET',  'https://app.bosta.co/api/v2/deliveries/' . $tn, null],
-    'v0_by_id'     => ['GET',  'https://app.bosta.co/api/v0/deliveries/' . $tn, null],
-    'v2_pricing'   => ['POST', 'https://app.bosta.co/api/v2/deliveries/pricing', ['trackingNumbers'=>[$tn]]],
-  ];
-  $out = [];
-  foreach ($endpoints as $name => $spec) {
-    list($method, $url, $body) = $spec;
-    $hdr = ['Authorization: ' . $token, 'Content-Type: application/json'];
-    $r = http_request($method, $url, $hdr, $body);
-    $j = json_decode($r['body'] ?: '{}', true);
-    $out[$name] = [
-      'http_code' => $r['code'],
-      'top_keys'  => is_array($j) ? array_keys($j) : null,
-      'snippet'   => substr((string)$r['body'], 0, 800),
-    ];
-  }
-  send_json($out);
+  $r = http_request('POST', 'https://app.bosta.co/api/v2/deliveries/search',
+    ['Authorization: ' . $token, 'Content-Type: application/json'],
+    ['pageLimit' => 5, 'pageNumber' => 1]);
+  $j = json_decode($r['body'] ?: '{}', true);
+  $list = $j['data']['deliveries'] ?? $j['deliveries'] ?? [];
+  $rowKeys = $list ? array_keys($list[0]) : [];
+  $sample = $list ? $list[0] : null;
+  send_json([
+    'http_code'    => $r['code'],
+    'row_count'    => count($list),
+    'first_row_keys' => $rowKeys,
+    'shipmentFees'   => $sample['shipmentFees'] ?? null,
+    'pricing'        => $sample['pricing']      ?? null,
+    'price'          => $sample['price']        ?? null,
+    'priceAfterVat'  => $sample['priceAfterVat']?? null,
+  ]);
 }
 
 if ($action === 'bosta_breakdown') {
