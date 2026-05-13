@@ -609,7 +609,7 @@ if ($action === 'bosta_breakdown') {
         if (isset($d[$f])) $feeFields[$f] = ($feeFields[$f] ?? 0) + 1;
       }
       if (((float)($d['cod'] ?? 0)) > 0) $codHist['>0']++; else $codHist['zero']++;
-      if (!$sampleRow) $sampleRow = array_intersect_key($d, array_flip(['_id','trackingNumber','cod','priceAfterVat','shippingFee','priceBeforeVat','price','type','state']));
+      if (!$sampleRow) $sampleRow = $d;  // full first row so we can scan every field
     }
   }
   send_json(['combos' => $combos, 'fee_fields_present' => $feeFields, 'cod_histogram' => $codHist, 'sample_row' => $sampleRow]);
