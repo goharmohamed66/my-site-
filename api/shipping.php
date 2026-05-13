@@ -736,6 +736,44 @@ if ($action === 'enrich_fees') {
   send_json(['fees' => $fees]);
 }
 
+if ($action === 'state_probe') {
+  $cid = (int)($_GET['connector_id'] ?? 0);
+  $stmt = $pdo->prepare("SELECT * FROM connectors WHERE id = ? AND active = 1 LIMIT 1");
+  $stmt->execute([$cid]);
+  $conn = $stmt->fetch();
+  $token = $conn['token'] ?? '';
+  $since = $_GET['since'] ?? '';
+  $until = $_GET['until'] ?? '';
+  $states = []; $masked = []; $combos = []; $stateKeys = [];
+  foreach ([1, 3, 8, 15, 25, 40, 60, 80] as $p) {
+    $payload = ['pageLimit'=>50, 'pageNumber'=>$p];
+    if ($since) $payload['createdAtStart'] = $since . 'T00:00:00.000+02:00';
+    if ($until) $payload['createdAtEnd']   = $until . 'T23:59:59.999+02:00';
+    $r = http_request('POST', 'https://app.bosta.co/api/v0/deliveries/search',
+      ['Authorization: ' . $token, 'Content-Type: application/json'], $payload);
+    $j = json_decode($r['body'] ?: '{}', true);
+    foreach (($j['deliveries'] ?? []) as $d) {
+      $sv = $d['state']['value']   ?? '(none)';
+      $ms = $d['maskedState']      ?? '(none)';
+      $tv = $d['type']['value']    ?? '(none)';
+      $cs = $d['state']['childState'] ?? '(none)';
+      $states[$sv]      = ($states[$sv]      ?? 0) + 1;
+      $masked[$ms]      = ($masked[$ms]      ?? 0) + 1;
+      $combos[$tv.' || '.$sv] = ($combos[$tv.' || '.$sv] ?? 0) + 1;
+      if (!empty($d['state']) && is_array($d['state'])) {
+        foreach (array_keys($d['state']) as $k) $stateKeys[$k] = ($stateKeys[$k] ?? 0) + 1;
+      }
+    }
+  }
+  arsort($states); arsort($masked); arsort($combos); arsort($stateKeys);
+  send_json([
+    'state_value_distribution'        => $states,
+    'maskedState_distribution'        => $masked,
+    'type_state_combo_distribution'   => $combos,
+    'state_object_keys_frequency'     => $stateKeys,
+  ]);
+}
+
 if ($action === 'bosta_breakdown') {
   // Temporary: pull page 1 (50 rows) raw and report the distribution of
   // (type.value, state.value, fee field availability) so we can mirror
