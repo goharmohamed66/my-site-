@@ -71,19 +71,21 @@ function bs_bosta_status($d, $cm = null) {
 
 $pdo = db();
 
-// Load every Bosta connector's column_map once so we can apply the
-// merchant-specific delivered_values / returned_values per row.
-$cmByConnector = [];
-$cmStmt = $pdo->query("SELECT id, meta FROM connectors WHERE provider = 'bosta'");
+// Load the Bosta connector's column_map. shipping_orders doesn't store
+// which connector each row came from, so use the same column_map for
+// every Bosta row — pick the most recently updated active Bosta
+// connector to avoid picking up stale / wrong-provider rows.
+$globalCm = null;
+$debug = ['stage' => 'init', 'connectors_seen' => []];
+$cmStmt = $pdo->prepare("SELECT id, name, provider, meta, active FROM connectors WHERE provider = 'bosta' AND active = 1 ORDER BY updated_at DESC, id DESC");
+$cmStmt->execute();
 foreach ($cmStmt as $c) {
   $m = json_decode($c['meta'] ?? '{}', true) ?: [];
-  $cmByConnector[(int)$c['id']] = $m['column_map'] ?? null;
+  $cm = $m['column_map'] ?? null;
+  $debug['connectors_seen'][] = ['id' => (int)$c['id'], 'name' => $c['name'], 'provider' => $c['provider'], 'has_cm' => !empty($cm)];
+  if ($cm && !$globalCm) $globalCm = $cm;
 }
-// Single canonical column_map = the first one we find. shipping_orders
-// doesn't store which connector each row came from, so for the
-// migration we just use the same column_map for every Bosta row.
-$globalCm = null;
-foreach ($cmByConnector as $cm) { if ($cm) { $globalCm = $cm; break; } }
+$debug['final_provider_in_cm'] = $globalCm['status'] ?? '(none)';
 
 $updated = 0;
 $skipped = 0;
@@ -110,4 +112,4 @@ try {
   send_json(['error' => $e->getMessage()], 500);
 }
 
-send_json(['ok' => true, 'updated' => $updated, 'skipped' => $skipped, 'transitions' => $transitions, 'used_column_map' => $globalCm]);
+send_json(['ok' => true, 'updated' => $updated, 'skipped' => $skipped, 'transitions' => $transitions, 'used_column_map' => $globalCm, 'debug' => $debug]);
