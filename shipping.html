@@ -1281,23 +1281,68 @@ function App(){
         }]);
       });
       setLastUp(new Date());
-      // Persist the API rows to the database so every other page
-      // (Profit Analysis, Amount Spent, FM Update…) sees the same data
-      // a sheet upload would have produced. /upload.php deduplicates on
-      // (source, order_id) so re-pulling the same range is safe.
-      if (apiRows.length) {
+      // Bosta exposes shipmentFees only on the per-delivery GET endpoint,
+      // so enrich the rows in parallel chunks via /shipping.php?action=enrich_fees.
+      // Stats (Avg Shipping Cost, etc.) update progressively as each chunk
+      // returns, and the FINAL persist to /upload.php carries the fees.
+      var doPersist = function(finalApiRows){
         var bidUp = window.getActiveBrandId ? (window.getActiveBrandId()||0) : 0;
         var qsUp  = bidUp ? ("?brand_id="+bidUp) : "";
-        apiFetch("/upload.php"+qsUp, {method:"POST", body:JSON.stringify(apiRows)})
+        return apiFetch("/upload.php"+qsUp, {method:"POST", body:JSON.stringify(finalApiRows)})
           .then(function(up){
             console.log("[carrier-sync] "+conn.name+" → /upload.php:", up);
-            // Refresh the DB-backed main dataset so Profit Analysis etc.
-            // see the new rows immediately on next nav.
             if (typeof loadOrders === "function") loadOrders();
           })
-          .catch(function(err){
-            console.error("[carrier-sync] "+conn.name+" persist failed:", err);
+          .catch(function(err){ console.error("[carrier-sync] "+conn.name+" persist failed:", err); });
+      };
+
+      if (!apiRows.length) {
+        // Nothing to persist or enrich.
+      } else if (conn.provider !== 'bosta') {
+        // Non-Bosta carriers already return fees in the list response.
+        doPersist(apiRows);
+      } else {
+        // Bosta enrichment — fetch shipmentFees per delivery in chunks of 200.
+        var ids = apiRows.map(function(r){ return r.raw && r.raw._id; }).filter(Boolean);
+        if (!ids.length) { doPersist(apiRows); return; }
+        var CHUNK = 200;
+        var idToRow = {};
+        apiRows.forEach(function(r){ if (r.raw && r.raw._id) idToRow[r.raw._id] = r; });
+        var enrichOne = function(chunk){
+          return apiFetch("/shipping.php?action=enrich_fees&connector_id="+conn.id,
+            { method: "POST", body: JSON.stringify({ ids: chunk }) }
+          ).then(function(res){
+            var fees = (res && res.fees) || {};
+            // Mutate apiRows in-place + push the same data into ds so
+            // useStats reruns with the new fees → Avg Shipping Cost ticks
+            // up live as each chunk returns.
+            Object.keys(fees).forEach(function(id){
+              var row = idToRow[id]; if (!row) return;
+              row.fees = parseFloat(fees[id]) || 0;
+              row.net  = Math.max(0, (row.cod || 0) - row.fees);
+            });
+            // Trigger React re-render by cloning the dataset rows array.
+            setDs(function(prev){
+              return prev.map(function(d){
+                if (d.connectorId !== conn.id) return d;
+                return Object.assign({}, d, { rows: apiRows.map(apiRowToRow) });
+              });
+            });
+          }).catch(function(err){
+            console.error("[carrier-sync] "+conn.name+" enrich chunk failed:", err);
           });
+        };
+        // Sequential per chunk to keep the load steady; Bosta rate-limits
+        // hard when too many parallel waves land at once.
+        var chunks = [];
+        for (var i = 0; i < ids.length; i += CHUNK) chunks.push(ids.slice(i, i + CHUNK));
+        var p = Promise.resolve();
+        chunks.forEach(function(c){ p = p.then(function(){ return enrichOne(c); }); });
+        p.then(function(){
+          if (myEpoch !== fetchEpoch.current) return;
+          console.log("[carrier-sync] "+conn.name+" → enriched "+ids.length+" deliveries with shipmentFees");
+          doPersist(apiRows);
+        });
       }
     }).catch(function(err){
       if(myEpoch!==fetchEpoch.current)return;
