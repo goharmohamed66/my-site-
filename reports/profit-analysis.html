@@ -128,6 +128,14 @@
           <button type="button" id="dateTrigger" class="adp-trigger" data-adp-attached="0"></button>
           <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" multiple style="display:none;">
           <button class="btn" id="uploadBtn" style="background:#FFFFFF;color:#1A1A1A;border-color:#DCDCDC;">📂 رفع شيتات</button>
+          <!-- Carrier API picker — same idea as the "Pull from carrier" dropdown
+               on the Shipping Analytics page. Lets the user pull from one or
+               more saved shipping connectors instead of (or alongside) sheet
+               uploads. -->
+          <div style="position:relative;">
+            <button class="btn" id="carrierBtn" type="button" style="background:#FFFFFF;color:#1A1A1A;border-color:#DCDCDC;">🚚 سحب من شركة شحن</button>
+            <div id="carrierMenu" style="display:none;position:absolute;top:100%;left:0;margin-top:6px;min-width:280px;max-height:340px;overflow:auto;background:#FFFFFF;border:1px solid #DCDCDC;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,0.10);padding:10px;z-index:100;"></div>
+          </div>
           <button type="button" id="clearUploadsBtn" style="display:none;height:36px;padding:0 12px;border:1px solid #FFA396;background:#FFFFFF;color:#D72C0D;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">✕ مسح الشيتات</button>
           <button class="btn" id="runBtn">↻ Compute</button>
         </div>
@@ -1766,6 +1774,126 @@ $('clearUploadsBtn').addEventListener('click', () => {
   uploadedFiles = [];
   renderUploads();
 });
+
+// ── Carrier API picker ────────────────────────────────────────────────
+// Mirrors the "Pull from carrier" multi-select on the Shipping Analytics
+// page so the user can feed Profit Analysis with rows fetched live from
+// their carrier accounts instead of (or alongside) uploading sheets.
+let shippingConnectors = [];
+let carrierMenuOpen = false;
+const carrierLoadingIds = new Set();
+async function loadShippingConnectors(){
+  try {
+    const r = await api('/connectors.php?type=shipping');
+    shippingConnectors = (r && r.rows) || [];
+  } catch (e) {
+    console.warn('[profit] loadShippingConnectors:', e.message);
+    shippingConnectors = [];
+  }
+}
+loadShippingConnectors();
+
+function renderCarrierMenu(){
+  const m = $('carrierMenu');
+  if (!m) return;
+  if (!shippingConnectors.length) {
+    m.innerHTML = '<div style="padding:8px;font-size:13px;color:#6D7175;">مفيش شركات شحن متوصّلة. روح Settings → Shipping companies وضيف واحدة.</div>';
+    return;
+  }
+  syncDateRange();
+  const range = (dateRange.from || dateRange.to)
+    ? ((dateRange.from || '…') + ' → ' + (dateRange.to || '…'))
+    : 'كل الفترة';
+  m.innerHTML =
+    '<div style="font-size:11px;color:#6D7175;padding:0 4px 8px;border-bottom:1px solid #F1F1F1;margin-bottom:8px;">حدّد شركة شحن (أو أكتر) — التاريخ: <b>' + escapeHtml(range) + '</b></div>' +
+    shippingConnectors.map(c => {
+      const loading = carrierLoadingIds.has(c.id);
+      return '<label style="display:flex;gap:10px;align-items:center;padding:6px 4px;cursor:pointer;border-radius:6px;font-size:13px;">' +
+        '<input type="checkbox" data-cid="' + c.id + '"' + (loading ? ' disabled' : '') + ' style="width:16px;height:16px;cursor:pointer;">' +
+        '<span style="flex:1;"><b>' + escapeHtml(c.name || '') + '</b> <span style="color:#6D7175;font-size:11px;text-transform:uppercase;margin-right:6px;">' + escapeHtml(c.provider || '') + '</span></span>' +
+        (loading ? '<span class="spinner"></span>' : '') +
+      '</label>';
+    }).join('') +
+    '<div style="display:flex;gap:6px;justify-content:flex-end;padding-top:8px;border-top:1px solid #F1F1F1;margin-top:8px;">' +
+      '<button type="button" id="carrierMenuCancel" class="btn" style="background:#FFFFFF;color:#1A1A1A;border-color:#DCDCDC;">إلغاء</button>' +
+      '<button type="button" id="carrierMenuPull" class="btn">↓ اسحب</button>' +
+    '</div>';
+  $('carrierMenuCancel').addEventListener('click', closeCarrierMenu);
+  $('carrierMenuPull').addEventListener('click', async () => {
+    const ids = Array.from(m.querySelectorAll('input[type=checkbox]:checked')).map(cb => parseInt(cb.dataset.cid, 10));
+    closeCarrierMenu();
+    if (!ids.length) return;
+    await pullFromCarriers(ids);
+  });
+}
+function openCarrierMenu(){
+  carrierMenuOpen = true;
+  $('carrierMenu').style.display = 'block';
+  renderCarrierMenu();
+}
+function closeCarrierMenu(){
+  carrierMenuOpen = false;
+  $('carrierMenu').style.display = 'none';
+}
+$('carrierBtn').addEventListener('click', (e) => {
+  e.stopPropagation();
+  if (carrierMenuOpen) closeCarrierMenu(); else openCarrierMenu();
+});
+document.addEventListener('click', (e) => {
+  if (!carrierMenuOpen) return;
+  if ($('carrierMenu').contains(e.target) || $('carrierBtn').contains(e.target)) return;
+  closeCarrierMenu();
+});
+
+async function pullFromCarriers(ids){
+  syncDateRange();
+  const since = dateRange.from || '';
+  const until = dateRange.to   || '';
+  const prefixMap = await loadPrefixToBrand();
+  const activeBrandId = window.getActiveBrandId ? (window.getActiveBrandId() || 0) : 0;
+  showErr('');
+  for (const id of ids) {
+    const conn = shippingConnectors.find(c => c.id === id);
+    if (!conn) continue;
+    const label = (conn.name || '') + ' (' + (conn.provider || '').toUpperCase() + ')';
+    try {
+      let qs = '?action=fetch&connector_id=' + id;
+      if (since) qs += '&since=' + encodeURIComponent(since);
+      if (until) qs += '&until=' + encodeURIComponent(until);
+      const r = await api('/shipping.php' + qs);
+      const rows = (r && r.rows) || [];
+      // Attribute brand per row: (prefix-mkt) marker first, then fall
+      // back to the active topbar brand. Carrier API rows usually don't
+      // carry the marker, so without the fallback they'd not count for
+      // any brand and Profit Analysis would silently render empty.
+      const brandCounts = new Map();
+      const apiRows = rows.map(row => {
+        const m = String(row.product || '').match(/\(\s*([a-z0-9]{1,4})-([a-z0-9]{1,4})\s*\)/i);
+        const pref = m ? m[1].toLowerCase() : '';
+        const b = pref ? prefixMap.get(pref) : null;
+        const bid = b ? b.id : (activeBrandId || null);
+        const out = Object.assign({}, row, { __brand_id: bid });
+        if (bid) brandCounts.set(bid, (brandCounts.get(bid) || 0) + 1);
+        return out;
+      });
+      // Replace any prior pull from the same connector so re-pulling the
+      // same date range doesn't double the rows.
+      uploadedFiles = uploadedFiles.filter(f => f.__connectorId !== id);
+      uploadedFiles.push({
+        name: 'API · ' + label,
+        carrier: (conn.provider || 'API').toUpperCase(),
+        rowCount: apiRows.length,
+        brandCounts,
+        apiRows,
+        __connectorId: id
+      });
+    } catch (e) {
+      console.error('[profit] pull from', label, e);
+      showErr('فشل السحب من ' + label + ': ' + e.message);
+    }
+  }
+  renderUploads();
+}
 
 // Recompute brand-level totals (revenue / expenses / profit) live when
 // any editable input in the summary card changes. Reads the base values
