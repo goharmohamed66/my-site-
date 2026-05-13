@@ -1,0 +1,308 @@
+{
+	"info": {
+		"_postman_id": "6b450b14-5899-4238-b7b6-62c17c17d5c8",
+		"name": "QP Customer Integration",
+		"description": "### Order Status Choices\n\nThe following status choices are available for the order:\n\n- **1**: Pending\n    \n- **2**: Out For Delivery\n    \n- **3**: Delivered\n    \n- **4**: Hold\n    \n- **5**: Undelivered\n    \n- **6**: Rejected\n    \n\nUse these status codes when updating or querying the status of an order.\n\n#Server url:  \n[https://api.qpxpress.com/](https://api.qpxpress.com/)\n\n---",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "22670865",
+		"_collection_link": "https://qp1111.postman.co/workspace/qp~9dbba0fb-3dfd-4fa5-b247-b7eaab2df1a0/collection/22670865-6b450b14-5899-4238-b7b6-62c17c17d5c8?action=share&source=collection_link&creator=22670865"
+	},
+	"item": [
+		{
+			"name": "Auth",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"const responseJson = pm.response.json();\r",
+							"pm.environment.set(\"token\", responseJson.token);"
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"username\" : \"{{username}}\",\n    \"password\" : \"{{password}}\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{server_url}}integration/token",
+					"host": [
+						"{{server_url}}integration"
+					],
+					"path": [
+						"token"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Order List",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{token}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{server_url}}integration/order?page_size=100&from_date=2022-11-01&to_date=&serial=&name&phone&status=Pending&city=&referenceID",
+					"host": [
+						"{{server_url}}integration"
+					],
+					"path": [
+						"order"
+					],
+					"query": [
+						{
+							"key": "page_size",
+							"value": "100",
+							"description": "Limt Per Page "
+						},
+						{
+							"key": "from_date",
+							"value": "2022-11-01",
+							"description": "Order Date From filter"
+						},
+						{
+							"key": "to_date",
+							"value": "",
+							"description": "Order Date To filter"
+						},
+						{
+							"key": "serial",
+							"value": "",
+							"description": "Search By Order Serial"
+						},
+						{
+							"key": "name",
+							"value": null,
+							"description": "Search By Order Full Name"
+						},
+						{
+							"key": "phone",
+							"value": null,
+							"description": "Search By Order Phone"
+						},
+						{
+							"key": "status",
+							"value": "Pending",
+							"description": "Order Status"
+						},
+						{
+							"key": "city",
+							"value": "",
+							"description": "Search By City Name"
+						},
+						{
+							"key": "referenceID",
+							"value": null,
+							"description": "Search By Internal referenceID"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Order Create",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{token}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"full_name\": \"أحمد\",\n    \"phone\": \"0123456789\",\n    \"address\": \"مدينة نصر\",\n    \"total_amount\": 150.00,\n    \"notes\": \"note\",\n    \"order_date\": \"2025-10-23T02:00:00+02:00\",\n    \"shipment_contents\": \"asd\",\n    \"weight\": \"50.00\",\n    \"city\": \"وادي جديد\",\n        \"referenceID\": 150\n\n\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{server_url}}integration/order",
+					"host": [
+						"{{server_url}}integration"
+					],
+					"path": [
+						"order"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Retrieve Order",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{token}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{server_url}}integration/order/:order_serial",
+					"host": [
+						"{{server_url}}integration"
+					],
+					"path": [
+						"order",
+						":order_serial"
+					],
+					"variable": [
+						{
+							"key": "order_serial",
+							"value": ""
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Update Order",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{token}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "PATCH",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"serial\": 123456,\n    \"order_date\": \"2022-11-01T12:00:04.234507+02:00\",\n    \"shipment_contents\": \"أستلام بيكب\",\n    \"weight\": \"0.00\",\n    \"full_name\": \"Fire deuls\",\n    \"phone\": \"01009969763\",\n    \"city\": \"قاهره\",\n    \"notes\": \"Auto Pickup\",\n    \"total_amount\": \"0.00\",\n    \"address\": \"الزاوه الحمرا\",\n    \"referenceID\": 150\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{server_url}}integration/order/920178",
+					"host": [
+						"{{server_url}}integration"
+					],
+					"path": [
+						"order",
+						"920178"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "get Update History",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{token}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{server_url}}integration/get_order_update_history?page=1&page_size=200&from_date",
+					"host": [
+						"{{server_url}}integration"
+					],
+					"path": [
+						"get_order_update_history"
+					],
+					"query": [
+						{
+							"key": "page",
+							"value": "1",
+							"description": "Page No"
+						},
+						{
+							"key": "page_size",
+							"value": "200",
+							"description": "Page Size"
+						},
+						{
+							"key": "from_date",
+							"value": null
+						}
+					]
+				}
+			},
+			"response": []
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"requests": {},
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"requests": {},
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "server_url",
+			"value": "http://207.180.255.29:8000"
+		},
+		{
+			"key": "token",
+			"value": ""
+		}
+	]
+}
