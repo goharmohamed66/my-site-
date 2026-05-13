@@ -579,25 +579,29 @@ if ($action === 'bosta_endpoint_probe') {
   $conn = $stmt->fetch();
   $token = $conn['token'] ?? '';
   $tn    = $_GET['tn'] ?? '55358119';
-  // First, get a single delivery _id via search to look up the rich
-  // per-delivery payload which DOES carry shipmentFees.
-  $rL = http_request('POST', 'https://app.bosta.co/api/v0/deliveries/search',
-    ['Authorization: ' . $token, 'Content-Type: application/json'],
-    ['pageLimit' => 1, 'pageNumber' => 1]);
-  $jL = json_decode($rL['body'] ?: '{}', true);
-  $idDel = $jL['deliveries'][0]['_id'] ?? null;
-  $r = http_request('GET', 'https://app.bosta.co/api/v0/deliveries/' . $idDel,
-    ['Authorization: ' . $token, 'Content-Type: application/json'], null);
-  $j = json_decode($r['body'] ?: '{}', true);
-  send_json([
-    'shipmentFees' => $j['shipmentFees'] ?? null,
-    'cashoutInfo'  => $j['cashoutInfo']  ?? null,
-    'flex'         => $j['flexShippingInfo'] ?? null,
-    'wallet'       => $j['wallet']       ?? null,
-    'type'         => $j['type']         ?? null,
-    'state_val'    => $j['state']['value'] ?? null,
-    'cod'          => $j['cod']          ?? null,
-  ]);
+  // Probe bulk endpoints that might include shipmentFees / shipping_fees
+  // for a list of deliveries in one shot.
+  $endpoints = [
+    'wallet_txns'     => ['GET',  'https://app.bosta.co/api/v0/wallet/transactions', null],
+    'business_wallet' => ['GET',  'https://app.bosta.co/api/v0/business/me/wallet',  null],
+    'cash_cycles'     => ['GET',  'https://app.bosta.co/api/v0/cash-cycles?limit=50', null],
+    'business_pricing'=> ['GET',  'https://app.bosta.co/api/v0/business/me/pricing', null],
+    'business_me'     => ['GET',  'https://app.bosta.co/api/v0/business/me', null],
+    'search_with_fees'=> ['POST', 'https://app.bosta.co/api/v0/deliveries/search', ['pageLimit'=>1,'pageNumber'=>1,'includePricing'=>true,'withShipmentFees'=>true]],
+  ];
+  $out = [];
+  foreach ($endpoints as $name => $spec) {
+    list($method, $url, $body) = $spec;
+    $hdr = ['Authorization: ' . $token, 'Content-Type: application/json'];
+    $r = http_request($method, $url, $hdr, $body);
+    $j = json_decode($r['body'] ?: '{}', true);
+    $out[$name] = [
+      'http_code' => $r['code'],
+      'top_keys'  => is_array($j) ? array_keys($j) : null,
+      'snippet'   => substr((string)$r['body'], 0, 600),
+    ];
+  }
+  send_json($out);
 }
 
 if ($action === 'bosta_breakdown') {
