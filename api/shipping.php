@@ -578,24 +578,47 @@ if ($action === 'bosta_debug') {
   $since = $_GET['since'] ?? '';
   $until = $_GET['until'] ?? '';
   $out = [];
-  foreach ([1, 2, 3] as $p) {
-    $payload = ['limit' => 50, 'page' => $p];
+  // Try every common param name pair Bosta might accept for pagination.
+  $variants = [
+    'page/limit'         => ['page' => 2, 'limit' => 50],
+    'pageNumber/pageLimit' => ['pageNumber' => 2, 'pageLimit' => 50],
+    'pageNumber/limit'   => ['pageNumber' => 2, 'limit' => 50],
+    'page/pageSize'      => ['page' => 2, 'pageSize' => 50],
+    'pageNumber/pageSize'=> ['pageNumber' => 2, 'pageSize' => 50],
+    'offset/limit'       => ['offset' => 50, 'limit' => 50],
+    'skip/limit'         => ['skip' => 50, 'limit' => 50],
+  ];
+  // Baseline page 1 for comparison
+  $base = ['page' => 1, 'limit' => 50];
+  if ($since) $base['createdAtStart'] = $since . 'T00:00:00.000+02:00';
+  if ($until) $base['createdAtEnd']   = $until . 'T23:59:59.999+02:00';
+  $r0 = http_request('POST', 'https://app.bosta.co/api/v0/deliveries/search',
+    ['Authorization: ' . $token, 'Content-Type: application/json'], $base);
+  $j0 = json_decode($r0['body'] ?: '{}', true);
+  $list0 = $j0['deliveries'] ?? $j0['data'] ?? [];
+  $firstP1 = $list0 ? ($list0[0]['trackingNumber'] ?? null) : null;
+  $lastP1  = $list0 ? ($list0[count($list0)-1]['trackingNumber'] ?? null) : null;
+  $out['page1_baseline'] = ['first' => $firstP1, 'last' => $lastP1, 'count' => count($list0), 'pageNumber_echo' => $j0['pageNumber'] ?? null, 'pageLimit_echo' => $j0['pageLimit'] ?? null];
+
+  foreach ($variants as $name => $extra) {
+    $payload = $extra;
     if ($since) $payload['createdAtStart'] = $since . 'T00:00:00.000+02:00';
     if ($until) $payload['createdAtEnd']   = $until . 'T23:59:59.999+02:00';
     $r = http_request('POST', 'https://app.bosta.co/api/v0/deliveries/search',
       ['Authorization: ' . $token, 'Content-Type: application/json'], $payload);
     $j = json_decode($r['body'] ?: '{}', true);
     $list = $j['deliveries'] ?? $j['data'] ?? [];
-    $out[] = [
-      'page' => $p,
-      'http_code' => $r['code'],
-      'top_level_keys' => is_array($j) ? array_keys($j) : null,
-      'count_field'    => $j['count']      ?? null,
-      'totalCount'     => $j['totalCount'] ?? null,
-      'total'          => $j['total']      ?? null,
-      'rows_returned'  => count($list),
-      'first_tracking' => $list ? ($list[0]['trackingNumber'] ?? null) : null,
-      'last_tracking'  => $list ? ($list[count($list)-1]['trackingNumber'] ?? null) : null,
+    $first = $list ? ($list[0]['trackingNumber'] ?? null) : null;
+    $last  = $list ? ($list[count($list)-1]['trackingNumber'] ?? null) : null;
+    $out[$name] = [
+      'sent'           => $extra,
+      'http_code'      => $r['code'],
+      'rows'           => count($list),
+      'first'          => $first,
+      'last'           => $last,
+      'same_as_page1'  => ($first === $firstP1 && $last === $lastP1),
+      'pageNumber_echo'=> $j['pageNumber'] ?? null,
+      'pageLimit_echo' => $j['pageLimit']  ?? null,
     ];
   }
   send_json($out);
