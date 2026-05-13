@@ -104,31 +104,66 @@ function bosta_parse_date($d) {
   return null;
 }
 
-// Build the "sheet-equivalent" State label for a Bosta delivery — i.e.
-// the value that would appear in the "State" column of a Bosta export
-// for this row. Lets the connector's column_map.delivered_values /
-// returned_values (which the user enters in sheet terms) drive matching
-// against API data too, so toggling them in Settings updates the
-// dashboard instantly without code changes.
+// Build the list of candidate "sheet-equivalent" State labels for a
+// Bosta delivery. A row is considered to match a given label if ANY of
+// these candidates equals it (case-insensitive).
 //
-// Bosta sheets flatten the API's two-field schema (type + state) into a
-// single column; the mapping below mirrors what a Bosta export shows:
-//   API type=Send + state=Delivered                      → "Delivered"
-//   API type=Exchange + state=Delivered                  → "Delivered"
-//   API type="Return to Origin" + state=Delivered        → "Returned to Origin"
-//   API type="Customer Return Pickup" + state=Delivered  → "Returned"
-//   API state=Canceled / Terminated                      → "Canceled"
-//   anything else                                        → API state.value
-function bosta_sheet_state($d) {
-  $type  = strtolower(trim((string)($d['type']['value']  ?? '')));
-  $state = strtolower(trim((string)($d['state']['value'] ?? '')));
-  if ($state === 'canceled' || $state === 'terminated') return 'Canceled';
-  if ($state === 'delivered') {
-    if ($type === 'return to origin')         return 'Returned to Origin';
-    if (strpos($type, 'return') !== false)    return 'Returned';
-    return 'Delivered';
+// Why a list and not a single string: Bosta's bulk search endpoint
+// strips state.value down to a coarse summary ("Delivered" / "Created"
+// for ~98% of rows) regardless of what the sheet would actually show.
+// The detailed labels the merchant sees in the Bosta dashboard sheet
+// — "Received at warehouse", "Route assigned", "Rejected Return
+// (Archived) - On Hold", etc. — only live on the per-delivery
+// endpoint, which is heavily rate-limited.
+//
+// So instead of trying to reconstruct the exact Bosta label from the
+// thin search payload, we emit BOTH:
+//   1. The flattened verdict (Delivered / Returned / Returned to
+//      Origin / Canceled) derived from `type` + `state` — covers the
+//      common case.
+//   2. The shipment's broad direction tag ("Returned" if type is any
+//      return flavor) — so when the merchant adds every possible
+//      return sub-state to their returned_values list, EVERY
+//      return-direction shipment still matches one of them.
+//   3. The raw API state.value as-is — so simple states like "Created"
+//      / "Lost Or Damaged" still flow through.
+//
+// The matcher in bosta_status() walks delivered_values / returned_values
+// and considers the row matched if ANY candidate label hits ANY entry.
+function bosta_sheet_state_candidates($d) {
+  $typeRaw  = (string)($d['type']['value']  ?? '');
+  $stateRaw = (string)($d['state']['value'] ?? '');
+  $type  = strtolower(trim($typeRaw));
+  $state = strtolower(trim($stateRaw));
+  $isReturnType = (strpos($type, 'return') !== false);
+  $cands = [];
+  if ($state === 'canceled' || $state === 'terminated') {
+    $cands[] = 'Canceled';
+  } elseif ($state === 'delivered') {
+    if ($type === 'return to origin')      $cands[] = 'Returned to Origin';
+    elseif ($isReturnType)                 $cands[] = 'Returned';
+    else                                   $cands[] = 'Delivered';
   }
-  return (string)($d['state']['value'] ?? '');
+  // ALWAYS tag return-direction shipments with the generic "Returned" /
+  // "Returned to Origin" labels so the merchant's returned_values list
+  // catches them no matter what sub-state Bosta reports.
+  if ($isReturnType) {
+    $cands[] = 'Returned';
+    if ($type === 'return to origin') $cands[] = 'Returned to Origin';
+  }
+  if ($stateRaw !== '') $cands[] = $stateRaw;
+  // Dedupe while preserving order.
+  $seen = []; $out = [];
+  foreach ($cands as $c) { $k = strtolower($c); if (isset($seen[$k])) continue; $seen[$k] = 1; $out[] = $c; }
+  return $out;
+}
+
+// Convenience for callers that just want one label (e.g. the column
+// stored in DB). Returns the first candidate, which is the most
+// specific verdict.
+function bosta_sheet_state($d) {
+  $c = bosta_sheet_state_candidates($d);
+  return $c ? $c[0] : (string)($d['state']['value'] ?? '');
 }
 
 // Decide DELIVERED / RETURNED / etc. for a Bosta row. Reads the
@@ -137,8 +172,7 @@ function bosta_sheet_state($d) {
 // against bosta_sheet_state(). Falls back to a hardcoded type+state
 // heuristic when the connector has no overrides.
 function bosta_status($d, $conn = null) {
-  $sheetState = bosta_sheet_state($d);
-  $sheetU     = strtoupper(trim($sheetState));
+  $candidates = bosta_sheet_state_candidates($d);
 
   $cm = null;
   if ($conn && isset($conn['meta'])) {
@@ -146,24 +180,30 @@ function bosta_status($d, $conn = null) {
     $cm = $meta['column_map'] ?? null;
   }
   if ($cm) {
-    $matchAny = function($values, $needle){
+    // Match if ANY candidate label hits ANY entry in the values list.
+    $matchAny = function($values, $candidates){
       if (!$values) return false;
-      foreach (array_filter(array_map('trim', explode(',', (string)$values))) as $v) {
-        if ($v !== '' && strcasecmp($v, $needle) === 0) return true;
+      $set = array_filter(array_map('trim', explode(',', (string)$values)));
+      foreach ($set as $v) {
+        if ($v === '') continue;
+        foreach ($candidates as $c) {
+          if (strcasecmp($v, $c) === 0) return true;
+        }
       }
       return false;
     };
-    if ($matchAny($cm['delivered_values'] ?? '', $sheetState)) return 'DELIVERED';
-    if ($matchAny($cm['returned_values']  ?? '', $sheetState)) return 'RETURNED';
+    if ($matchAny($cm['delivered_values'] ?? '', $candidates)) return 'DELIVERED';
+    if ($matchAny($cm['returned_values']  ?? '', $candidates)) return 'RETURNED';
   }
 
-  // Hardcoded fallback — keeps things sensible when the connector has
-  // no column_map (e.g. a fresh Bosta connection before the user has
-  // visited Settings).
-  if (strcasecmp($sheetU, 'CANCELED') === 0) return 'CANCELED';
-  if (strcasecmp($sheetU, 'DELIVERED') === 0) return 'DELIVERED';
-  if (preg_match('/^RETURN/i', $sheetU)) return 'RETURNED';
-  return map_status('bosta', $sheetState);
+  // Hardcoded fallback for connectors without a column_map: the first
+  // candidate is the most specific verdict.
+  $top   = $candidates ? $candidates[0] : '';
+  $topU  = strtoupper(trim($top));
+  if (strcasecmp($topU, 'CANCELED') === 0)         return 'CANCELED';
+  if (strcasecmp($topU, 'DELIVERED') === 0)        return 'DELIVERED';
+  if (preg_match('/^RETURN/i', $topU))             return 'RETURNED';
+  return map_status('bosta', (string)($d['state']['value'] ?? ''));
 }
 
 function bosta_normalize_row($d, $conn = null) {
@@ -634,25 +674,14 @@ function dispatch_provider($conn, $since, $until) {
 $pdo    = db();
 $action = $_GET['action'] ?? '';
 
-if ($action === 'bosta_endpoint_probe') {
-  // Try alternate Bosta endpoints to find one that returns shipping fees.
-  $cid = (int)($_GET['connector_id'] ?? 0);
-  $stmt = $pdo->prepare("SELECT * FROM connectors WHERE id = ? AND active = 1 LIMIT 1");
-  $stmt->execute([$cid]);
-  $conn = $stmt->fetch();
-  $token = $conn['token'] ?? '';
-  $tn    = $_GET['tn'] ?? '55358119';
- send_json(['error' => 'debug probe disabled']);
-}
-
 // POST /shipping.php?action=enrich_fees&connector_id=N
-//   body: {"ids": ["<delivery_id_1>", "<delivery_id_2>", ...]}
+//   body: {"ids": ["<delivery_id_1>", ...]}
 //   returns: { "fees": { "<id>": <shipmentFees>, ... } }
 //
 // Bosta exposes shipmentFees only on the per-delivery GET endpoint, so
-// we fetch them in parallel batches. Frontend chunks 6,000-row pulls
-// into multiple 200-id requests so each round-trip fits in nginx's
-// timeout window and progress can be reported between chunks.
+// we fetch them in parallel batches. Frontend chunks larger pulls into
+// multiple requests so each round-trip fits in nginx's timeout window
+// and Bosta's rate limit isn't tripped.
 if ($action === 'enrich_fees') {
   $cid = (int)($_GET['connector_id'] ?? 0);
   if (!$cid) err('connector_id required');
@@ -669,14 +698,10 @@ if ($action === 'enrich_fees') {
   @set_time_limit(0);
   @ignore_user_abort(true);
 
-  // Bosta rate-limits hard — too many parallel hits and the API blanket-
-  // returns HTTP 429 with a 99s "retryAfter" cooldown that affects ALL
-  // subsequent requests, not just the ones over the limit. Keep
-  // parallelism conservative AND back off automatically on 429.
   $fees = [];
   $rateLimitHits = 0;
   $batch = 10;
-  $pauseMs = 100;  // small breather between batches so we don't drift over the per-second cap
+  $pauseMs = 100;
   for ($i = 0; $i < count($ids); $i += $batch) {
     $slice = array_slice($ids, $i, $batch);
     $multi = curl_multi_init();
@@ -721,135 +746,13 @@ if ($action === 'enrich_fees') {
       }
     }
     curl_multi_close($multi);
-
     if ($batchHadRateLimit) {
       $rateLimitHits++;
-      // Bail with the fees we already have so the caller can decide
-      // whether to retry. Tells the frontend exactly how long to wait
-      // before sending the next chunk.
-      if ($rateLimitHits >= 1) {
-        send_json(['fees' => $fees, 'rate_limited' => true, 'retry_after' => max(60, $batchRetryAfter), 'processed' => $i + count($slice)]);
-      }
+      send_json(['fees' => $fees, 'rate_limited' => true, 'retry_after' => max(60, $batchRetryAfter), 'processed' => $i + count($slice)]);
     }
     if ($pauseMs > 0) usleep($pauseMs * 1000);
   }
   send_json(['fees' => $fees]);
-}
-
-if ($action === 'state_probe_full') {
-  $cid = (int)($_GET['connector_id'] ?? 0);
-  $stmt = $pdo->prepare("SELECT * FROM connectors WHERE id = ? AND active = 1 LIMIT 1");
-  $stmt->execute([$cid]);
-  $conn = $stmt->fetch();
-  $token = $conn['token'] ?? '';
-  // Grab a handful of delivery _ids with diverse type/state, then fetch
-  // each one's full record to see what maskedState / code maps to in the
-  // rich per-delivery payload.
-  $r1 = http_request('POST', 'https://app.bosta.co/api/v0/deliveries/search',
-    ['Authorization: ' . $token, 'Content-Type: application/json'],
-    ['pageLimit'=>50, 'pageNumber'=>20]);
-  $j1 = json_decode($r1['body'] ?: '{}', true);
-  $ids = array_slice(array_map(function($d){ return $d['_id'] ?? null; }, $j1['deliveries'] ?? []), 0, 8);
-  $out = [];
-  foreach ($ids as $id) {
-    if (!$id) continue;
-    $r = http_request('GET', 'https://app.bosta.co/api/v0/deliveries/' . $id,
-      ['Authorization: ' . $token, 'Content-Type: application/json'], null);
-    $j = json_decode($r['body'] ?: '{}', true);
-    if (!is_array($j)) continue;
-    $out[] = [
-      'tn'           => $j['trackingNumber'] ?? '?',
-      'type'         => $j['type']['value']  ?? null,
-      'state_value'  => $j['state']['value'] ?? null,
-      'state_code'   => $j['state']['code']  ?? null,
-      'childState'   => $j['state']['childState'] ?? null,
-      'maskedState'  => $j['maskedState'] ?? null,
-      'state_subkeys'=> array_keys($j['state'] ?? []),
-    ];
-  }
-  send_json($out);
-}
-
-if ($action === 'state_probe') {
-  $cid = (int)($_GET['connector_id'] ?? 0);
-  $stmt = $pdo->prepare("SELECT * FROM connectors WHERE id = ? AND active = 1 LIMIT 1");
-  $stmt->execute([$cid]);
-  $conn = $stmt->fetch();
-  $token = $conn['token'] ?? '';
-  $since = $_GET['since'] ?? '';
-  $until = $_GET['until'] ?? '';
-  $states = []; $masked = []; $combos = []; $stateKeys = [];
-  foreach ([1, 3, 8, 15, 25, 40, 60, 80] as $p) {
-    $payload = ['pageLimit'=>50, 'pageNumber'=>$p];
-    if ($since) $payload['createdAtStart'] = $since . 'T00:00:00.000+02:00';
-    if ($until) $payload['createdAtEnd']   = $until . 'T23:59:59.999+02:00';
-    $r = http_request('POST', 'https://app.bosta.co/api/v0/deliveries/search',
-      ['Authorization: ' . $token, 'Content-Type: application/json'], $payload);
-    $j = json_decode($r['body'] ?: '{}', true);
-    foreach (($j['deliveries'] ?? []) as $d) {
-      $sv = $d['state']['value']   ?? '(none)';
-      $ms = $d['maskedState']      ?? '(none)';
-      $tv = $d['type']['value']    ?? '(none)';
-      $cs = $d['state']['childState'] ?? '(none)';
-      $states[$sv]      = ($states[$sv]      ?? 0) + 1;
-      $masked[$ms]      = ($masked[$ms]      ?? 0) + 1;
-      $combos[$tv.' || '.$sv] = ($combos[$tv.' || '.$sv] ?? 0) + 1;
-      if (!empty($d['state']) && is_array($d['state'])) {
-        foreach (array_keys($d['state']) as $k) $stateKeys[$k] = ($stateKeys[$k] ?? 0) + 1;
-      }
-    }
-  }
-  arsort($states); arsort($masked); arsort($combos); arsort($stateKeys);
-  send_json([
-    'state_value_distribution'        => $states,
-    'maskedState_distribution'        => $masked,
-    'type_state_combo_distribution'   => $combos,
-    'state_object_keys_frequency'     => $stateKeys,
-  ]);
-}
-
-if ($action === 'bosta_breakdown') {
-  // Temporary: pull page 1 (50 rows) raw and report the distribution of
-  // (type.value, state.value, fee field availability) so we can mirror
-  // Bosta's portal categorisation exactly.
-  $cid = (int)($_GET['connector_id'] ?? 0);
-  $stmt = $pdo->prepare("SELECT * FROM connectors WHERE id = ? AND active = 1 LIMIT 1");
-  $stmt->execute([$cid]);
-  $conn = $stmt->fetch();
-  if (!$conn) err('Connector not found', 404);
-  $token = $conn['token'] ?? '';
-  $since = $_GET['since'] ?? '';
-  $until = $_GET['until'] ?? '';
-  // Get a slice with diverse statuses by sampling 4 spread-out pages.
-  $payloads = [];
-  foreach ([1, 10, 25, 50] as $p) {
-    $payloads[] = [
-      'pageLimit'      => 50,
-      'pageNumber'     => $p,
-      'createdAtStart' => $since ? $since . 'T00:00:00.000+02:00' : null,
-      'createdAtEnd'   => $until ? $until . 'T23:59:59.999+02:00' : null,
-    ];
-  }
-  $combos = []; $feeFields = []; $codHist = ['zero'=>0,'>0'=>0]; $sampleRow = null;
-  foreach ($payloads as $payload) {
-    $payload = array_filter($payload, function($v){ return $v !== null; });
-    $r = http_request('POST', 'https://app.bosta.co/api/v0/deliveries/search',
-      ['Authorization: ' . $token, 'Content-Type: application/json'], $payload);
-    $j = json_decode($r['body'] ?: '{}', true);
-    $list = $j['deliveries'] ?? [];
-    foreach ($list as $d) {
-      $type  = $d['type']['value']  ?? '(none)';
-      $state = $d['state']['value'] ?? '(none)';
-      $key = $type . ' || ' . $state;
-      $combos[$key] = ($combos[$key] ?? 0) + 1;
-      foreach (['priceAfterVat','shippingFee','priceBeforeVat','price'] as $f) {
-        if (isset($d[$f])) $feeFields[$f] = ($feeFields[$f] ?? 0) + 1;
-      }
-      if (((float)($d['cod'] ?? 0)) > 0) $codHist['>0']++; else $codHist['zero']++;
-      if (!$sampleRow) $sampleRow = $d;  // full first row so we can scan every field
-    }
-  }
-  send_json(['combos' => $combos, 'fee_fields_present' => $feeFields, 'cod_histogram' => $codHist, 'sample_row' => $sampleRow]);
 }
 
 if ($action === 'fetch') {

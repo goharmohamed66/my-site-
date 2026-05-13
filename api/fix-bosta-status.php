@@ -1,11 +1,11 @@
 <?php
 // /api/fix-bosta-status.php — Re-derive status for every existing Bosta
-// shipping_orders row using the type + state combined logic. Use after
-// deploying the Bosta status mapping fix to repair rows pulled with the
-// old single-field mapping that treated "Return to Origin || Delivered"
-// as DELIVERED instead of RETURNED.
+// shipping_orders row using the connector's column_map. Idempotent.
 //
-// Idempotent — running it twice changes nothing.
+// Pulls the same logic as api/shipping.php so a connector-level edit to
+// returned_values (e.g. adding "Received at warehouse", "Rejected
+// Return (Archived) - On Hold", …) immediately repairs every row
+// already in the DB.
 require_once __DIR__ . '/_db.php';
 require_token();
 
@@ -20,24 +20,70 @@ function bs_map_status($s) {
   return $s ?: 'UNKNOWN';
 }
 
-function bs_bosta_status($d) {
-  $type  = (string)($d['type']['value']  ?? '');
-  $state = (string)($d['state']['value'] ?? '');
-  $sU = strtoupper(trim($state));
-  $tU = strtoupper(trim($type));
-  if (preg_match('/^(CANCEL|TERMINAT)/i', $sU)) return 'CANCELED';
-  $isReturnType = (stripos($tU, 'RETURN') !== false);
-  if (strcasecmp($sU, 'Delivered') === 0) {
-    return $isReturnType ? 'RETURNED' : 'DELIVERED';
+function bs_sheet_state_candidates($d) {
+  $typeRaw  = (string)($d['type']['value']  ?? '');
+  $stateRaw = (string)($d['state']['value'] ?? '');
+  $type  = strtolower(trim($typeRaw));
+  $state = strtolower(trim($stateRaw));
+  $isReturnType = (strpos($type, 'return') !== false);
+  $cands = [];
+  if ($state === 'canceled' || $state === 'terminated') {
+    $cands[] = 'Canceled';
+  } elseif ($state === 'delivered') {
+    if ($type === 'return to origin')      $cands[] = 'Returned to Origin';
+    elseif ($isReturnType)                 $cands[] = 'Returned';
+    else                                   $cands[] = 'Delivered';
   }
-  $generic = bs_map_status($state);
-  if ($isReturnType && in_array($generic, ['UNDELIVERED','OUT_FOR_DELIVERY','PENDING','UNKNOWN'])) {
-    return 'RETURN_IN_TRANSIT';
+  if ($isReturnType) {
+    $cands[] = 'Returned';
+    if ($type === 'return to origin') $cands[] = 'Returned to Origin';
   }
-  return $generic;
+  if ($stateRaw !== '') $cands[] = $stateRaw;
+  $seen = []; $out = [];
+  foreach ($cands as $c) { $k = strtolower($c); if (isset($seen[$k])) continue; $seen[$k] = 1; $out[] = $c; }
+  return $out;
+}
+
+function bs_bosta_status($d, $cm = null) {
+  $candidates = bs_sheet_state_candidates($d);
+  if ($cm) {
+    $matchAny = function($values, $candidates){
+      if (!$values) return false;
+      $set = array_filter(array_map('trim', explode(',', (string)$values)));
+      foreach ($set as $v) {
+        if ($v === '') continue;
+        foreach ($candidates as $c) {
+          if (strcasecmp($v, $c) === 0) return true;
+        }
+      }
+      return false;
+    };
+    if ($matchAny($cm['delivered_values'] ?? '', $candidates)) return 'DELIVERED';
+    if ($matchAny($cm['returned_values']  ?? '', $candidates)) return 'RETURNED';
+  }
+  $top   = $candidates ? $candidates[0] : '';
+  $topU  = strtoupper(trim($top));
+  if (strcasecmp($topU, 'CANCELED') === 0)  return 'CANCELED';
+  if (strcasecmp($topU, 'DELIVERED') === 0) return 'DELIVERED';
+  if (preg_match('/^RETURN/i', $topU))      return 'RETURNED';
+  return bs_map_status((string)($d['state']['value'] ?? ''));
 }
 
 $pdo = db();
+
+// Load every Bosta connector's column_map once so we can apply the
+// merchant-specific delivered_values / returned_values per row.
+$cmByConnector = [];
+$cmStmt = $pdo->query("SELECT id, meta FROM connectors WHERE provider = 'bosta'");
+foreach ($cmStmt as $c) {
+  $m = json_decode($c['meta'] ?? '{}', true) ?: [];
+  $cmByConnector[(int)$c['id']] = $m['column_map'] ?? null;
+}
+// Single canonical column_map = the first one we find. shipping_orders
+// doesn't store which connector each row came from, so for the
+// migration we just use the same column_map for every Bosta row.
+$globalCm = null;
+foreach ($cmByConnector as $cm) { if ($cm) { $globalCm = $cm; break; } }
 
 $updated = 0;
 $skipped = 0;
@@ -51,7 +97,7 @@ try {
     if (empty($r['raw'])) { $skipped++; continue; }
     $d = json_decode($r['raw'], true);
     if (!is_array($d)) { $skipped++; continue; }
-    $new = bs_bosta_status($d);
+    $new = bs_bosta_status($d, $globalCm);
     if ($new === $r['status']) { $skipped++; continue; }
     $upd->execute([$new, $r['id']]);
     $updated++;
@@ -64,4 +110,4 @@ try {
   send_json(['error' => $e->getMessage()], 500);
 }
 
-send_json(['ok' => true, 'updated' => $updated, 'skipped' => $skipped, 'transitions' => $transitions]);
+send_json(['ok' => true, 'updated' => $updated, 'skipped' => $skipped, 'transitions' => $transitions, 'used_column_map' => $globalCm]);
