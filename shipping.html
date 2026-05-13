@@ -1309,7 +1309,7 @@ function App(){
         // 429 with a 60-99s cooldown that affects subsequent requests
         // too). Use small chunks AND honour the server's retry_after
         // before continuing.
-        var CHUNK = 25;
+        var CHUNK = 50;
         var idToRow = {};
         apiRows.forEach(function(r){ if (r.raw && r.raw._id) idToRow[r.raw._id] = r; });
         var applyFees = function(fees){

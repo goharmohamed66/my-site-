@@ -675,8 +675,8 @@ if ($action === 'enrich_fees') {
   // parallelism conservative AND back off automatically on 429.
   $fees = [];
   $rateLimitHits = 0;
-  $batch = 5;
-  $pauseMs = 250;  // small breather between batches so we don't drift over the per-second cap
+  $batch = 10;
+  $pauseMs = 100;  // small breather between batches so we don't drift over the per-second cap
   for ($i = 0; $i < count($ids); $i += $batch) {
     $slice = array_slice($ids, $i, $batch);
     $multi = curl_multi_init();
