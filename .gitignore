@@ -1,1 +1,9 @@
 node_modules/
+.claude/settings.local.json
+api shipping integration/*.txt
+!api shipping integration/J&T.txt
+!api shipping integration/Turbo.txt
+!api shipping integration/bosta.txt
+!api shipping integration/shipblu.txt
+!api shipping integration/speedaf.txt
+!api shipping integration/New Text Document.txt
