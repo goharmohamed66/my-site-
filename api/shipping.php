@@ -579,21 +579,24 @@ if ($action === 'bosta_endpoint_probe') {
   $conn = $stmt->fetch();
   $token = $conn['token'] ?? '';
   $tn    = $_GET['tn'] ?? '55358119';
-  $r = http_request('POST', 'https://app.bosta.co/api/v2/deliveries/search',
+  // First, get a single delivery _id via search to look up the rich
+  // per-delivery payload which DOES carry shipmentFees.
+  $rL = http_request('POST', 'https://app.bosta.co/api/v0/deliveries/search',
     ['Authorization: ' . $token, 'Content-Type: application/json'],
-    ['pageLimit' => 5, 'pageNumber' => 1]);
+    ['pageLimit' => 1, 'pageNumber' => 1]);
+  $jL = json_decode($rL['body'] ?: '{}', true);
+  $idDel = $jL['deliveries'][0]['_id'] ?? null;
+  $r = http_request('GET', 'https://app.bosta.co/api/v0/deliveries/' . $idDel,
+    ['Authorization: ' . $token, 'Content-Type: application/json'], null);
   $j = json_decode($r['body'] ?: '{}', true);
-  $list = $j['data']['deliveries'] ?? $j['deliveries'] ?? [];
-  $rowKeys = $list ? array_keys($list[0]) : [];
-  $sample = $list ? $list[0] : null;
   send_json([
-    'http_code'    => $r['code'],
-    'row_count'    => count($list),
-    'first_row_keys' => $rowKeys,
-    'shipmentFees'   => $sample['shipmentFees'] ?? null,
-    'pricing'        => $sample['pricing']      ?? null,
-    'price'          => $sample['price']        ?? null,
-    'priceAfterVat'  => $sample['priceAfterVat']?? null,
+    'shipmentFees' => $j['shipmentFees'] ?? null,
+    'cashoutInfo'  => $j['cashoutInfo']  ?? null,
+    'flex'         => $j['flexShippingInfo'] ?? null,
+    'wallet'       => $j['wallet']       ?? null,
+    'type'         => $j['type']         ?? null,
+    'state_val'    => $j['state']['value'] ?? null,
+    'cod'          => $j['cod']          ?? null,
   ]);
 }
 
