@@ -104,21 +104,66 @@ function bosta_parse_date($d) {
   return null;
 }
 
+function bosta_status($d) {
+  // Bosta uses BOTH `type` and `state` to describe a shipment:
+  //   type.value = direction of the shipment
+  //     "Send"                   = outbound to customer
+  //     "Return to Origin"       = inbound back to merchant (RTO)
+  //     "Customer Return Pickup" = customer-initiated return
+  //     "Exchange"               = exchange flow
+  //   state.value = where it is now
+  //     "Delivered" = handed over at its destination
+  //     "Canceled" / "Terminated" = killed
+  //     anything else = still in transit
+  //
+  // Merchant-side mapping (what Bosta portal shows under "Returned"):
+  //   Send + Delivered                      → DELIVERED   (real delivery)
+  //   Exchange + Delivered                  → DELIVERED
+  //   Return to Origin + Delivered          → RETURNED    (came back)
+  //   Customer Return Pickup + Delivered    → RETURNED    (customer return finished)
+  //   any + Canceled / Terminated           → CANCELED
+  //   any + Pending / created               → PENDING
+  $type  = (string)($d['type']['value']  ?? '');
+  $state = (string)($d['state']['value'] ?? '');
+  $sU = strtoupper(trim($state));
+  $tU = strtoupper(trim($type));
+
+  if (preg_match('/^(CANCEL|TERMINAT)/i', $sU)) return 'CANCELED';
+  $isReturnType = (stripos($tU, 'RETURN') !== false);
+  if (strcasecmp($sU, 'Delivered') === 0) {
+    return $isReturnType ? 'RETURNED' : 'DELIVERED';
+  }
+  // Anything else: defer to the generic mapper. Mark return-direction
+  // shipments still in transit as RETURN_IN_TRANSIT so the dashboard
+  // can decide whether to lump them with RETURNED.
+  $generic = map_status('bosta', $state);
+  if ($isReturnType && in_array($generic, ['UNDELIVERED','OUT_FOR_DELIVERY','PENDING','UNKNOWN'])) {
+    return 'RETURN_IN_TRANSIT';
+  }
+  return $generic;
+}
+
 function bosta_normalize_row($d) {
   $cod = (float)($d['cod'] ?? 0);
+  // Bosta's /deliveries/search doesn't expose shipping fees in the list
+  // payload (it lives on the per-delivery GET endpoint as
+  // `shipmentFees`). bosta_enrich_fees() fills this in afterwards if
+  // the caller asks for it; default to 0 here so the basic pull stays
+  // fast.
   $fees = 0;
-  if (isset($d['priceAfterVat']))      $fees = (float)$d['priceAfterVat'];
+  if (isset($d['shipmentFees']))       $fees = (float)$d['shipmentFees'];
+  elseif (isset($d['priceAfterVat']))  $fees = (float)$d['priceAfterVat'];
   elseif (isset($d['shippingFee']))    $fees = (float)$d['shippingFee'];
   elseif (isset($d['priceBeforeVat'])) $fees = (float)$d['priceBeforeVat'];
-  $status = $d['state']['value'] ?? $d['type']['value'] ?? '';
+
   $city = $d['dropOffAddress']['city']['name'] ?? $d['receiver']['city'] ?? '';
   $product = $d['specs']['packageDetails']['description'] ?? '';
   $orderId = $d['trackingNumber'] ?? $d['_id'] ?? '';
-  return [
+  $row = [
     'order_id' => $orderId,
     'product'  => $product,
     'city'     => $city,
-    'status'   => map_status('bosta', $status),
+    'status'   => bosta_status($d),
     'cod'      => $cod,
     'fees'     => $fees,
     'net'      => max(0, $cod - $fees),
@@ -127,6 +172,7 @@ function bosta_normalize_row($d) {
     'employee' => null,
     'raw'      => $d
   ];
+  return $row;
 }
 
 function bosta_make_handle($token, $since, $until, $page, $limit) {
@@ -579,29 +625,72 @@ if ($action === 'bosta_endpoint_probe') {
   $conn = $stmt->fetch();
   $token = $conn['token'] ?? '';
   $tn    = $_GET['tn'] ?? '55358119';
-  // Probe bulk endpoints that might include shipmentFees / shipping_fees
-  // for a list of deliveries in one shot.
-  $endpoints = [
-    'wallet_txns'     => ['GET',  'https://app.bosta.co/api/v0/wallet/transactions', null],
-    'business_wallet' => ['GET',  'https://app.bosta.co/api/v0/business/me/wallet',  null],
-    'cash_cycles'     => ['GET',  'https://app.bosta.co/api/v0/cash-cycles?limit=50', null],
-    'business_pricing'=> ['GET',  'https://app.bosta.co/api/v0/business/me/pricing', null],
-    'business_me'     => ['GET',  'https://app.bosta.co/api/v0/business/me', null],
-    'search_with_fees'=> ['POST', 'https://app.bosta.co/api/v0/deliveries/search', ['pageLimit'=>1,'pageNumber'=>1,'includePricing'=>true,'withShipmentFees'=>true]],
-  ];
-  $out = [];
-  foreach ($endpoints as $name => $spec) {
-    list($method, $url, $body) = $spec;
-    $hdr = ['Authorization: ' . $token, 'Content-Type: application/json'];
-    $r = http_request($method, $url, $hdr, $body);
-    $j = json_decode($r['body'] ?: '{}', true);
-    $out[$name] = [
-      'http_code' => $r['code'],
-      'top_keys'  => is_array($j) ? array_keys($j) : null,
-      'snippet'   => substr((string)$r['body'], 0, 600),
-    ];
+ send_json(['error' => 'debug probe disabled']);
+}
+
+// POST /shipping.php?action=enrich_fees&connector_id=N
+//   body: {"ids": ["<delivery_id_1>", "<delivery_id_2>", ...]}
+//   returns: { "fees": { "<id>": <shipmentFees>, ... } }
+//
+// Bosta exposes shipmentFees only on the per-delivery GET endpoint, so
+// we fetch them in parallel batches. Frontend chunks 6,000-row pulls
+// into multiple 200-id requests so each round-trip fits in nginx's
+// timeout window and progress can be reported between chunks.
+if ($action === 'enrich_fees') {
+  $cid = (int)($_GET['connector_id'] ?? 0);
+  if (!$cid) err('connector_id required');
+  $body = json_decode(file_get_contents('php://input'), true);
+  $ids  = isset($body['ids']) && is_array($body['ids']) ? $body['ids'] : [];
+  if (!$ids) send_json(['fees' => new stdClass()]);
+  $stmt = $pdo->prepare("SELECT * FROM connectors WHERE id = ? AND active = 1 AND type = 'shipping' LIMIT 1");
+  $stmt->execute([$cid]);
+  $conn = $stmt->fetch();
+  if (!$conn || $conn['provider'] !== 'bosta') err('Only Bosta supports fee enrichment.', 400);
+  $token = $conn['token'] ?? '';
+  if (!$token) err('Bosta connector is missing the API key.');
+
+  @set_time_limit(0);
+  @ignore_user_abort(true);
+
+  $fees = [];
+  $batch = 30;  // 30 parallel cURL handles — balances throughput vs Bosta rate-limit risk
+  for ($i = 0; $i < count($ids); $i += $batch) {
+    $slice = array_slice($ids, $i, $batch);
+    $multi = curl_multi_init();
+    $handles = [];
+    foreach ($slice as $id) {
+      $id = (string)$id;
+      if (!preg_match('/^[A-Za-z0-9_-]{1,40}$/', $id)) continue;  // guard against injection / weird ids
+      $ch = curl_init('https://app.bosta.co/api/v0/deliveries/' . $id);
+      curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT        => HTTP_TIMEOUT,
+        CURLOPT_SSL_VERIFYPEER => true,
+        CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_HTTPHEADER     => ['Authorization: ' . $token, 'Content-Type: application/json'],
+      ]);
+      curl_multi_add_handle($multi, $ch);
+      $handles[$id] = $ch;
+    }
+    do {
+      curl_multi_exec($multi, $running);
+      if ($running) curl_multi_select($multi);
+    } while ($running > 0);
+    foreach ($handles as $id => $ch) {
+      $body = curl_multi_getcontent($ch);
+      curl_multi_remove_handle($multi, $ch);
+      curl_close($ch);
+      if (!$body) continue;
+      $j = json_decode($body, true);
+      if (isset($j['shipmentFees'])) {
+        $fees[$id] = (float)$j['shipmentFees'];
+      } elseif (isset($j['wallet']['cashCycle']['shipping_fees'])) {
+        $fees[$id] = (float)$j['wallet']['cashCycle']['shipping_fees'];
+      }
+    }
+    curl_multi_close($multi);
   }
-  send_json($out);
+  send_json(['fees' => $fees]);
 }
 
 if ($action === 'bosta_breakdown') {
