@@ -571,6 +571,37 @@ function dispatch_provider($conn, $since, $until) {
 $pdo    = db();
 $action = $_GET['action'] ?? '';
 
+if ($action === 'bosta_endpoint_probe') {
+  // Try alternate Bosta endpoints to find one that returns shipping fees.
+  $cid = (int)($_GET['connector_id'] ?? 0);
+  $stmt = $pdo->prepare("SELECT * FROM connectors WHERE id = ? AND active = 1 LIMIT 1");
+  $stmt->execute([$cid]);
+  $conn = $stmt->fetch();
+  $token = $conn['token'] ?? '';
+  $tn    = $_GET['tn'] ?? '55358119';
+  $endpoints = [
+    'v2_search'    => ['POST', 'https://app.bosta.co/api/v2/deliveries/search', ['pageLimit'=>5,'pageNumber'=>1]],
+    'v0_by_track'  => ['GET',  'https://app.bosta.co/api/v0/deliveries/business/' . $tn, null],
+    'v0_track'     => ['GET',  'https://app.bosta.co/api/v0/deliveries/track/' . $tn, null],
+    'v2_by_track'  => ['GET',  'https://app.bosta.co/api/v2/deliveries/' . $tn, null],
+    'v0_by_id'     => ['GET',  'https://app.bosta.co/api/v0/deliveries/' . $tn, null],
+    'v2_pricing'   => ['POST', 'https://app.bosta.co/api/v2/deliveries/pricing', ['trackingNumbers'=>[$tn]]],
+  ];
+  $out = [];
+  foreach ($endpoints as $name => $spec) {
+    list($method, $url, $body) = $spec;
+    $hdr = ['Authorization: ' . $token, 'Content-Type: application/json'];
+    $r = http_request($method, $url, $hdr, $body);
+    $j = json_decode($r['body'] ?: '{}', true);
+    $out[$name] = [
+      'http_code' => $r['code'],
+      'top_keys'  => is_array($j) ? array_keys($j) : null,
+      'snippet'   => substr((string)$r['body'], 0, 800),
+    ];
+  }
+  send_json($out);
+}
+
 if ($action === 'bosta_breakdown') {
   // Temporary: pull page 1 (50 rows) raw and report the distribution of
   // (type.value, state.value, fee field availability) so we can mirror
