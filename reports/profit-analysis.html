@@ -1254,16 +1254,16 @@ async function computeProfitForBrand(brand, from, to){
     : new Set();
   if (brandPrefixes.size > 0) {
     const sizeBefore = orders.length;
-    let droppedOtherBrand = 0, keptNoPrefix = 0;
+    let droppedNoPrefix = 0, droppedOtherBrand = 0;
     const droppedSamples = [];
     orders = orders.filter(r => {
       const m = String(r.product || '').match(/\(\s*([a-z0-9]{1,4})-([a-z0-9]{1,4})\s*\)/i);
-      // Rows without a (prefix-mkt) marker — carrier API pulls (Bosta /
-      // QP / Mylerz / …) return product names straight from the carrier,
-      // which never carry our marker. Trust /orders.php's server-side
-      // brand_id scoping for these: dropping them silently would zero
-      // out every Delivered / Returned figure from an API pull.
-      if (!m) { keptNoPrefix++; return true; }
+      // Strict brand gate — same as the Shipping Analytics filter and
+      // identical to how sheet uploads are filtered. A row only counts
+      // toward this brand if its product carries an (prefix-mkt) marker
+      // matching one of brand.meta.sku_prefixes. Marker-less rows are
+      // skipped here; they only surface under "All brands".
+      if (!m) { droppedNoPrefix++; return false; }
       const pref = m[1].toLowerCase();
       if (!brandPrefixes.has(pref)) {
         droppedOtherBrand++;
@@ -1272,11 +1272,10 @@ async function computeProfitForBrand(brand, from, to){
       }
       return true;
     });
-    console.log('[profit][' + brand.name + '] prefix gate:',
+    console.log('[profit][' + brand.name + '] prefix gate (STRICT):',
                 sizeBefore + ' → ' + orders.length + ' rows',
                 '· brand prefixes=[' + Array.from(brandPrefixes).join(',') + ']',
-                '· no-marker (kept, trust server brand_id)=' + keptNoPrefix,
-                '· dropped other-brand=' + droppedOtherBrand);
+                '· dropped: no-prefix=' + droppedNoPrefix + ' · other-brand=' + droppedOtherBrand);
     if (droppedSamples.length) {
       console.log('[profit][' + brand.name + '] sample dropped (other-brand prefix):', droppedSamples);
     }

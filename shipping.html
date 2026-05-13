@@ -1544,19 +1544,19 @@ function App(){
       // confirmation upload after a navigation/reload.
       var isConfRow = (r.st === CONF || r.st === CANC);
       if (brandActive && !isConfRow) {
-        // Defense-in-depth: rows WHOSE PRODUCT carries a (prefix-mkt)
-        // marker must match the active brand's prefixes. This stops a
-        // sheet upload that bled into the wrong brand from showing up
-        // here. But rows WITHOUT a marker (carrier API pulls — Bosta /
-        // QP / etc. return product names without our brand markers) are
-        // trusted: /orders.php already scoped them to brand_id server-
-        // side, so dropping them client-side would silently zero-out
-        // every Delivered / Returned count from an API pull.
+        // Strict brand gate — matches what sheet uploads do. Both
+        // sources (sheet + carrier API) flow through the same filter:
+        //   - row product carries a (prefix-mkt) marker matching one of
+        //     the active brand's prefixes  → shown
+        //   - row has the wrong prefix                                 → hidden
+        //   - row has no marker at all                                 → hidden in any
+        //     specific brand view; visible only in "All brands" mode
+        // The user explicitly wants this behaviour: switching to a
+        // brand should show ONLY that brand's products, even when the
+        // data was pulled from a carrier account that mixes brands.
+        if (!prefSet || !prefSet.length) return false; // brand without sku_prefixes → nothing matches
         var s = (codes.store || '').toLowerCase();
-        if (s) {
-          if (!prefSet || !prefSet.length) return false; // brand without sku_prefixes → nothing matches
-          if (prefSet.indexOf(s) < 0) return false;
-        }
+        if (!s || prefSet.indexOf(s) < 0) return false;
       }
       // Invalid Date objects (NaN time) → treat as missing date so they
       // pass the range filter instead of being silently dropped (NaN
