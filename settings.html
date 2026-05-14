@@ -552,8 +552,12 @@ const PROVIDER_FIELDS = {
   bosta: [
     {key: 'name',  label: 'Customer name', placeholder: 'e.g. Motaz, Ahmed Yasser', required: true,
      help: 'Display name for this Bosta account.'},
-    {key: 'token', label: 'API Key',       placeholder: '965bf826a9e51b6d…', required: true, secret: true, multiline: true,
-     help: 'Bosta REST API key — used for tracking, label generation and order sync.'},
+    {key: 'consumer_key', label: 'Dashboard Email', placeholder: 'you@example.com', required: true,
+     help: 'The email you sign in to business.bosta.co with. The system logs in automatically to read Wallet → Cash Cycles (shipping fees + settled orders).'},
+    {key: 'consumer_secret', label: 'Dashboard Password', required: true, secret: true,
+     help: 'Your business.bosta.co password. Stored to auto-login for the Cash Cycles feed — the public API key alone can\'t read it. The account must have 2FA OFF.'},
+    {key: 'token', label: 'API Key (optional)', placeholder: '965bf826a9e51b6d…', secret: true, multiline: true,
+     help: 'Optional Bosta REST API key — kept for label generation / tracking. Not needed for the Cash Cycles fee sync.'},
   ],
   qp: [
     {key: 'name',            label: 'Customer name', placeholder: 'e.g. Motaz, Ahmed Yasser', required: true,
