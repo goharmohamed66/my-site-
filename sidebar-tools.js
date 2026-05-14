@@ -33,7 +33,7 @@
     name: 'All tools',
     svg: '<svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor" aria-hidden="true"><path d="M11.452 0h1.698c.47 0 .85.38.85.85v1.699c0 .469-.38.85-.85.85h-1.699a.85.85 0 0 1-.849-.85v-1.7c0-.469.38-.849.85-.849M13.15 5.301h-1.699a.85.85 0 0 0-.849.85V7.85c0 .469.38.849.85.849h1.698c.47 0 .85-.38.85-.85V6.15a.85.85 0 0 0-.85-.849M.85 10.602h1.699c.469 0 .85.38.85.85v1.698c0 .47-.381.85-.85.85h-1.7A.85.85 0 0 1 0 13.15v-1.699c0-.469.38-.85.85-.85M7.85 10.602h-1.7a.85.85 0 0 0-.85.85v1.698c.001.47.381.85.85.85h1.7c.469 0 .849-.38.849-.85v-1.699a.85.85 0 0 0-.85-.85M13.15 10.602h-1.699a.85.85 0 0 0-.849.85v1.698c0 .47.38.85.85.85h1.698c.47 0 .85-.38.85-.85v-1.699a.85.85 0 0 0-.85-.85M6.15 5.301h1.7c.469 0 .849.38.849.85V7.85c0 .469-.38.849-.85.849H6.15a.85.85 0 0 1-.85-.85V6.15c.001-.469.381-.849.85-.849M2.549 5.301h-1.7a.85.85 0 0 0-.849.85V7.85c0 .469.38.849.85.849h1.699c.469 0 .85-.38.85-.85V6.15a.85.85 0 0 0-.85-.849M7.85 0h-1.7a.85.85 0 0 0-.85.85v1.699c.001.469.381.85.85.85h1.7c.469 0 .849-.381.849-.85v-1.7A.85.85 0 0 0 7.849 0M.85 0h1.699c.469 0 .85.38.85.85v1.699c0 .469-.381.85-.85.85h-1.7A.85.85 0 0 1 0 2.548v-1.7C0 .38.38 0 .85 0"/></svg>',
     children: [
-      { name:'Buyer Persona Generator', href:'buyer-persona.html', matchPaths:['buyer-persona.html'],
+      { name:'Buyer Persona', href:'buyer-persona.html', matchPaths:['buyer-persona.html'],
         svg:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>' },
       { name:'Copywriting', href:'copywriting.html', matchPaths:['copywriting.html'],
         svg:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>' },
@@ -409,7 +409,7 @@
   }
   // For an existing group element, insert any children defined in `group`
   // that aren't already present (matched by href file name) — keeping the
-  // JS array order, so e.g. "Buyer Persona Generator" lands ABOVE the
+  // JS array order, so e.g. "Buyer Persona" lands ABOVE the
   // hardcoded "Copywriting" instead of being appended at the end.
   // Idempotent: presence is re-checked from the live DOM each iteration.
   function augmentGroupChildren(groupEl, group) {

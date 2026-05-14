@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Buyer Persona Generator</title>
+<title>Buyer Persona</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Almarai:wght@400;700;800&display=swap" rel="stylesheet">
 <style>
   *{box-sizing:border-box;margin:0;padding:0;}
@@ -67,7 +67,7 @@
   .toast.error{background:#D72C0D;}
 </style>
 <script src="topbar.js?v=1777784143"></script>
-<script src="sidebar-tools.js?v=1777784143"></script>
+<script src="sidebar-tools.js?v=1778900000"></script>
 <script src="https://cdn.jsdelivr.net/npm/mammoth@1.6.0/mammoth.browser.min.js"></script>
 <script src="ai-keys.js?v=1777784143"></script>
 <script src="google-picker.js?v=1777784143"></script>
@@ -93,7 +93,7 @@
         </div>
         <div class="app-sidebar-group-items">
           <a href="buyer-persona.html" class="app-sidebar-item active">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span>Buyer Persona Generator</span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span>Buyer Persona</span>
           </a>
           <a href="copywriting.html" class="app-sidebar-item">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg><span>Copywriting</span>
@@ -128,8 +128,8 @@
   </aside>
   <div class="app-main">
     <div class="page">
-      <h1 style="margin-bottom:6px;">Buyer Persona Generator</h1>
-      <p class="sub">البرومبت بيتسحب تلقائياً من System Prompts كل مرة — التاسك دي متوصّلة ببرومت «Buyer Persona Generator».</p>
+      <h1 style="margin-bottom:6px;">Buyer Persona</h1>
+      <p class="sub">البرومبت بيتسحب تلقائياً من System Prompts كل مرة — التاسك دي متوصّلة ببرومت «Buyer Persona».</p>
       <div class="page-grid">
        <div class="page-col-left">
         <div class="panel">
@@ -201,7 +201,7 @@ const OPENAI_KEY_LS     = 'app.openaiApiKey';
 
 // ── System prompt source — fetched fresh from the central System Prompts
 //    store (api/skills.php) on every run, so edits there apply right away.
-//    This task is wired to the "Buyer Persona Generator" prompt.
+//    This task is wired to the "Buyer Persona" prompt.
 const SKILLS_API   = 'https://indigo-dog-836598.hostingersite.com/github/api/skills.php';
 const SKILLS_TOKEN = 'tk_4d2b9f7a8c6e1530a4f2d9b7e8c6a1f5';
 const TASK_PROMPT_SLUG = 'buyer-bersona';
