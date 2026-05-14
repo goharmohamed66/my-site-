@@ -284,7 +284,7 @@ $('refImageInput').addEventListener('change', (e) => {
 // image hosts that block cross-origin fetches (Amazon, etc.) still work.
 async function addRefUrl(url) {
   url = (url || '').trim();
-  if (!/^https?:\/\//i.test(url)) { showToast('Paste a valid image URL (http/https)', true); return; }
+  if (!/^https?:\/\//i.test(url)) { showError('Paste a valid image URL (http/https).'); return false; }
   const btn = $('refUrlAdd');
   btn.disabled = true; btn.textContent = '…';
   try {
@@ -297,15 +297,19 @@ async function addRefUrl(url) {
       throw new Error(msg);
     }
     const blob = await res.blob();
-    if (!/^image\//.test(blob.type)) throw new Error('not an image');
+    if (!/^image\//.test(blob.type)) throw new Error('the URL is not an image');
     const ext = (blob.type.split('/')[1] || 'png').replace('jpeg', 'jpg');
     const file = new File([blob], 'ref-url-' + Date.now() + '.' + ext, { type: blob.type });
     const dataUrl = await readFileAsDataUrl(file);
     refImages.push({ file: file, mime: file.type, b64: dataUrl.split(',')[1] || '', dataUrl: dataUrl });
     renderThumbs();
     $('refUrlInput').value = '';
+    showError('');
+    showToast('Image added');
+    return true;
   } catch (e) {
-    showToast('Could not fetch image: ' + (e.message || e), true);
+    showError('Could not fetch the image URL: ' + (e.message || e));
+    return false;
   } finally {
     btn.disabled = false; btn.textContent = 'Add';
   }
@@ -478,6 +482,13 @@ let __busy = false;
 async function generate() {
   if (__busy) return;
   showError('');
+  // If a URL is sitting in the box but wasn't added with the button yet,
+  // pull it in now so the user doesn't have to click "Add" separately.
+  const pendingUrl = $('refUrlInput').value.trim();
+  if (pendingUrl) {
+    const added = await addRefUrl(pendingUrl);
+    if (!added) return;   // addRefUrl already showed the reason
+  }
   const input = $('productInput').value.trim();
   if (!refImages.length) { showError('Upload at least one reference product image first.'); return; }
   if (!input)            { showError('Enter the product details and reviews.'); return; }
