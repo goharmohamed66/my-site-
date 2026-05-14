@@ -1367,87 +1367,13 @@ function App(){
       if (!apiRows.length) {
         // Nothing to persist or enrich.
       } else {
-        // 1) Persist immediately. Pass updateFees=true so existing rows
-        //    get their STATUS refreshed (Delivered/Returned/etc. tracks
-        //    the carrier in every sync). The update SQL only overwrites
-        //    fees+net when the incoming fee > 0, so the initial Bosta
-        //    payload (fees=0 until enrichment) doesn't wipe values the
-        //    background enrichment already populated. Other carriers
-        //    return fees in the bulk response, so for them this path
-        //    keeps fees/net/status all in sync per pull.
+        // Persist with updateFees=true so existing rows get fees/net/
+        // status refreshed in the DB on every sync. Every carrier —
+        // Bosta included — now returns fees in its bulk response
+        // (Bosta via the Wallet > Cash Cycles feed, see fetch_bosta in
+        // shipping.php), so the data is complete on the first render.
+        // No per-delivery enrichment pass, no rate-limit waiting.
         doPersist(apiRows, true);
-        if (conn.provider === 'bosta') {
-          // 2) Background fee enrichment for Bosta. Each chunk's fees
-          //    merged into apiRows AND pushed to /upload.php?update_fees=1
-          //    so the DB matches the UI even mid-pull. Bosta's v2
-          //    per-business endpoint takes tracking numbers (AWBs), so
-          //    we key by order_id rather than the internal _id.
-          //
-          //    Only enrich orders that DON'T already have a fee. Fees
-          //    merged from the DB above are kept as-is, so enrichment is
-          //    cumulative: the first pull of a date range does the heavy
-          //    lifting, every later pull only fills the gaps, and once
-          //    the DB holds every fee a pull renders the KPIs instantly.
-          var ids = apiRows.filter(function(r){ return r.order_id && (!r.fees || r.fees<=0); })
-                           .map(function(r){ return r.order_id; });
-          if (ids.length) {
-            var CHUNK = 50;
-            var idToRow = {};
-            apiRows.forEach(function(r){ if (r.order_id) idToRow[r.order_id] = r; });
-            // Per-chunk: persist to DB so progress survives a tab close,
-            // but DON'T trigger a React re-render — the user shouldn't
-            // see the Avg Shipping Cost KPI tick up live as chunks land.
-            // The final .then() below re-renders once with the complete
-            // numbers, so the KPI just appears with its true final value.
-            var applyFees = function(fees){
-              var chunkRows = [];
-              Object.keys(fees).forEach(function(id){
-                var row = idToRow[id]; if (!row) return;
-                row.fees = parseFloat(fees[id]) || 0;
-                row.net  = Math.max(0, (row.cod || 0) - row.fees);
-                chunkRows.push(row);
-              });
-              if (chunkRows.length) doPersist(chunkRows, true);
-            };
-            var enrichOne = function(chunk){
-              return apiFetch("/shipping.php?action=enrich_fees&connector_id="+conn.id,
-                { method: "POST", body: JSON.stringify({ ids: chunk }) }
-              ).then(function(res){
-                var fees = (res && res.fees) || {};
-                applyFees(fees);
-                if (res && res.rate_limited) {
-                  var wait = Math.max(60, (res.retry_after || 60)) * 1000;
-                  console.log("[carrier-sync] "+conn.name+" → rate-limited, sleeping "+(wait/1000)+"s");
-                  return new Promise(function(rs){ setTimeout(rs, wait); }).then(function(){
-                    var done = new Set(Object.keys(fees));
-                    var leftover = chunk.filter(function(id){ return !done.has(id); });
-                    if (leftover.length) return enrichOne(leftover);
-                  });
-                }
-              }).catch(function(err){
-                console.error("[carrier-sync] "+conn.name+" enrich chunk failed:", err);
-              });
-            };
-            var chunks = [];
-            for (var i = 0; i < ids.length; i += CHUNK) chunks.push(ids.slice(i, i + CHUNK));
-            console.log("[carrier-sync] "+conn.name+" → enriching "+ids.length+" deliveries in "+chunks.length+" chunks…");
-            var pe = Promise.resolve();
-            chunks.forEach(function(c){ pe = pe.then(function(){ return enrichOne(c); }); });
-            pe.then(function(){
-              if (myEpoch !== fetchEpoch.current) return;
-              console.log("[carrier-sync] "+conn.name+" → enriched "+ids.length+" deliveries with shipmentFees");
-              // Single re-render with the final fees — avoids the
-              // "60 → 70 → 100" tick-up the user reported.
-              setDs(function(prev){
-                return prev.map(function(d){
-                  if (d.connectorId !== conn.id) return d;
-                  return Object.assign({}, d, { rows: apiRows.map(apiRowToRow) });
-                });
-              });
-              if (typeof loadOrders === "function") loadOrders();
-            });
-          }
-        }
       }
     }).catch(function(err){
       if(myEpoch!==fetchEpoch.current)return;
@@ -1763,60 +1689,6 @@ function App(){
         // the user requested the same date theme everywhere.
         React.createElement(GlobalDateMount),
         !isConf&&React.createElement(CarrierDropdown,{connectors:shippingConnectors,providers:SHIP_PROVIDERS,selectedIds:selectedConnIds,onChange:setSelectedConnIds,loadingMap:carrierLoading}),
-        // Import Bosta shipping fees from the dashboard's Wallet > Cash
-        // Cycles CSV export — the bulk search API doesn't expose fees and
-        // per-delivery enrichment is rate-limited, so this is the fast,
-        // exact path. One upload updates every matching order at once.
-        !isConf&&React.createElement("button",{
-          title:"Import Bosta fees from Wallet > Cash Cycles CSV export",
-          onClick:function(ev){
-            var btn=ev.currentTarget;
-            var input=document.createElement("input");
-            input.type="file";input.accept=".csv,text/csv";
-            input.onchange=function(){
-              var file=input.files&&input.files[0];
-              if(!file)return;
-              var orig=btn.textContent;btn.textContent="Importing…";btn.disabled=true;
-              var reader=new FileReader();
-              reader.onload=function(){
-                var bid=window.getActiveBrandId?(window.getActiveBrandId()||0):0;
-                var qs=bid>0?("?brand_id="+bid):"";
-                apiFetch("/shipping.php?action=import_fees_csv"+(qs?qs.replace("?","&"):""),
-                  {method:"POST",body:JSON.stringify({csv:reader.result})})
-                  .then(function(res){
-                    alert("Fees imported from CSV:\n\n"+
-                      "CSV rows: "+res.csv_rows+"\n"+
-                      "Parsed (valid fee): "+res.parsed+"\n"+
-                      "Matched & updated in DB: "+res.db_updated+"\n"+
-                      "Skipped (no tracking/fee): "+res.skipped+"\n\n"+
-                      "Columns used → tracking: \""+res.tracking_col+"\"  |  fee: \""+res.fee_col+"\"");
-                    console.log("[import_fees_csv]",res);
-                    if(typeof loadOrders==="function")loadOrders();
-                  })
-                  .catch(function(err){
-                    // apiFetch throws Error("HTTP 400: {json}") — pull the
-                    // JSON body back out so we can show the column hint.
-                    var msg=err&&err.message||String(err);
-                    var m=msg.match(/\{[\s\S]*\}/);
-                    if(m){try{
-                      var d=JSON.parse(m[0]);
-                      if(d.headers){
-                        alert("Couldn't find the tracking-number / fees columns.\n\nCSV headers found:\n"+d.headers.join(" | ")+"\n\n"+(d.hint||""));
-                        return;
-                      }
-                      alert("Import failed: "+(d.error||msg));
-                      return;
-                    }catch(e){}}
-                    alert("Import failed: "+msg);
-                  })
-                  .finally(function(){btn.textContent=orig;btn.disabled=false;});
-              };
-              reader.readAsText(file,"UTF-8");
-            };
-            input.click();
-          },
-          style:{background:"#FFFFFF",color:"#1A1A1A",border:"1px solid #DCDCDC",borderRadius:8,padding:"0 14px",height:32,cursor:"pointer",fontSize:13,fontWeight:600,boxShadow:"0 1px 0 rgba(0,0,0,0.04)"}
-        },"Import Fees CSV"),
         React.createElement("button",{onClick:function(){
           // FULL reset — wipes server-side stored orders, in-memory datasets,
           // carrier selections, filters, errors. Returns the user to the start

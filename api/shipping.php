@@ -318,108 +318,125 @@ function bosta_make_handle($token, $since, $until, $page, $limit) {
   return $ch;
 }
 
+// Normalize one Bosta "Wallet > Cash Cycle" list item into our row
+// shape. A cash-cycle row is always a CLOSED shipment — Bosta only
+// books a shipment into a cycle once it's settled (delivered, or
+// returned-to-origin). The fee here (`bosta_fees`) is the exact figure
+// the merchant dashboard shows, so no enrichment is ever needed.
+function bosta_cycle_normalize_row($d, $conn = null) {
+  $fee = (float)($d['bosta_fees'] ?? $d['bostaFees'] ?? 0);
+  $cod = (float)($d['cod'] ?? $d['codAmount'] ?? 0);
+  $tn  = (string)($d['tracking_number'] ?? $d['trackingNumber'] ?? '');
+
+  // City — prefer the English drop-off name, fall through the variants.
+  $city = $d['dropoff_city_en'] ?? $d['dropoff_city'] ?? $d['dropoffCity']
+        ?? $d['pickup_city_en'] ?? $d['pickup_city'] ?? '';
+  if (is_array($city)) $city = $city['name'] ?? $city['nameEn'] ?? '';
+
+  // DELIVERED vs RETURNED — derive from the cycle item's type. An RTO /
+  // customer-return item is a return; everything else closed in a cycle
+  // is a successful delivery.
+  $type      = strtolower((string)($d['current_type'] ?? $d['type'] ?? ''));
+  $statusRaw = strtolower((string)($d['status'] ?? ''));
+  if (strpos($type, 'rto') !== false || strpos($type, 'return') !== false
+      || strpos($statusRaw, 'return') !== false) {
+    $status = 'RETURNED';
+  } else {
+    $status = 'DELIVERED';
+  }
+
+  // Settlement date for the trend chart. Fall back to the date-range
+  // bounds so the row always lands inside the user's selected window
+  // even if Bosta omits an explicit date on the item.
+  $date = null;
+  foreach (['depositedDate','deposited_date','depositedAt','cashCycleDate',
+            'date','updatedAt','createdAt','created_at'] as $k) {
+    if (!empty($d[$k])) {
+      $ts = strtotime((string)$d[$k]);
+      if ($ts) { $date = date('Y-m-d', $ts); break; }
+      if (preg_match('/\d{4}-\d{2}-\d{2}/', (string)$d[$k], $m)) { $date = $m[0]; break; }
+    }
+  }
+
+  return [
+    'order_id' => $tn,
+    'product'  => (string)($d['description'] ?? $d['product'] ?? ''),
+    'city'     => is_string($city) ? $city : '',
+    'status'   => $status,
+    'cod'      => $cod,
+    'fees'     => $fee,
+    'net'      => max(0, $cod - $fee),
+    'date'     => $date,
+    'source'   => 'Bosta',
+    'employee' => null,
+    'raw'      => $d,
+  ];
+}
+
+// Bosta fetch — pulls straight from the merchant dashboard's
+// "Wallet > Cash Cycles" feed (GET /api/v2/wallet/cycles). This is the
+// ONLY Bosta API path that returns shipping fees in bulk: the public
+// /deliveries/search endpoint omits fees entirely and the per-delivery
+// endpoint is rate-limited to a crawl. Cash Cycles lists every settled
+// shipment for the date range with its exact `bosta_fees`, so fees
+// arrive in one shot — no per-order enrichment, no rate-limit waiting.
 function fetch_bosta($conn, $since, $until) {
   $token = $conn['token'] ?? '';
   if (!$token) err('Bosta connector is missing the API key.');
 
-  // Give the request as much time as it needs — Hostinger's PHP cap is
-  // already covered by nginx's upstream timeout; this just stops PHP
-  // from killing the loop while we wait on Bosta.
   @set_time_limit(0);
   @ignore_user_abort(true);
 
-  $limit = 50;       // Bosta's /deliveries/search caps each page at 50.
-  $batch = 12;       // Pages fetched in parallel via cURL multi.
+  $base     = 'https://app.bosta.co/api/v2/wallet/cycles';
+  $pageSize = 100;
+  $rows     = [];
+  $seen     = [];
+  $page     = 1;
+  $safetyPages = 500;   // hard ceiling regardless of what Bosta reports
 
-  // Page 1 sequentially so we can detect when pagination naturally ends.
-  // Same camelCase param names as bosta_make_handle — see comment there
-  // for the gotcha with `page`/`limit`.
-  $r = http_request('POST', 'https://app.bosta.co/api/v0/deliveries/search',
-    ['Authorization: ' . $token, 'Content-Type: application/json'],
-    array_filter([
-      'pageLimit'       => $limit,
-      'pageNumber'      => 1,
-      'createdAtStart'  => $since ? $since . 'T00:00:00.000+02:00' : null,
-      'createdAtEnd'    => $until ? $until . 'T23:59:59.999+02:00' : null,
-    ], function($v){ return $v !== null; })
-  );
-  if ($r['code'] >= 400 || !$r['body']) err('Bosta API error', 502, ['detail' => substr($r['body'] ?: '', 0, 300)]);
-  $j = json_decode($r['body'], true);
-  $list = $j['deliveries'] ?? $j['data'] ?? [];
+  while ($page <= $safetyPages) {
+    $qs = http_build_query(array_filter([
+      'page'       => $page,
+      'pageSize'   => $pageSize,
+      'start_date' => $since ?: null,
+      'end_date'   => $until ?: null,
+    ], function ($v) { return $v !== null && $v !== ''; }));
 
-  // Dedup by tracking number — Bosta's /deliveries/search will happily
-  // serve the LAST page over and over when you request pages past the
-  // real end of the result set, instead of returning empty. Without
-  // dedup we'd return tens of thousands of duplicate rows for a real
-  // ~3,000-row month and the page-1 `count` field doesn't always
-  // reflect the date-filtered total (observed in production).
-  $rows = [];
-  $seen = [];
-  foreach ($list as $d) {
-    $key = $d['trackingNumber'] ?? $d['_id'] ?? null;
-    if ($key && isset($seen[$key])) continue;
-    if ($key) $seen[$key] = 1;
-    $rows[] = bosta_normalize_row($d, $conn);
+    $r = http_request('GET', $base . '?' . $qs,
+      ['Authorization: ' . $token, 'Content-Type: application/json']);
+
+    if ($r['code'] == 401 || $r['code'] == 403) {
+      err('Bosta rejected the Wallet API token (HTTP ' . $r['code'] . '). '
+        . 'The Cash Cycles feed may require the dashboard session token '
+        . 'rather than the public API key — check the connector token.',
+        502, ['detail' => substr($r['body'] ?: '', 0, 300)]);
+    }
+    if ($r['code'] >= 400 || !$r['body']) {
+      err('Bosta Wallet API error (HTTP ' . $r['code'] . ')', 502,
+        ['detail' => substr($r['body'] ?: '', 0, 300)]);
+    }
+
+    $j = json_decode($r['body'], true);
+    // Response shape: { total, list: [...] } — accept a few aliases.
+    $list = $j['list'] ?? $j['data'] ?? $j['cycles'] ?? [];
+    if (!is_array($list) || !$list) break;
+
+    $pageNew = 0;
+    foreach ($list as $d) {
+      $key = $d['tracking_number'] ?? $d['trackingNumber'] ?? null;
+      if ($key !== null && isset($seen[$key])) continue;   // guard repeats
+      if ($key !== null) $seen[$key] = 1;
+      $rows[] = bosta_cycle_normalize_row($d, $conn);
+      $pageNew++;
+    }
+
+    $total = (int)($j['total'] ?? $j['totalCount'] ?? $j['count'] ?? 0);
+    if ($pageNew === 0) break;                       // nothing new — stop
+    if ($total > 0 && count($rows) >= $total) break; // got everything
+    if (count($list) < $pageSize) break;             // short page = last
+    $page++;
   }
 
-  // Page 1 came back short → we already have everything.
-  if (count($list) < $limit) return $rows;
-
-  $total = (int)($j['count'] ?? $j['totalCount'] ?? $j['total'] ?? 0);
-  $safetyPages = 400;  // hard ceiling regardless of what Bosta reports
-  $totalPages = $total > 0 ? min((int)ceil($total / $limit), $safetyPages) : $safetyPages;
-
-  // Pages 2..N in parallel batches. cURL multi keeps a small pool of
-  // HTTP requests in flight at once so a 3,000-row pull (60 pages)
-  // finishes in ~5 round-trip waves instead of 60 — the difference
-  // between "fits in nginx's 60s timeout" and a 504.
-  $allDupBatches = 0;
-  for ($start = 2; $start <= $totalPages; $start += $batch) {
-    $end = min($start + $batch - 1, $totalPages);
-    $multi = curl_multi_init();
-    $handles = [];
-    for ($p = $start; $p <= $end; $p++) {
-      $ch = bosta_make_handle($token, $since, $until, $p, $limit);
-      curl_multi_add_handle($multi, $ch);
-      $handles[$p] = $ch;
-    }
-    do {
-      curl_multi_exec($multi, $running);
-      if ($running) curl_multi_select($multi);
-    } while ($running > 0);
-
-    $batchNew = 0;
-    $batchShortPage = false;
-    foreach ($handles as $p => $ch) {
-      $body = curl_multi_getcontent($ch);
-      curl_multi_remove_handle($multi, $ch);
-      curl_close($ch);
-      if (!$body) continue;
-      $pj = json_decode($body, true);
-      $pList = $pj['deliveries'] ?? $pj['data'] ?? [];
-      if (!$pList) { $batchShortPage = true; continue; }
-      if (count($pList) < $limit) $batchShortPage = true;
-      foreach ($pList as $d) {
-        $key = $d['trackingNumber'] ?? $d['_id'] ?? null;
-        if ($key && isset($seen[$key])) continue;
-        if ($key) $seen[$key] = 1;
-        $rows[] = bosta_normalize_row($d, $conn);
-        $batchNew++;
-      }
-    }
-    curl_multi_close($multi);
-
-    // Bail when Bosta starts serving us nothing new — either every
-    // tracking number in the batch was already seen (the "last page
-    // on repeat" behavior) or one of the pages came back short, which
-    // marks the real end of the result set.
-    if ($batchNew === 0) {
-      $allDupBatches++;
-      if ($allDupBatches >= 1) break;
-    }
-    if ($batchShortPage && $batchNew === 0) break;
-    if ($total > 0 && count($rows) >= $total) break;
-  }
   return $rows;
 }
 
@@ -1028,93 +1045,6 @@ if ($action === 'refresh_all_fees') {
     'retry_after'      => $rateLimited ? max(30, $retryAfter) : 0,
     'sample_response'  => $sampleRaw,
     'sample_error'     => $sampleErr,
-  ]);
-}
-
-// POST /shipping.php?action=import_fees_csv[&brand_id=M]
-//   body: {"csv": "<raw CSV text of Bosta Wallet > Cash Cycles export>"}
-//
-// Bosta's bulk /deliveries/search API doesn't expose shipping fees, and
-// the per-delivery endpoint is rate-limited to a crawl. The merchant
-// dashboard's Wallet > Cash Cycles export, however, lists every closed
-// shipment with its exact "Bosta Fees" value. This endpoint parses that
-// CSV and bulk-updates shipping_orders.fees by tracking number — instant
-// and exactly matching the dashboard.
-if ($action === 'import_fees_csv') {
-  $body = json_decode(file_get_contents('php://input'), true);
-  $csv  = is_array($body) ? ($body['csv'] ?? '') : '';
-  if (!is_string($csv) || trim($csv) === '') err('Empty CSV body', 400);
-
-  // Strip UTF-8 BOM, normalize line endings.
-  $csv   = preg_replace('/^\xEF\xBB\xBF/', '', $csv);
-  $lines = preg_split('/\r\n|\r|\n/', $csv);
-  $lines = array_values(array_filter($lines, function($l){ return trim($l) !== ''; }));
-  if (count($lines) < 2) err('CSV has no data rows', 400);
-
-  // Arabic-Indic digits → ASCII, so fee/COD values parse regardless of
-  // the dashboard's locale.
-  $ar2en = function($s){
-    return strtr((string)$s, [
-      '٠'=>'0','١'=>'1','٢'=>'2','٣'=>'3','٤'=>'4',
-      '٥'=>'5','٦'=>'6','٧'=>'7','٨'=>'8','٩'=>'9',
-    ]);
-  };
-
-  $header = str_getcsv($lines[0]);
-  // Locate the tracking-number and Bosta-fees columns. Fee match is
-  // prioritized so a generic "fee" substring doesn't beat "bosta fees".
-  $tnIdx = -1; $feeIdx = -1; $feeRank = 99;
-  foreach ($header as $i => $h) {
-    $hl = strtolower(trim($h));
-    if ($tnIdx < 0 && (strpos($hl,'tracking') !== false || strpos($hl,'awb') !== false)) {
-      $tnIdx = $i;
-    }
-    $rank = -1;
-    if     (strpos($hl,'bosta fee') !== false)    $rank = 0;
-    elseif (strpos($hl,'shipping fee') !== false) $rank = 1;
-    elseif ($hl === 'fees' || $hl === 'fee')      $rank = 2;
-    elseif (strpos($hl,'fee') !== false)          $rank = 3;
-    if ($rank >= 0 && $rank < $feeRank) { $feeRank = $rank; $feeIdx = $i; }
-  }
-  if ($tnIdx < 0 || $feeIdx < 0) {
-    err('Could not find tracking-number / fees columns in the CSV header', 400, [
-      'headers' => $header,
-      'hint'    => 'Export from Bosta dashboard: Wallet → Cash Cycles → Export.',
-    ]);
-  }
-
-  $upd = $pdo->prepare(
-    "UPDATE shipping_orders
-        SET fees = ?, net = GREATEST(0, cod - ?)
-      WHERE LOWER(source) = 'bosta' AND order_id = ?"
-  );
-  $csvRows = 0; $parsed = 0; $skipped = 0; $updated = 0; $matched = 0;
-  $pdo->beginTransaction();
-  for ($i = 1; $i < count($lines); $i++) {
-    $r = str_getcsv($lines[$i]);
-    $csvRows++;
-    $tn  = isset($r[$tnIdx])  ? trim((string)$r[$tnIdx])  : '';
-    $raw = isset($r[$feeIdx]) ? trim((string)$r[$feeIdx]) : '';
-    // Keep digits, dot and minus only — drop currency text, commas,
-    // spaces. abs() because Bosta sometimes lists the fee as a negative
-    // deduction in the cycle.
-    $fee = abs((float)preg_replace('/[^0-9.\-]/', '', $ar2en($raw)));
-    if ($tn === '' || $fee <= 0) { $skipped++; continue; }
-    $parsed++;
-    $upd->execute([$fee, $fee, $tn]);
-    $rc = $upd->rowCount();
-    $updated += $rc;
-    if ($rc > 0) $matched++;
-  }
-  $pdo->commit();
-
-  send_json([
-    'csv_rows'     => $csvRows,
-    'parsed'       => $parsed,
-    'skipped'      => $skipped,
-    'db_updated'   => $updated,
-    'tracking_col' => $header[$tnIdx],
-    'fee_col'      => $header[$feeIdx],
   ]);
 }
 
