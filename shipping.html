@@ -1679,10 +1679,11 @@ function App(){
         // background enrichment from a fresh pull.
         !isConf&&selectedConnIds.some(function(id){var c=shippingConnectors.find(function(x){return x.id===id;});return c&&c.provider==='bosta';})&&
         React.createElement("button",{
-          onClick:function(){
+          onClick:function(ev){
             var bostaConns=selectedConnIds.map(function(id){return shippingConnectors.find(function(c){return c.id===id;});}).filter(function(c){return c&&c.provider==='bosta';});
             if(!bostaConns.length){alert("No Bosta connector selected.");return;}
-            var btn=this;var orig=btn.textContent;btn.textContent="Refreshing…";btn.disabled=true;
+            var btn=ev.currentTarget;var orig=btn.textContent;btn.textContent="Refreshing…";btn.disabled=true;
+            console.log("[refresh_all_fees] starting for", bostaConns.map(function(c){return c.name;}));
             var bid=window.getActiveBrandId?(window.getActiveBrandId()||0):0;
             var qs=bid>0?("&brand_id="+bid):"";
             Promise.all(bostaConns.map(function(c){
@@ -1696,7 +1697,7 @@ function App(){
                 return r.name+" → DB rows: "+x.rows_in_db+", with _id: "+x.rows_with_id+", fees got: "+x.fees_returned+" (nonzero: "+x.fees_nonzero+"), DB updated: "+x.db_updated;
               });
               alert("Refresh complete:\n\n"+lines.join("\n\n"));
-              console.log("[refresh_all_fees]",results);
+              console.log("[refresh_all_fees] results",results);
               if(typeof loadOrders==="function")loadOrders();
             }).finally(function(){btn.textContent=orig;btn.disabled=false;});
           },
