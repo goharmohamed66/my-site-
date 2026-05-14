@@ -1382,7 +1382,14 @@ function App(){
           //    so the DB matches the UI even mid-pull. Bosta's v2
           //    per-business endpoint takes tracking numbers (AWBs), so
           //    we key by order_id rather than the internal _id.
-          var ids = apiRows.map(function(r){ return r.order_id; }).filter(Boolean);
+          //
+          //    Only enrich orders that DON'T already have a fee. Fees
+          //    merged from the DB above are kept as-is, so enrichment is
+          //    cumulative: the first pull of a date range does the heavy
+          //    lifting, every later pull only fills the gaps, and once
+          //    the DB holds every fee a pull renders the KPIs instantly.
+          var ids = apiRows.filter(function(r){ return r.order_id && (!r.fees || r.fees<=0); })
+                           .map(function(r){ return r.order_id; });
           if (ids.length) {
             var CHUNK = 50;
             var idToRow = {};
