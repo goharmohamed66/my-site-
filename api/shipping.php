@@ -318,214 +318,108 @@ function bosta_make_handle($token, $since, $until, $page, $limit) {
   return $ch;
 }
 
-// Log into the Bosta merchant dashboard with email + password and
-// return the session token. The Wallet > Cash Cycles feed needs this
-// dashboard token — the public REST API key is rejected there (HTTP
-// 401, errorCode 1028). There's no refresh endpoint; on a later 401 we
-// just log in again. Login is plain email+password unless the account
-// has 2FA enabled (HTTP 206), which we surface as a clear error.
-function bosta_login($email, $password) {
-  $r = http_request('POST', 'https://app.bosta.co/api/v2/users/login',
-    ['Content-Type: application/json'],
-    ['email' => strtolower(trim($email)), 'password' => $password]
-  );
-  if ((int)$r['code'] === 206) {
-    err('This Bosta account has 2-Factor Authentication enabled, so it '
-      . 'cannot be logged in automatically. Disable 2FA for this account '
-      . 'on business.bosta.co, then try again.', 502);
-  }
-  if ($r['code'] >= 400 || !$r['body']) {
-    err('Bosta dashboard login failed (HTTP ' . $r['code'] . '). Check '
-      . 'the dashboard email / password on the connector.', 502,
-      ['detail' => substr($r['body'] ?: '', 0, 300)]);
-  }
-  $j = json_decode($r['body'], true);
-  $token = trim((string)($j['data']['token'] ?? $j['token'] ?? ''));
-  if ($token === '') {
-    err('Bosta login succeeded but returned no token.', 502,
-      ['detail' => substr($r['body'] ?: '', 0, 300)]);
-  }
-  // Return the token EXACTLY as Bosta issued it. The dashboard stores
-  // response.data.token verbatim in localStorage and sends it as-is on
-  // the Authorization header — Bearer prefix included if Bosta put one
-  // there. Stripping it (or adding one) makes /wallet/cycles reject the
-  // request with HTTP 401 / errorCode 1028.
-  return $token;
-}
-
-// Persist a freshly minted dashboard session token on the connector so
-// subsequent pulls reuse it instead of logging in every time.
-function bosta_cache_session_token($connId, $token) {
-  if (!$connId) return;
-  $pdo = db();
-  $st = $pdo->prepare("SELECT meta FROM connectors WHERE id = ?");
-  $st->execute([(int)$connId]);
-  $existing = $st->fetchColumn();
-  $meta = $existing ? (json_decode($existing, true) ?: []) : [];
-  $meta['session_token']    = $token;
-  $meta['session_token_at'] = time();
-  $up = $pdo->prepare("UPDATE connectors SET meta = ? WHERE id = ?");
-  $up->execute([json_encode($meta, JSON_UNESCAPED_UNICODE), (int)$connId]);
-}
-
-// Normalize one Bosta "Wallet > Cash Cycle" list item into our row
-// shape. A cash-cycle row is always a CLOSED shipment — Bosta only
-// books a shipment into a cycle once it's settled (delivered, or
-// returned-to-origin). The fee here (`bosta_fees`) is the exact figure
-// the merchant dashboard shows, so no enrichment is ever needed.
-function bosta_cycle_normalize_row($d, $conn = null) {
-  $fee = (float)($d['bosta_fees'] ?? $d['bostaFees'] ?? 0);
-  $cod = (float)($d['cod'] ?? $d['codAmount'] ?? 0);
-  $tn  = (string)($d['tracking_number'] ?? $d['trackingNumber'] ?? '');
-
-  // City — prefer the English drop-off name, fall through the variants.
-  $city = $d['dropoff_city_en'] ?? $d['dropoff_city'] ?? $d['dropoffCity']
-        ?? $d['pickup_city_en'] ?? $d['pickup_city'] ?? '';
-  if (is_array($city)) $city = $city['name'] ?? $city['nameEn'] ?? '';
-
-  // DELIVERED vs RETURNED — derive from the cycle item's type. An RTO /
-  // customer-return item is a return; everything else closed in a cycle
-  // is a successful delivery.
-  $type      = strtolower((string)($d['current_type'] ?? $d['type'] ?? ''));
-  $statusRaw = strtolower((string)($d['status'] ?? ''));
-  if (strpos($type, 'rto') !== false || strpos($type, 'return') !== false
-      || strpos($statusRaw, 'return') !== false) {
-    $status = 'RETURNED';
-  } else {
-    $status = 'DELIVERED';
-  }
-
-  // Settlement date for the trend chart. Fall back to the date-range
-  // bounds so the row always lands inside the user's selected window
-  // even if Bosta omits an explicit date on the item.
-  $date = null;
-  foreach (['depositedDate','deposited_date','depositedAt','cashCycleDate',
-            'date','updatedAt','createdAt','created_at'] as $k) {
-    if (!empty($d[$k])) {
-      $ts = strtotime((string)$d[$k]);
-      if ($ts) { $date = date('Y-m-d', $ts); break; }
-      if (preg_match('/\d{4}-\d{2}-\d{2}/', (string)$d[$k], $m)) { $date = $m[0]; break; }
-    }
-  }
-
-  return [
-    'order_id' => $tn,
-    'product'  => (string)($d['description'] ?? $d['product'] ?? ''),
-    'city'     => is_string($city) ? $city : '',
-    'status'   => $status,
-    'cod'      => $cod,
-    'fees'     => $fee,
-    'net'      => max(0, $cod - $fee),
-    'date'     => $date,
-    'source'   => 'Bosta',
-    'employee' => null,
-    'raw'      => $d,
-  ];
-}
-
-// Bosta fetch — pulls straight from the merchant dashboard's
-// "Wallet > Cash Cycles" feed (GET /api/v2/wallet/cycles). This is the
-// ONLY Bosta API path that returns shipping fees in bulk: the public
-// /deliveries/search endpoint omits fees entirely and the per-delivery
-// endpoint is rate-limited to a crawl. Cash Cycles lists every settled
-// shipment for the date range with its exact `bosta_fees`, so fees
-// arrive in one shot — no per-order enrichment, no rate-limit waiting.
 function fetch_bosta($conn, $since, $until) {
+  $token = $conn['token'] ?? '';
+  if (!$token) err('Bosta connector is missing the API key.');
+
+  // Give the request as much time as it needs — Hostinger's PHP cap is
+  // already covered by nginx's upstream timeout; this just stops PHP
+  // from killing the loop while we wait on Bosta.
   @set_time_limit(0);
   @ignore_user_abort(true);
 
-  $email = trim((string)($conn['consumer_key'] ?? ''));
-  $pass  = (string)($conn['consumer_secret'] ?? '');
+  $limit = 50;       // Bosta's /deliveries/search caps each page at 50.
+  $batch = 12;       // Pages fetched in parallel via cURL multi.
 
-  // The Wallet > Cash Cycles feed needs a dashboard SESSION token — the
-  // public REST API key is rejected there (HTTP 401, errorCode 1028).
-  // Resolve one in order:
-  //   1. a cached token on the connector (reused for 30 min)
-  //   2. a fresh login with the dashboard email + password
-  // There's deliberately NO fall-through to the connector's API key —
-  // that key never works here, and silently trying it just produces a
-  // confusing 401. If there's no login, fail loudly with instructions.
-  if ($email === '' || $pass === '') {
-    err('This Bosta connector has no dashboard login. Open Settings → '
-      . 'Shipping companies, edit the connector, and fill in BOTH the '
-      . '"Dashboard Email" and "Dashboard Password" — the same email & '
-      . 'password you use to sign in to business.bosta.co. The public '
-      . 'API key cannot read Wallet > Cash Cycles. (Tip: hard-refresh '
-      . 'the Settings page with Ctrl+Shift+R so the new fields show.)');
+  // Page 1 sequentially so we can detect when pagination naturally ends.
+  // Same camelCase param names as bosta_make_handle — see comment there
+  // for the gotcha with `page`/`limit`.
+  $r = http_request('POST', 'https://app.bosta.co/api/v0/deliveries/search',
+    ['Authorization: ' . $token, 'Content-Type: application/json'],
+    array_filter([
+      'pageLimit'       => $limit,
+      'pageNumber'      => 1,
+      'createdAtStart'  => $since ? $since . 'T00:00:00.000+02:00' : null,
+      'createdAtEnd'    => $until ? $until . 'T23:59:59.999+02:00' : null,
+    ], function($v){ return $v !== null; })
+  );
+  if ($r['code'] >= 400 || !$r['body']) err('Bosta API error', 502, ['detail' => substr($r['body'] ?: '', 0, 300)]);
+  $j = json_decode($r['body'], true);
+  $list = $j['deliveries'] ?? $j['data'] ?? [];
+
+  // Dedup by tracking number — Bosta's /deliveries/search will happily
+  // serve the LAST page over and over when you request pages past the
+  // real end of the result set, instead of returning empty. Without
+  // dedup we'd return tens of thousands of duplicate rows for a real
+  // ~3,000-row month and the page-1 `count` field doesn't always
+  // reflect the date-filtered total (observed in production).
+  $rows = [];
+  $seen = [];
+  foreach ($list as $d) {
+    $key = $d['trackingNumber'] ?? $d['_id'] ?? null;
+    if ($key && isset($seen[$key])) continue;
+    if ($key) $seen[$key] = 1;
+    $rows[] = bosta_normalize_row($d, $conn);
   }
 
-  $meta = is_array($conn['meta'] ?? null) ? $conn['meta']
-        : (is_string($conn['meta'] ?? null) ? (json_decode($conn['meta'], true) ?: []) : []);
-  $sessionToken = '';
-  $cachedAt = (int)($meta['session_token_at'] ?? 0);
-  if (!empty($meta['session_token']) && (time() - $cachedAt) < 1800) {
-    $sessionToken = $meta['session_token'];
+  // Page 1 came back short → we already have everything.
+  if (count($list) < $limit) return $rows;
+
+  $total = (int)($j['count'] ?? $j['totalCount'] ?? $j['total'] ?? 0);
+  $safetyPages = 400;  // hard ceiling regardless of what Bosta reports
+  $totalPages = $total > 0 ? min((int)ceil($total / $limit), $safetyPages) : $safetyPages;
+
+  // Pages 2..N in parallel batches. cURL multi keeps a small pool of
+  // HTTP requests in flight at once so a 3,000-row pull (60 pages)
+  // finishes in ~5 round-trip waves instead of 60 — the difference
+  // between "fits in nginx's 60s timeout" and a 504.
+  $allDupBatches = 0;
+  for ($start = 2; $start <= $totalPages; $start += $batch) {
+    $end = min($start + $batch - 1, $totalPages);
+    $multi = curl_multi_init();
+    $handles = [];
+    for ($p = $start; $p <= $end; $p++) {
+      $ch = bosta_make_handle($token, $since, $until, $p, $limit);
+      curl_multi_add_handle($multi, $ch);
+      $handles[$p] = $ch;
+    }
+    do {
+      curl_multi_exec($multi, $running);
+      if ($running) curl_multi_select($multi);
+    } while ($running > 0);
+
+    $batchNew = 0;
+    $batchShortPage = false;
+    foreach ($handles as $p => $ch) {
+      $body = curl_multi_getcontent($ch);
+      curl_multi_remove_handle($multi, $ch);
+      curl_close($ch);
+      if (!$body) continue;
+      $pj = json_decode($body, true);
+      $pList = $pj['deliveries'] ?? $pj['data'] ?? [];
+      if (!$pList) { $batchShortPage = true; continue; }
+      if (count($pList) < $limit) $batchShortPage = true;
+      foreach ($pList as $d) {
+        $key = $d['trackingNumber'] ?? $d['_id'] ?? null;
+        if ($key && isset($seen[$key])) continue;
+        if ($key) $seen[$key] = 1;
+        $rows[] = bosta_normalize_row($d, $conn);
+        $batchNew++;
+      }
+    }
+    curl_multi_close($multi);
+
+    // Bail when Bosta starts serving us nothing new — either every
+    // tracking number in the batch was already seen (the "last page
+    // on repeat" behavior) or one of the pages came back short, which
+    // marks the real end of the result set.
+    if ($batchNew === 0) {
+      $allDupBatches++;
+      if ($allDupBatches >= 1) break;
+    }
+    if ($batchShortPage && $batchNew === 0) break;
+    if ($total > 0 && count($rows) >= $total) break;
   }
-  if ($sessionToken === '') {
-    $sessionToken = bosta_login($email, $pass);
-    bosta_cache_session_token($conn['id'] ?? 0, $sessionToken);
-  }
-
-  $base     = 'https://app.bosta.co/api/v2/wallet/cycles';
-  $pageSize = 100;
-  $rows     = [];
-  $seen     = [];
-  $page     = 1;
-  $safetyPages  = 500;   // hard ceiling regardless of what Bosta reports
-  $reloginTried = false;
-
-  while ($page <= $safetyPages) {
-    $qs = http_build_query(array_filter([
-      'page'       => $page,
-      'pageSize'   => $pageSize,
-      'start_date' => $since ?: null,
-      'end_date'   => $until ?: null,
-    ], function ($v) { return $v !== null && $v !== ''; }));
-
-    $r = http_request('GET', $base . '?' . $qs,
-      ['Authorization: ' . $sessionToken, 'Content-Type: application/json']);
-
-    // Token expired (or the cached one went stale) — log in once more
-    // and retry the SAME page with the fresh token.
-    if (($r['code'] == 401 || $r['code'] == 403) && !$reloginTried) {
-      $reloginTried = true;
-      $sessionToken = bosta_login($email, $pass);
-      bosta_cache_session_token($conn['id'] ?? 0, $sessionToken);
-      continue;
-    }
-    if ($r['code'] == 401 || $r['code'] == 403) {
-      err('Bosta rejected the dashboard token (HTTP ' . $r['code'] . ') '
-        . 'even after a fresh re-login. Double-check the Dashboard Email '
-        . '/ Password on the connector, and make sure that Bosta account '
-        . 'has 2-Factor Authentication turned OFF.', 502,
-        ['detail' => substr($r['body'] ?: '', 0, 300)]);
-    }
-    if ($r['code'] >= 400 || !$r['body']) {
-      err('Bosta Wallet API error (HTTP ' . $r['code'] . ')', 502,
-        ['detail' => substr($r['body'] ?: '', 0, 300)]);
-    }
-
-    $j = json_decode($r['body'], true);
-    // Response shape: { total, list: [...] } — accept a few aliases.
-    $list = $j['list'] ?? $j['data'] ?? $j['cycles'] ?? [];
-    if (!is_array($list) || !$list) break;
-
-    $pageNew = 0;
-    foreach ($list as $d) {
-      $key = $d['tracking_number'] ?? $d['trackingNumber'] ?? null;
-      if ($key !== null && isset($seen[$key])) continue;   // guard repeats
-      if ($key !== null) $seen[$key] = 1;
-      $rows[] = bosta_cycle_normalize_row($d, $conn);
-      $pageNew++;
-    }
-
-    $total = (int)($j['total'] ?? $j['totalCount'] ?? $j['count'] ?? 0);
-    if ($pageNew === 0) break;                       // nothing new — stop
-    if ($total > 0 && count($rows) >= $total) break; // got everything
-    if (count($list) < $pageSize) break;             // short page = last
-    $page++;
-  }
-
   return $rows;
 }
 
@@ -865,12 +759,6 @@ if ($action === 'enrich_fees') {
   @set_time_limit(0);
   @ignore_user_abort(true);
 
-  // Switched to Bosta's v2 per-business endpoint
-  // (GET /api/v2/deliveries/business/{trackingNumber}) — it carries
-  // wallet.cashCycle.bosta_fees (the exact "Bosta Fees" amount shown
-  // in the merchant dashboard's Cash Cycle) and has more generous rate
-  // headroom in practice than the legacy v0 /deliveries/{id} route.
-  // The frontend now passes tracking numbers in `ids`.
   $fees = [];
   $rateLimitHits = 0;
   $batch = 10;
@@ -879,10 +767,10 @@ if ($action === 'enrich_fees') {
     $slice = array_slice($ids, $i, $batch);
     $multi = curl_multi_init();
     $handles = [];
-    foreach ($slice as $tn) {
-      $tn = (string)$tn;
-      if (!preg_match('/^[A-Za-z0-9_-]{1,40}$/', $tn)) continue;
-      $ch = curl_init('https://app.bosta.co/api/v2/deliveries/business/' . rawurlencode($tn));
+    foreach ($slice as $id) {
+      $id = (string)$id;
+      if (!preg_match('/^[A-Za-z0-9_-]{1,40}$/', $id)) continue;
+      $ch = curl_init('https://app.bosta.co/api/v0/deliveries/' . $id);
       curl_setopt_array($ch, [
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_TIMEOUT        => HTTP_TIMEOUT,
@@ -891,14 +779,14 @@ if ($action === 'enrich_fees') {
         CURLOPT_HTTPHEADER     => ['Authorization: ' . $token, 'Content-Type: application/json'],
       ]);
       curl_multi_add_handle($multi, $ch);
-      $handles[$tn] = $ch;
+      $handles[$id] = $ch;
     }
     do {
       curl_multi_exec($multi, $running);
       if ($running) curl_multi_select($multi);
     } while ($running > 0);
     $batchHadRateLimit = false; $batchRetryAfter = 0;
-    foreach ($handles as $tn => $ch) {
+    foreach ($handles as $id => $ch) {
       $body = curl_multi_getcontent($ch);
       $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
       curl_multi_remove_handle($multi, $ch);
@@ -912,23 +800,10 @@ if ($action === 'enrich_fees') {
       }
       if (!$body) continue;
       $j = json_decode($body, true);
-      if (!is_array($j)) continue;
-      $d = isset($j['data']) && is_array($j['data']) ? $j['data'] : $j;
-      // Prefer the cash-cycle "bosta_fees" — that's the exact amount
-      // shown in the merchant dashboard. The others are fallbacks for
-      // shipments not yet booked into a cycle.
-      if (isset($d['wallet']['cashCycle']['bosta_fees'])) {
-        $fees[$tn] = (float)$d['wallet']['cashCycle']['bosta_fees'];
-      } elseif (isset($d['wallet']['cashCycle']['shipping_fees'])) {
-        $fees[$tn] = (float)$d['wallet']['cashCycle']['shipping_fees'];
-      } elseif (isset($d['shipmentFees'])) {
-        $fees[$tn] = (float)$d['shipmentFees'];
-      } elseif (isset($d['priceAfterVat'])) {
-        $fees[$tn] = (float)$d['priceAfterVat'];
-      } elseif (isset($d['shippingFee'])) {
-        $fees[$tn] = (float)$d['shippingFee'];
-      } elseif (isset($d['priceBeforeVat'])) {
-        $fees[$tn] = (float)$d['priceBeforeVat'];
+      if (isset($j['shipmentFees'])) {
+        $fees[$id] = (float)$j['shipmentFees'];
+      } elseif (isset($j['wallet']['cashCycle']['shipping_fees'])) {
+        $fees[$id] = (float)$j['wallet']['cashCycle']['shipping_fees'];
       }
     }
     curl_multi_close($multi);
@@ -939,202 +814,6 @@ if ($action === 'enrich_fees') {
     if ($pauseMs > 0) usleep($pauseMs * 1000);
   }
   send_json(['fees' => $fees]);
-}
-
-// GET /shipping.php?action=debug_bosta&connector_id=N&tn=<trackingNumber>[&id=<_id>]
-//   Calls BOTH the v2 per-business endpoint and the v0 /deliveries/{id}
-//   endpoint so we can compare what each returns for the same shipment.
-//   The UI reads the result to confirm fees are reachable for this token.
-if ($action === 'debug_bosta') {
-  $cid = (int)($_GET['connector_id'] ?? 0);
-  $tn  = (string)($_GET['tn'] ?? $_GET['id'] ?? '');
-  if (!$cid || !$tn) err('connector_id and tn (tracking number) required');
-  if (!preg_match('/^[A-Za-z0-9_-]{1,40}$/', $tn)) err('Invalid tracking number');
-  $stmt = $pdo->prepare("SELECT * FROM connectors WHERE id = ? AND active = 1 AND type = 'shipping' LIMIT 1");
-  $stmt->execute([$cid]);
-  $conn = $stmt->fetch();
-  if (!$conn || $conn['provider'] !== 'bosta') err('Only Bosta supported here.', 400);
-  $token = $conn['token'] ?? '';
-  if (!$token) err('Bosta connector missing API key.');
-  $r2 = http_request('GET', 'https://app.bosta.co/api/v2/deliveries/business/' . rawurlencode($tn),
-    ['Authorization: ' . $token, 'Content-Type: application/json']);
-  $j2 = json_decode($r2['body'] ?: '{}', true);
-  $d2 = isset($j2['data']) && is_array($j2['data']) ? $j2['data'] : $j2;
-  send_json([
-    'v2' => [
-      'http_code'      => $r2['code'],
-      'top_keys'       => is_array($j2) ? array_keys($j2) : [],
-      'data_keys'      => is_array($d2) ? array_keys($d2) : [],
-      'fee_fields' => [
-        'wallet.cashCycle.bosta_fees'    => $d2['wallet']['cashCycle']['bosta_fees']    ?? null,
-        'wallet.cashCycle.shipping_fees' => $d2['wallet']['cashCycle']['shipping_fees'] ?? null,
-        'shipmentFees'                   => $d2['shipmentFees']                         ?? null,
-        'priceAfterVat'                  => $d2['priceAfterVat']                        ?? null,
-      ],
-      'raw'            => $j2,
-    ],
-  ]);
-}
-
-// POST /shipping.php?action=refresh_all_fees&connector_id=N[&brand_id=M]
-//   Walks every Bosta row in shipping_orders, extracts _id from the
-//   stored raw JSON, calls /deliveries/{id} in parallel batches, and
-//   UPDATEs fees+net+status in the DB synchronously. Returns counts
-//   so the caller can confirm the refresh actually populated values.
-if ($action === 'refresh_all_fees') {
-  $cid = (int)($_GET['connector_id'] ?? 0);
-  if (!$cid) err('connector_id required');
-  $bid = (int)($_GET['brand_id'] ?? 0);
-  $stmt = $pdo->prepare("SELECT * FROM connectors WHERE id = ? AND active = 1 AND type = 'shipping' LIMIT 1");
-  $stmt->execute([$cid]);
-  $conn = $stmt->fetch();
-  if (!$conn || $conn['provider'] !== 'bosta') err('Only Bosta supports fee refresh.', 400);
-  $token = $conn['token'] ?? '';
-  if (!$token) err('Bosta connector is missing the API key.');
-
-  @set_time_limit(0);
-  @ignore_user_abort(true);
-
-  // Pull every Bosta-sourced row we still need to enrich. We use the
-  // tracking number (order_id) as the lookup key — Bosta's v2
-  // per-business endpoint takes the AWB/tracking number, not the
-  // internal _id, and may have a higher rate-limit ceiling than the
-  // legacy v0 /deliveries/{id} route. fees IS NULL OR fees = 0 means
-  // "not enriched yet"; the SQL filter lets every retry resume where
-  // the last one stopped instead of redoing 2000+ resolved deliveries.
-  $sql = "SELECT id, order_id, raw, status FROM shipping_orders
-          WHERE LOWER(source) = 'bosta' AND (fees IS NULL OR fees = 0)";
-  $params = [];
-  if ($bid > 0) { $sql .= " AND brand_id = ?"; $params[] = $bid; }
-  $q = $pdo->prepare($sql);
-  $q->execute($params);
-  $rows = $q->fetchAll();
-
-  $idToOrder = []; $ids = [];
-  $missingId = 0;
-  foreach ($rows as $row) {
-    $tn  = trim((string)($row['order_id'] ?? ''));
-    $raw = $row['raw'] ? json_decode($row['raw'], true) : null;
-    // tracking number is a Bosta AWB like "20012345" — alphanumeric.
-    if ($tn === '' || !preg_match('/^[A-Za-z0-9_-]{1,40}$/', $tn)) { $missingId++; continue; }
-    $ids[] = $tn;
-    $cod = is_array($raw) && isset($raw['cod']) ? (float)$raw['cod'] : 0;
-    $idToOrder[$tn] = ['order_id' => $tn, 'cod' => $cod];
-  }
-
-  $totalRows  = count($rows);
-  $totalIds   = count($ids);
-  $fees       = [];
-  $batch      = 5;           // smaller batch — Bosta rate-limits aggressively
-  $pauseMs    = 250;         // 4 batches/sec ≈ 20 req/s — well under their cap
-  $sampleRaw  = null;        // first non-empty response we see (success diagnosis)
-  $sampleErr  = null;        // first failed response (auth / rate-limit diagnosis)
-  $httpCounts = [];          // status_code → count
-  $emptyBody  = 0;
-  $noFeeField = 0;           // 2xx response but no recognized fee field
-  $rateLimited  = false;
-  $retryAfter   = 0;
-  $processedIds = 0;
-
-  for ($i = 0; $i < $totalIds; $i += $batch) {
-    $slice = array_slice($ids, $i, $batch);
-    $multi = curl_multi_init();
-    $handles = [];
-    foreach ($slice as $tn) {
-      // v2 per-business endpoint: returns data.wallet.cashCycle.bosta_fees
-      // (the actual amount deducted under "Bosta Fees" in the dashboard
-      // Cash Cycle), keyed by tracking number rather than internal _id.
-      $ch = curl_init('https://app.bosta.co/api/v2/deliveries/business/' . rawurlencode($tn));
-      curl_setopt_array($ch, [
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_TIMEOUT        => HTTP_TIMEOUT,
-        CURLOPT_SSL_VERIFYPEER => true,
-        CURLOPT_FOLLOWLOCATION => true,
-        CURLOPT_HTTPHEADER     => ['Authorization: ' . $token, 'Content-Type: application/json'],
-      ]);
-      curl_multi_add_handle($multi, $ch);
-      $handles[$tn] = $ch;
-    }
-    do { curl_multi_exec($multi, $running); if ($running) curl_multi_select($multi); } while ($running > 0);
-    $batchRateLimited = false;
-    foreach ($handles as $tn => $ch) {
-      $body = curl_multi_getcontent($ch);
-      $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
-      curl_multi_remove_handle($multi, $ch);
-      curl_close($ch);
-      $httpCounts[$code] = ($httpCounts[$code] ?? 0) + 1;
-      if ($code === 429) {
-        $batchRateLimited = true;
-        $j = json_decode($body ?: '{}', true);
-        $ra = (int)($j['retryAfter'] ?? 0);
-        if ($ra > $retryAfter) $retryAfter = $ra;
-        if ($sampleErr === null) $sampleErr = ['id' => $tn, 'code' => $code, 'body' => substr((string)$body, 0, 400)];
-        continue;
-      }
-      if (!$body) { $emptyBody++; continue; }
-      $j = json_decode($body, true);
-      if ($code >= 400 && $sampleErr === null) {
-        $sampleErr = ['id' => $tn, 'code' => $code, 'body' => substr((string)$body, 0, 400)];
-      }
-      if (!is_array($j)) continue;
-      // v2 wraps the delivery in "data": {...}
-      $d = isset($j['data']) && is_array($j['data']) ? $j['data'] : $j;
-      if ($sampleRaw === null && $code < 400) {
-        $sampleRaw = ['id' => $tn, 'code' => $code,
-                      'top_keys' => array_keys($j),
-                      'data_keys' => is_array($d) ? array_keys($d) : [],
-                      'wallet_cashCycle' => $d['wallet']['cashCycle'] ?? null,
-                      'shipmentFees' => $d['shipmentFees'] ?? null,
-                      'priceAfterVat' => $d['priceAfterVat'] ?? null];
-      }
-      $matched = false;
-      // Priority: cash-cycle bosta_fees (what the dashboard shows) first,
-      // then per-delivery shipmentFees / priceAfterVat as fallback for
-      // shipments not yet booked into a cycle.
-      if (isset($d['wallet']['cashCycle']['bosta_fees']))     { $fees[$tn] = (float)$d['wallet']['cashCycle']['bosta_fees']; $matched = true; }
-      elseif (isset($d['wallet']['cashCycle']['shipping_fees'])) { $fees[$tn] = (float)$d['wallet']['cashCycle']['shipping_fees']; $matched = true; }
-      elseif (isset($d['shipmentFees']))                       { $fees[$tn] = (float)$d['shipmentFees']; $matched = true; }
-      elseif (isset($d['priceAfterVat']))                      { $fees[$tn] = (float)$d['priceAfterVat']; $matched = true; }
-      elseif (isset($d['shippingFee']))                        { $fees[$tn] = (float)$d['shippingFee']; $matched = true; }
-      elseif (isset($d['priceBeforeVat']))                     { $fees[$tn] = (float)$d['priceBeforeVat']; $matched = true; }
-      if (!$matched && $code < 400) $noFeeField++;
-    }
-    curl_multi_close($multi);
-    $processedIds = $i + count($slice);
-    if ($batchRateLimited) { $rateLimited = true; break; }
-    if ($pauseMs > 0) usleep($pauseMs * 1000);
-  }
-
-  // Persist: UPDATE fees + net by (source, order_id). source matched
-  // case-insensitively above so use the same predicate here.
-  $upd = $pdo->prepare("UPDATE shipping_orders SET fees = ?, net = ?
-                        WHERE LOWER(source) = 'bosta' AND order_id = ?");
-  $updated = 0; $withFees = 0;
-  foreach ($fees as $tn => $fee) {
-    $meta = $idToOrder[$tn] ?? null;
-    if (!$meta || !$meta['order_id']) continue;
-    $cod = (float)$meta['cod'];
-    $net = max(0, $cod - (float)$fee);
-    $upd->execute([(float)$fee, $net, $meta['order_id']]);
-    $updated += $upd->rowCount();
-    if ($fee > 0) $withFees++;
-  }
-  send_json([
-    'rows_in_db'       => $totalRows,
-    'rows_with_id'     => $totalIds,
-    'rows_missing_id'  => $missingId,
-    'processed_ids'    => $processedIds,
-    'fees_returned'    => count($fees),
-    'fees_nonzero'     => $withFees,
-    'db_updated'       => $updated,
-    'http_status'      => $httpCounts,
-    'empty_body'       => $emptyBody,
-    'ok_but_no_fee'    => $noFeeField,
-    'rate_limited'     => $rateLimited,
-    'retry_after'      => $rateLimited ? max(30, $retryAfter) : 0,
-    'sample_response'  => $sampleRaw,
-    'sample_error'     => $sampleErr,
-  ]);
 }
 
 if ($action === 'fetch') {

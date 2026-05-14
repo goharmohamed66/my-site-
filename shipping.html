@@ -327,31 +327,10 @@ function getPrev(from,to){if(!from||!to)return{from:null,to:null};var ms=to-from
 function chPct(c,p){if(!p)return null;var d=c-p,pv=(d/p)*100;return{diff:d,pct:+pv.toFixed(1),up:d>=0};}
 function useStats(rows){
   return useMemo(function(){
-    // Both KPIs use TOTAL closed fees (delivered + returned-to-origin),
-    // matching Bosta dashboard's "Wallet > Cash Cycle" total of 68574
-    // EGP across 1131 closed orders (873 delivered + 258 returned) in
-    // the user's reference window.
-    //   avgSC = closedFees / (delivered + returned)   ← portfolio avg
-    //   delSC = closedFees / delivered                ← cost per
-    //                                                   successful order
-    // delSC > avgSC by design: it loads RTO shipping costs onto the
-    // orders that actually generated revenue.
-    var del=0,ret=0,cod=0,net=0,fees=0,bc=0,
-        delFees=0,retFees=0;
-    rows.forEach(function(r){
-      var f=r.fees||0;
-      if(r.st===DEL){del++;cod+=r.cod;delFees+=f;}
-      else if(r.st===RET){ret++;retFees+=f;}
-      net+=r.net;
-      fees+=f;
-      if(f>0)bc++;
-    });
+    var del=0,ret=0,cod=0,net=0,fees=0,bc=0;
+    rows.forEach(function(r){if(r.st===DEL){del++;cod+=r.cod;}else if(r.st===RET)ret++;net+=r.net;fees+=r.fees;if(r.fees>0)bc++;});
     var t=rows.length;
-    var closedFees=delFees+retFees, closedCount=del+ret;
-    return{t:t,del:del,ret:ret,cod:cod,net:net,fees:fees,
-      dr:drPct(del,ret),rr:pct(ret,t),
-      delSC:del?Math.round(closedFees/del):0,
-      avgSC:closedCount?Math.round(closedFees/closedCount):0};
+    return{t:t,del:del,ret:ret,cod:cod,net:net,fees:fees,dr:drPct(del,ret),rr:pct(ret,t),delSC:del?Math.round(fees/del):0,avgSC:bc?Math.round(fees/bc):0};
   },[rows]);
 }
 function useProds(rows){
@@ -390,15 +369,9 @@ function useTrend(rows,mode){
       if(mode==="month"){var y=d.getUTCFullYear(),mo=String(d.getUTCMonth()+1).padStart(2,"0");k=y+"-"+mo;lbl=k;}
       else if(mode==="day"){k=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");lbl=fmtDay(d);}
       else{var mon=getWeekMon(d),sun=new Date(mon);sun.setDate(mon.getDate()+6);k=mon.getFullYear()+"-"+String(mon.getMonth()+1).padStart(2,"0")+"-"+String(mon.getDate()).padStart(2,"0");lbl=fmtDay(mon)+" - "+fmtDay(sun);}
-      if(!m[k])m[k]={p:k,label:lbl,del:0,ret:0,t:0,fees:0,bc:0,delFees:0,retFees:0};
-      var f=r.fees||0;
-      m[k].t++;
-      if(r.st===DEL){m[k].del++;m[k].delFees+=f;}
-      else if(r.st===RET){m[k].ret++;m[k].retFees+=f;}
-      m[k].fees+=f;
-      if(f>0)m[k].bc++;
+      if(!m[k])m[k]={p:k,label:lbl,del:0,ret:0,t:0,fees:0,bc:0};m[k].t++;if(r.st===DEL)m[k].del++;else if(r.st===RET)m[k].ret++;m[k].fees+=r.fees||0;if(r.fees>0)m[k].bc++;
     });
-    return Object.values(m).sort(function(a,b){return a.p.localeCompare(b.p);}).map(function(x){var closedFees=x.delFees+x.retFees,closedCount=x.del+x.ret;return Object.assign({},x,{dr:drPct(x.del,x.ret),delSC:x.del?Math.round(closedFees/x.del):0,avgSC:closedCount?Math.round(closedFees/closedCount):0});});
+    return Object.values(m).sort(function(a,b){return a.p.localeCompare(b.p);}).map(function(x){return Object.assign({},x,{dr:drPct(x.del,x.ret),delSC:x.del?Math.round(x.fees/x.del):0,avgSC:x.bc?Math.round(x.fees/x.bc):0});});
   },[rows,mode]);
 }
 function useSort(col,dir){
@@ -854,25 +827,9 @@ function CompareTab(props){
   var _hvS=useState(null);var hovS=_hvS[0],setHovS=_hvS[1];
   var rows=props.rows;
   var companies=useMemo(function(){return Array.from(new Set(rows.map(function(r){return r.source;}))).sort();},[rows]);
-  var cStats=useMemo(function(){
-    var m={};
-    companies.forEach(function(c){m[c]={del:0,ret:0,t:0,fees:0,bc:0,delFees:0,retFees:0};});
-    rows.forEach(function(r){
-      if(!m[r.source])return;
-      var f=r.fees||0;
-      m[r.source].t++;
-      m[r.source].fees+=f;
-      if(f>0)m[r.source].bc++;
-      if(r.st===DEL){m[r.source].del++;m[r.source].delFees+=f;}
-      else if(r.st===RET){m[r.source].ret++;m[r.source].retFees+=f;}
-    });
-    return m;
-  },[rows,companies]);
+  var cStats=useMemo(function(){var m={};companies.forEach(function(c){m[c]={del:0,ret:0,t:0,fees:0};});rows.forEach(function(r){if(m[r.source]){m[r.source].t++;m[r.source].fees+=r.fees||0;if(r.st===DEL)m[r.source].del++;else if(r.st===RET)m[r.source].ret++;}});return m;},[rows,companies]);
   var _cs=useSort("t");var cs=_cs[0],cgo=_cs[1];
-  // avgSC = closedFees / (delivered + returned) — portfolio average.
-  // delSC = closedFees / delivered — true cost per successful delivery,
-  // RTO shipping costs spread across delivered orders.
-  var cRows=companies.map(function(c){var st=cStats[c],dr=drPct(st.del,st.ret);var closedFees=st.delFees+st.retFees,closedCount=st.del+st.ret;return{c:c,st:st,dr:dr,avgSC:closedCount?Math.round(closedFees/closedCount):0,delSC:st.del?Math.round(closedFees/st.del):0};});
+  var cRows=companies.map(function(c){var st=cStats[c],dr=drPct(st.del,st.ret);return{c:c,st:st,dr:dr,avgSC:st.t?Math.round(st.fees/st.t):0,delSC:st.del?Math.round(st.fees/st.del):0};});
   var crMn=Math.min.apply(null,cRows.map(function(r){return r.dr;})),crMx=Math.max.apply(null,cRows.map(function(r){return r.dr;}));
   var sCR=useMemo(function(){return[].concat(cRows).sort(function(a,b){var col=cs.col,dir=cs.dir==="asc"?1:-1;if(col==="c")return dir*a.c.localeCompare(b.c);if(col==="t")return dir*(a.st.t-b.st.t);if(col==="del")return dir*(a.st.del-b.st.del);if(col==="ret")return dir*(a.st.ret-b.st.ret);if(col==="avgSC")return dir*(a.avgSC-b.avgSC);if(col==="delSC")return dir*(a.delSC-b.delSC);if(col==="dr")return dir*(a.dr-b.dr);return 0;});},[cRows,cs]);
   if(companies.length===0)return React.createElement("div",{style:{color:LGRAY,padding:40,textAlign:"center"}},"No data available");
@@ -1312,36 +1269,10 @@ function App(){
       // Discard if Clear All ran while we were in flight.
       if(myEpoch!==fetchEpoch.current)return;
       var apiRows=res.rows||[];
+      var rows=apiRows.map(apiRowToRow);
       var provName=(SHIP_PROVIDERS[conn.provider]||{}).name||conn.provider;
       setDs(function(prev){
-        // Bosta's search endpoint returns NO fees, so a fresh pull would
-        // flash the KPIs to 0 until the background enrichment finishes.
-        // Carry fees forward by order_id from whatever's already loaded
-        // (the DB dataset, or a previous pull of this connector) and
-        // write them onto apiRows so the enrichment + final re-render
-        // build on the merged values.
-        var oldFees={};
-        prev.forEach(function(d){
-          (d.rows||[]).forEach(function(r){
-            if(r.fees>0 && r.orderId && !oldFees[r.orderId]) oldFees[r.orderId]=r.fees;
-          });
-        });
-        apiRows.forEach(function(r){
-          if((!r.fees||r.fees<=0) && oldFees[r.order_id]){
-            r.fees=oldFees[r.order_id];
-            r.net=Math.max(0,(r.cod||0)-r.fees);
-          }
-        });
-        var rows=apiRows.map(apiRowToRow);
-        // Drop the prior pull of THIS connector, and also drop any
-        // DB-loaded dataset for the same provider — otherwise the
-        // freshly pulled rows double-count against the DB copy until
-        // the next loadOrders() collapses everything back.
-        var filtered=prev.filter(function(d){
-          if(d.connectorId===conn.id) return false;
-          if(!d.connectorId && d.company===provName) return false;
-          return true;
-        });
+        var filtered=prev.filter(function(d){return d.connectorId!==conn.id;});
         return filtered.concat([{
           name:"API · "+conn.name+" ("+provName+")",
           company:provName,
@@ -1367,13 +1298,65 @@ function App(){
       if (!apiRows.length) {
         // Nothing to persist or enrich.
       } else {
-        // Persist with updateFees=true so existing rows get fees/net/
-        // status refreshed in the DB on every sync. Every carrier —
-        // Bosta included — now returns fees in its bulk response
-        // (Bosta via the Wallet > Cash Cycles feed, see fetch_bosta in
-        // shipping.php), so the data is complete on the first render.
-        // No per-delivery enrichment pass, no rate-limit waiting.
-        doPersist(apiRows, true);
+        // 1) Persist immediately — Bosta rows go in with fees=0, others
+        //    already have fees from the bulk response.
+        doPersist(apiRows, false);
+        if (conn.provider === 'bosta') {
+          // 2) Background fee enrichment for Bosta. Each chunk's fees
+          //    merged into apiRows AND pushed to /upload.php?update_fees=1
+          //    so the DB matches the UI even mid-pull.
+          var ids = apiRows.map(function(r){ return r.raw && r.raw._id; }).filter(Boolean);
+          if (ids.length) {
+            var CHUNK = 50;
+            var idToRow = {};
+            apiRows.forEach(function(r){ if (r.raw && r.raw._id) idToRow[r.raw._id] = r; });
+            var applyFees = function(fees){
+              var chunkRows = [];
+              Object.keys(fees).forEach(function(id){
+                var row = idToRow[id]; if (!row) return;
+                row.fees = parseFloat(fees[id]) || 0;
+                row.net  = Math.max(0, (row.cod || 0) - row.fees);
+                chunkRows.push(row);
+              });
+              setDs(function(prev){
+                return prev.map(function(d){
+                  if (d.connectorId !== conn.id) return d;
+                  return Object.assign({}, d, { rows: apiRows.map(apiRowToRow) });
+                });
+              });
+              if (chunkRows.length) doPersist(chunkRows, true);
+            };
+            var enrichOne = function(chunk){
+              return apiFetch("/shipping.php?action=enrich_fees&connector_id="+conn.id,
+                { method: "POST", body: JSON.stringify({ ids: chunk }) }
+              ).then(function(res){
+                var fees = (res && res.fees) || {};
+                applyFees(fees);
+                if (res && res.rate_limited) {
+                  var wait = Math.max(60, (res.retry_after || 60)) * 1000;
+                  console.log("[carrier-sync] "+conn.name+" → rate-limited, sleeping "+(wait/1000)+"s");
+                  return new Promise(function(rs){ setTimeout(rs, wait); }).then(function(){
+                    var done = new Set(Object.keys(fees));
+                    var leftover = chunk.filter(function(id){ return !done.has(id); });
+                    if (leftover.length) return enrichOne(leftover);
+                  });
+                }
+              }).catch(function(err){
+                console.error("[carrier-sync] "+conn.name+" enrich chunk failed:", err);
+              });
+            };
+            var chunks = [];
+            for (var i = 0; i < ids.length; i += CHUNK) chunks.push(ids.slice(i, i + CHUNK));
+            console.log("[carrier-sync] "+conn.name+" → enriching "+ids.length+" deliveries in "+chunks.length+" chunks…");
+            var pe = Promise.resolve();
+            chunks.forEach(function(c){ pe = pe.then(function(){ return enrichOne(c); }); });
+            pe.then(function(){
+              if (myEpoch !== fetchEpoch.current) return;
+              console.log("[carrier-sync] "+conn.name+" → enriched "+ids.length+" deliveries with shipmentFees");
+              if (typeof loadOrders === "function") loadOrders();
+            });
+          }
+        }
       }
     }).catch(function(err){
       if(myEpoch!==fetchEpoch.current)return;

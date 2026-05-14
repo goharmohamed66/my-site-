@@ -96,25 +96,11 @@ $stmt = $pdo->prepare("INSERT INTO shipping_orders
   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
 
 // update_fees=1 flips this from "skip duplicates" to "if the row
-// already exists, refresh its status (and fees/net when the incoming
-// row carries a non-zero fee) from the incoming data". Used by:
-//   - Bosta's background fee enrichment, so the DB catches up with
-//     per-delivery shipmentFees values fetched after the initial pull.
-//   - Every carrier sync, so statuses (Delivered / Returned / etc.)
-//     track Bosta/JT/etc. as orders progress instead of being frozen
-//     at first-seen status.
-// Smart fee update: status is overwritten unconditionally; fees+net are
-// only overwritten when the incoming fees > 0, so a status refresh
-// (initial pull, fees not yet enriched) doesn't wipe values already
-// populated by the enrichment background job.
+// already exists, refresh its fees/net/status from the incoming data".
+// Used by Bosta's background fee enrichment so the DB catches up with
+// the per-delivery shipmentFees values fetched after the initial pull.
 $updateMode = !empty($_GET['update_fees']);
-$updateStmt = $pdo->prepare(
-  "UPDATE shipping_orders SET
-     fees   = CASE WHEN ? > 0 THEN ? ELSE fees END,
-     net    = CASE WHEN ? > 0 THEN ? ELSE net  END,
-     status = ?
-   WHERE source = ? AND order_id = ?"
-);
+$updateStmt = $pdo->prepare("UPDATE shipping_orders SET fees = ?, net = ?, status = ? WHERE source = ? AND order_id = ?");
 
 $inserted = 0; $updated = 0; $errors = []; $skippedDup = 0;
 foreach ($body as $i => $r) {
@@ -129,12 +115,10 @@ foreach ($body as $i => $r) {
     $src = isset($r['source'])   ? trim((string)$r['source'])   : '';
     if ($wb !== '' && isset($existingWb[$wb])) {
       if ($updateMode && $oid !== '' && $src !== '') {
-        $fee = isset($r['fees']) ? (float)$r['fees'] : 0;
-        $net = isset($r['net'])  ? (float)$r['net']  : 0;
         $updateStmt->execute([
-          $fee, $fee,
-          $net, $net,
-          isset($r['status']) ? (string)$r['status'] : '',
+          isset($r['fees'])  ? (float)$r['fees']  : 0,
+          isset($r['net'])   ? (float)$r['net']   : 0,
+          isset($r['status'])? (string)$r['status'] : '',
           $src, $oid,
         ]);
         $updated++;
@@ -148,12 +132,10 @@ foreach ($body as $i => $r) {
       $k = strtolower($src) . '|' . $oid;
       if (isset($existingKey[$k])) {
         if ($updateMode) {
-          $fee = isset($r['fees']) ? (float)$r['fees'] : 0;
-          $net = isset($r['net'])  ? (float)$r['net']  : 0;
           $updateStmt->execute([
-            $fee, $fee,
-            $net, $net,
-            isset($r['status']) ? (string)$r['status'] : '',
+            isset($r['fees'])  ? (float)$r['fees']  : 0,
+            isset($r['net'])   ? (float)$r['net']   : 0,
+            isset($r['status'])? (string)$r['status'] : '',
             $src, $oid,
           ]);
           $updated++;
