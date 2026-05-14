@@ -800,10 +800,19 @@ if ($action === 'enrich_fees') {
       }
       if (!$body) continue;
       $j = json_decode($body, true);
-      if (isset($j['shipmentFees'])) {
+      // Wallet → Cash Cycle → Bosta Fees is the authoritative source —
+      // it's what Bosta actually deducts from the merchant for the
+      // shipment, whether the order ended up Delivered or Returned.
+      // shipmentFees / priceAfterVat are kept as fallbacks for the rare
+      // shipment that doesn't have a cash-cycle entry yet (e.g. very
+      // fresh orders Bosta hasn't booked into a cycle).
+      $wcc = $j['wallet']['cashCycle']['shipping_fees'] ?? null;
+      if ($wcc !== null && $wcc !== '') {
+        $fees[$id] = (float)$wcc;
+      } elseif (isset($j['shipmentFees'])) {
         $fees[$id] = (float)$j['shipmentFees'];
-      } elseif (isset($j['wallet']['cashCycle']['shipping_fees'])) {
-        $fees[$id] = (float)$j['wallet']['cashCycle']['shipping_fees'];
+      } elseif (isset($j['priceAfterVat'])) {
+        $fees[$id] = (float)$j['priceAfterVat'];
       }
     }
     curl_multi_close($multi);
