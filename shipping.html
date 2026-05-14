@@ -1312,10 +1312,36 @@ function App(){
       // Discard if Clear All ran while we were in flight.
       if(myEpoch!==fetchEpoch.current)return;
       var apiRows=res.rows||[];
-      var rows=apiRows.map(apiRowToRow);
       var provName=(SHIP_PROVIDERS[conn.provider]||{}).name||conn.provider;
       setDs(function(prev){
-        var filtered=prev.filter(function(d){return d.connectorId!==conn.id;});
+        // Bosta's search endpoint returns NO fees, so a fresh pull would
+        // flash the KPIs to 0 until the background enrichment finishes.
+        // Carry fees forward by order_id from whatever's already loaded
+        // (the DB dataset, or a previous pull of this connector) and
+        // write them onto apiRows so the enrichment + final re-render
+        // build on the merged values.
+        var oldFees={};
+        prev.forEach(function(d){
+          (d.rows||[]).forEach(function(r){
+            if(r.fees>0 && r.orderId && !oldFees[r.orderId]) oldFees[r.orderId]=r.fees;
+          });
+        });
+        apiRows.forEach(function(r){
+          if((!r.fees||r.fees<=0) && oldFees[r.order_id]){
+            r.fees=oldFees[r.order_id];
+            r.net=Math.max(0,(r.cod||0)-r.fees);
+          }
+        });
+        var rows=apiRows.map(apiRowToRow);
+        // Drop the prior pull of THIS connector, and also drop any
+        // DB-loaded dataset for the same provider — otherwise the
+        // freshly pulled rows double-count against the DB copy until
+        // the next loadOrders() collapses everything back.
+        var filtered=prev.filter(function(d){
+          if(d.connectorId===conn.id) return false;
+          if(!d.connectorId && d.company===provName) return false;
+          return true;
+        });
         return filtered.concat([{
           name:"API · "+conn.name+" ("+provName+")",
           company:provName,
