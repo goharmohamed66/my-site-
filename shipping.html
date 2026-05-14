@@ -327,30 +327,31 @@ function getPrev(from,to){if(!from||!to)return{from:null,to:null};var ms=to-from
 function chPct(c,p){if(!p)return null;var d=c-p,pv=(d/p)*100;return{diff:d,pct:+pv.toFixed(1),up:d>=0};}
 function useStats(rows){
   return useMemo(function(){
-    // Avg Shipping Cost matches Bosta's "Wallet > Cash Cycle" view:
-    // it counts only shipments Bosta has CLOSED a cash cycle on —
-    // i.e. delivered + returned-to-origin. Orders still moving
-    // (Received at warehouse, Route assigned, In transit, Exception,
-    // etc.) carry a fee on the API but Bosta hasn't booked them into
-    // a cycle yet, so the dashboard excludes them and so do we.
-    //   avgSC = (delivered_fees + returned_fees) / (delivered + returned with fee > 0)
-    //   delSC = delivered_fees / delivered_with_fee  (delivered only)
+    // Both KPIs use TOTAL closed fees (delivered + returned-to-origin),
+    // matching Bosta dashboard's "Wallet > Cash Cycle" total of 68574
+    // EGP across 1131 closed orders (873 delivered + 258 returned) in
+    // the user's reference window.
+    //   avgSC = closedFees / (delivered + returned)   ← portfolio avg
+    //   delSC = closedFees / delivered                ← cost per
+    //                                                   successful order
+    // delSC > avgSC by design: it loads RTO shipping costs onto the
+    // orders that actually generated revenue.
     var del=0,ret=0,cod=0,net=0,fees=0,bc=0,
-        delFees=0,delBc=0,retFees=0,retBc=0;
+        delFees=0,retFees=0;
     rows.forEach(function(r){
       var f=r.fees||0;
-      if(r.st===DEL){del++;cod+=r.cod;delFees+=f;if(f>0)delBc++;}
-      else if(r.st===RET){ret++;retFees+=f;if(f>0)retBc++;}
+      if(r.st===DEL){del++;cod+=r.cod;delFees+=f;}
+      else if(r.st===RET){ret++;retFees+=f;}
       net+=r.net;
       fees+=f;
       if(f>0)bc++;
     });
     var t=rows.length;
-    var closedFees=delFees+retFees, closedBc=delBc+retBc;
+    var closedFees=delFees+retFees, closedCount=del+ret;
     return{t:t,del:del,ret:ret,cod:cod,net:net,fees:fees,
       dr:drPct(del,ret),rr:pct(ret,t),
-      delSC:delBc?Math.round(delFees/delBc):0,
-      avgSC:closedBc?Math.round(closedFees/closedBc):0};
+      delSC:del?Math.round(closedFees/del):0,
+      avgSC:closedCount?Math.round(closedFees/closedCount):0};
   },[rows]);
 }
 function useProds(rows){
@@ -389,15 +390,15 @@ function useTrend(rows,mode){
       if(mode==="month"){var y=d.getUTCFullYear(),mo=String(d.getUTCMonth()+1).padStart(2,"0");k=y+"-"+mo;lbl=k;}
       else if(mode==="day"){k=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");lbl=fmtDay(d);}
       else{var mon=getWeekMon(d),sun=new Date(mon);sun.setDate(mon.getDate()+6);k=mon.getFullYear()+"-"+String(mon.getMonth()+1).padStart(2,"0")+"-"+String(mon.getDate()).padStart(2,"0");lbl=fmtDay(mon)+" - "+fmtDay(sun);}
-      if(!m[k])m[k]={p:k,label:lbl,del:0,ret:0,t:0,fees:0,bc:0,delFees:0,delBc:0,retFees:0,retBc:0};
+      if(!m[k])m[k]={p:k,label:lbl,del:0,ret:0,t:0,fees:0,bc:0,delFees:0,retFees:0};
       var f=r.fees||0;
       m[k].t++;
-      if(r.st===DEL){m[k].del++;m[k].delFees+=f;if(f>0)m[k].delBc++;}
-      else if(r.st===RET){m[k].ret++;m[k].retFees+=f;if(f>0)m[k].retBc++;}
+      if(r.st===DEL){m[k].del++;m[k].delFees+=f;}
+      else if(r.st===RET){m[k].ret++;m[k].retFees+=f;}
       m[k].fees+=f;
       if(f>0)m[k].bc++;
     });
-    return Object.values(m).sort(function(a,b){return a.p.localeCompare(b.p);}).map(function(x){var closedBc=x.delBc+x.retBc,closedFees=x.delFees+x.retFees;return Object.assign({},x,{dr:drPct(x.del,x.ret),delSC:x.delBc?Math.round(x.delFees/x.delBc):0,avgSC:closedBc?Math.round(closedFees/closedBc):0});});
+    return Object.values(m).sort(function(a,b){return a.p.localeCompare(b.p);}).map(function(x){var closedFees=x.delFees+x.retFees,closedCount=x.del+x.ret;return Object.assign({},x,{dr:drPct(x.del,x.ret),delSC:x.del?Math.round(closedFees/x.del):0,avgSC:closedCount?Math.round(closedFees/closedCount):0});});
   },[rows,mode]);
 }
 function useSort(col,dir){
@@ -855,24 +856,23 @@ function CompareTab(props){
   var companies=useMemo(function(){return Array.from(new Set(rows.map(function(r){return r.source;}))).sort();},[rows]);
   var cStats=useMemo(function(){
     var m={};
-    companies.forEach(function(c){m[c]={del:0,ret:0,t:0,fees:0,bc:0,delFees:0,delBc:0,retFees:0,retBc:0};});
+    companies.forEach(function(c){m[c]={del:0,ret:0,t:0,fees:0,bc:0,delFees:0,retFees:0};});
     rows.forEach(function(r){
       if(!m[r.source])return;
       var f=r.fees||0;
       m[r.source].t++;
       m[r.source].fees+=f;
       if(f>0)m[r.source].bc++;
-      if(r.st===DEL){m[r.source].del++;m[r.source].delFees+=f;if(f>0)m[r.source].delBc++;}
-      else if(r.st===RET){m[r.source].ret++;m[r.source].retFees+=f;if(f>0)m[r.source].retBc++;}
+      if(r.st===DEL){m[r.source].del++;m[r.source].delFees+=f;}
+      else if(r.st===RET){m[r.source].ret++;m[r.source].retFees+=f;}
     });
     return m;
   },[rows,companies]);
   var _cs=useSort("t");var cs=_cs[0],cgo=_cs[1];
-  // avgSC: avg fee across closed shipments (delivered + returned).
-  // delSC: avg fee across delivered shipments only.
-  // Matches Bosta dashboard's Cash Cycle scope — pending/in-transit
-  // orders carry an API fee but aren't booked into a cycle yet.
-  var cRows=companies.map(function(c){var st=cStats[c],dr=drPct(st.del,st.ret);var closedBc=st.delBc+st.retBc,closedFees=st.delFees+st.retFees;return{c:c,st:st,dr:dr,avgSC:closedBc?Math.round(closedFees/closedBc):0,delSC:st.delBc?Math.round(st.delFees/st.delBc):0};});
+  // avgSC = closedFees / (delivered + returned) — portfolio average.
+  // delSC = closedFees / delivered — true cost per successful delivery,
+  // RTO shipping costs spread across delivered orders.
+  var cRows=companies.map(function(c){var st=cStats[c],dr=drPct(st.del,st.ret);var closedFees=st.delFees+st.retFees,closedCount=st.del+st.ret;return{c:c,st:st,dr:dr,avgSC:closedCount?Math.round(closedFees/closedCount):0,delSC:st.del?Math.round(closedFees/st.del):0};});
   var crMn=Math.min.apply(null,cRows.map(function(r){return r.dr;})),crMx=Math.max.apply(null,cRows.map(function(r){return r.dr;}));
   var sCR=useMemo(function(){return[].concat(cRows).sort(function(a,b){var col=cs.col,dir=cs.dir==="asc"?1:-1;if(col==="c")return dir*a.c.localeCompare(b.c);if(col==="t")return dir*(a.st.t-b.st.t);if(col==="del")return dir*(a.st.del-b.st.del);if(col==="ret")return dir*(a.st.ret-b.st.ret);if(col==="avgSC")return dir*(a.avgSC-b.avgSC);if(col==="delSC")return dir*(a.delSC-b.delSC);if(col==="dr")return dir*(a.dr-b.dr);return 0;});},[cRows,cs]);
   if(companies.length===0)return React.createElement("div",{style:{color:LGRAY,padding:40,textAlign:"center"}},"No data available");
