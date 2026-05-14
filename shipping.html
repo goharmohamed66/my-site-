@@ -1298,9 +1298,15 @@ function App(){
       if (!apiRows.length) {
         // Nothing to persist or enrich.
       } else {
-        // 1) Persist immediately — Bosta rows go in with fees=0, others
-        //    already have fees from the bulk response.
-        doPersist(apiRows, false);
+        // 1) Persist immediately. Pass updateFees=true so existing rows
+        //    get their STATUS refreshed (Delivered/Returned/etc. tracks
+        //    the carrier in every sync). The update SQL only overwrites
+        //    fees+net when the incoming fee > 0, so the initial Bosta
+        //    payload (fees=0 until enrichment) doesn't wipe values the
+        //    background enrichment already populated. Other carriers
+        //    return fees in the bulk response, so for them this path
+        //    keeps fees/net/status all in sync per pull.
+        doPersist(apiRows, true);
         if (conn.provider === 'bosta') {
           // 2) Background fee enrichment for Bosta. Each chunk's fees
           //    merged into apiRows AND pushed to /upload.php?update_fees=1
