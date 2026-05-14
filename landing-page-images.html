@@ -349,6 +349,38 @@ async function callClaude(systemPrompt, userText) {
   return text;
 }
 
+// ── Stage 1 (OpenAI path): gpt-5.5-pro writes the image prompts. Used
+//    when the chosen image model is GPT Image, so the whole task stays
+//    OpenAI end-to-end. Runs on the Responses API. ──────────────────────
+async function callGptText(systemPrompt, userText) {
+  if (window.aiKeysReady) { try { await window.aiKeysReady; } catch (e) {} }
+  const apiKey = localStorage.getItem(OPENAI_KEY_LS) || '';
+  if (!apiKey) throw new Error('No OpenAI API key. Settings → Connectors → ChatGPT.');
+  const content = [{ type: 'input_text', text: userText }];
+  refImages.forEach(r => content.push({ type: 'input_image', image_url: r.dataUrl }));
+  const res = await fetch('https://api.openai.com/v1/responses', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
+    body: JSON.stringify({
+      model: 'gpt-5.5-pro',
+      instructions: systemPrompt,
+      input: [{ role: 'user', content: content }],
+      max_output_tokens: 9000
+    })
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error((data && data.error && data.error.message) || ('HTTP ' + res.status));
+  let text = '';
+  (data.output || []).forEach(item => {
+    if (item.type === 'message' && Array.isArray(item.content)) {
+      item.content.forEach(c => { if (c.type === 'output_text') text += (c.text || ''); });
+    }
+  });
+  text = text.trim();
+  if (!text) throw new Error('Empty response (status: ' + (data.status || '?') + ')');
+  return text;
+}
+
 // ── Stage 2: render one image prompt with the chosen image model ───────
 async function genGemini(model, prompt) {
   const key = localStorage.getItem(GEMINI_KEY_LS) || '';
@@ -510,7 +542,11 @@ async function generate() {
       'الأنواع وعددها بالترتيب: ' + planLine + ' (الإجمالي ' + total + ').\n' +
       'كل "prompt" يكون وصف بصري تفصيلي بالإنجليزي، ويبدأ بـ: Use the provided reference product image exactly as-is.';
 
-    const raw = await callClaude(sysPrompt, userText);
+    // Stage 1 follows the dropdown: GPT Image → gpt-5.5-pro writes the
+    // prompts (whole task OpenAI); Nano Banana Pro → Claude writes them.
+    const raw = (model === 'gpt-image-1')
+      ? await callGptText(sysPrompt, userText)
+      : await callClaude(sysPrompt, userText);
     let specs = extractSpecs(raw);
     if (!specs.length) throw new Error('The model did not return valid image prompts.');
 
