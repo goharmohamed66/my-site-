@@ -340,13 +340,16 @@ function bosta_login($email, $password) {
       ['detail' => substr($r['body'] ?: '', 0, 300)]);
   }
   $j = json_decode($r['body'], true);
-  $token = $j['data']['token'] ?? $j['token'] ?? '';
-  // Bosta occasionally prefixes the token with a literal "Bearer ".
-  $token = preg_replace('/^Bearer\s+/i', '', trim((string)$token));
+  $token = trim((string)($j['data']['token'] ?? $j['token'] ?? ''));
   if ($token === '') {
     err('Bosta login succeeded but returned no token.', 502,
       ['detail' => substr($r['body'] ?: '', 0, 300)]);
   }
+  // Return the token EXACTLY as Bosta issued it. The dashboard stores
+  // response.data.token verbatim in localStorage and sends it as-is on
+  // the Authorization header — Bearer prefix included if Bosta put one
+  // there. Stripping it (or adding one) makes /wallet/cycles reject the
+  // request with HTTP 401 / errorCode 1028.
   return $token;
 }
 
@@ -431,15 +434,26 @@ function fetch_bosta($conn, $since, $until) {
   @set_time_limit(0);
   @ignore_user_abort(true);
 
-  $email  = trim((string)($conn['consumer_key'] ?? ''));
-  $pass   = (string)($conn['consumer_secret'] ?? '');
-  $apiKey = trim((string)($conn['token'] ?? ''));
+  $email = trim((string)($conn['consumer_key'] ?? ''));
+  $pass  = (string)($conn['consumer_secret'] ?? '');
 
-  // Resolve a dashboard session token for the Wallet feed, in order:
+  // The Wallet > Cash Cycles feed needs a dashboard SESSION token — the
+  // public REST API key is rejected there (HTTP 401, errorCode 1028).
+  // Resolve one in order:
   //   1. a cached token on the connector (reused for 30 min)
   //   2. a fresh login with the dashboard email + password
-  //   3. the connector's token field — lets a power user paste a
-  //      dashboard session token directly instead of email+password.
+  // There's deliberately NO fall-through to the connector's API key —
+  // that key never works here, and silently trying it just produces a
+  // confusing 401. If there's no login, fail loudly with instructions.
+  if ($email === '' || $pass === '') {
+    err('This Bosta connector has no dashboard login. Open Settings → '
+      . 'Shipping companies, edit the connector, and fill in BOTH the '
+      . '"Dashboard Email" and "Dashboard Password" — the same email & '
+      . 'password you use to sign in to business.bosta.co. The public '
+      . 'API key cannot read Wallet > Cash Cycles. (Tip: hard-refresh '
+      . 'the Settings page with Ctrl+Shift+R so the new fields show.)');
+  }
+
   $meta = is_array($conn['meta'] ?? null) ? $conn['meta']
         : (is_string($conn['meta'] ?? null) ? (json_decode($conn['meta'], true) ?: []) : []);
   $sessionToken = '';
@@ -447,15 +461,9 @@ function fetch_bosta($conn, $since, $until) {
   if (!empty($meta['session_token']) && (time() - $cachedAt) < 1800) {
     $sessionToken = $meta['session_token'];
   }
-  if ($sessionToken === '' && $email !== '' && $pass !== '') {
+  if ($sessionToken === '') {
     $sessionToken = bosta_login($email, $pass);
     bosta_cache_session_token($conn['id'] ?? 0, $sessionToken);
-  }
-  if ($sessionToken === '') $sessionToken = $apiKey;   // last resort
-  if ($sessionToken === '') {
-    err('Bosta connector needs the dashboard email + password (to read '
-      . 'Wallet > Cash Cycles), or a dashboard session token in the '
-      . 'API Key field.');
   }
 
   $base     = 'https://app.bosta.co/api/v2/wallet/cycles';
@@ -479,16 +487,17 @@ function fetch_bosta($conn, $since, $until) {
 
     // Token expired (or the cached one went stale) — log in once more
     // and retry the SAME page with the fresh token.
-    if (($r['code'] == 401 || $r['code'] == 403) && !$reloginTried
-        && $email !== '' && $pass !== '') {
+    if (($r['code'] == 401 || $r['code'] == 403) && !$reloginTried) {
       $reloginTried = true;
       $sessionToken = bosta_login($email, $pass);
       bosta_cache_session_token($conn['id'] ?? 0, $sessionToken);
       continue;
     }
     if ($r['code'] == 401 || $r['code'] == 403) {
-      err('Bosta rejected the Wallet API token (HTTP ' . $r['code'] . '). '
-        . 'Check the dashboard email / password on the connector.', 502,
+      err('Bosta rejected the dashboard token (HTTP ' . $r['code'] . ') '
+        . 'even after a fresh re-login. Double-check the Dashboard Email '
+        . '/ Password on the connector, and make sure that Bosta account '
+        . 'has 2-Factor Authentication turned OFF.', 502,
         ['detail' => substr($r['body'] ?: '', 0, 300)]);
     }
     if ($r['code'] >= 400 || !$r['body']) {
