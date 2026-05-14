@@ -327,10 +327,25 @@ function getPrev(from,to){if(!from||!to)return{from:null,to:null};var ms=to-from
 function chPct(c,p){if(!p)return null;var d=c-p,pv=(d/p)*100;return{diff:d,pct:+pv.toFixed(1),up:d>=0};}
 function useStats(rows){
   return useMemo(function(){
-    var del=0,ret=0,cod=0,net=0,fees=0,bc=0;
-    rows.forEach(function(r){if(r.st===DEL){del++;cod+=r.cod;}else if(r.st===RET)ret++;net+=r.net;fees+=r.fees;if(r.fees>0)bc++;});
+    // delFees / delBc are scoped to delivered shipments only, so
+    // "Delivered Shipping Cost" reflects the actual cost per delivered
+    // order — not total fees (including RTO) divided by delivered count.
+    // avgSC stays portfolio-wide: total fees ÷ orders that had any fee
+    // (delivered + returned), matching the "Avg Shipping Cost" intent.
+    var del=0,ret=0,cod=0,net=0,fees=0,bc=0,delFees=0,delBc=0;
+    rows.forEach(function(r){
+      var f=r.fees||0;
+      if(r.st===DEL){del++;cod+=r.cod;delFees+=f;if(f>0)delBc++;}
+      else if(r.st===RET)ret++;
+      net+=r.net;
+      fees+=f;
+      if(f>0)bc++;
+    });
     var t=rows.length;
-    return{t:t,del:del,ret:ret,cod:cod,net:net,fees:fees,dr:drPct(del,ret),rr:pct(ret,t),delSC:del?Math.round(fees/del):0,avgSC:bc?Math.round(fees/bc):0};
+    return{t:t,del:del,ret:ret,cod:cod,net:net,fees:fees,
+      dr:drPct(del,ret),rr:pct(ret,t),
+      delSC:delBc?Math.round(delFees/delBc):0,
+      avgSC:bc?Math.round(fees/bc):0};
   },[rows]);
 }
 function useProds(rows){
@@ -369,9 +384,15 @@ function useTrend(rows,mode){
       if(mode==="month"){var y=d.getUTCFullYear(),mo=String(d.getUTCMonth()+1).padStart(2,"0");k=y+"-"+mo;lbl=k;}
       else if(mode==="day"){k=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");lbl=fmtDay(d);}
       else{var mon=getWeekMon(d),sun=new Date(mon);sun.setDate(mon.getDate()+6);k=mon.getFullYear()+"-"+String(mon.getMonth()+1).padStart(2,"0")+"-"+String(mon.getDate()).padStart(2,"0");lbl=fmtDay(mon)+" - "+fmtDay(sun);}
-      if(!m[k])m[k]={p:k,label:lbl,del:0,ret:0,t:0,fees:0,bc:0};m[k].t++;if(r.st===DEL)m[k].del++;else if(r.st===RET)m[k].ret++;m[k].fees+=r.fees||0;if(r.fees>0)m[k].bc++;
+      if(!m[k])m[k]={p:k,label:lbl,del:0,ret:0,t:0,fees:0,bc:0,delFees:0,delBc:0};
+      var f=r.fees||0;
+      m[k].t++;
+      if(r.st===DEL){m[k].del++;m[k].delFees+=f;if(f>0)m[k].delBc++;}
+      else if(r.st===RET)m[k].ret++;
+      m[k].fees+=f;
+      if(f>0)m[k].bc++;
     });
-    return Object.values(m).sort(function(a,b){return a.p.localeCompare(b.p);}).map(function(x){return Object.assign({},x,{dr:drPct(x.del,x.ret),delSC:x.del?Math.round(x.fees/x.del):0,avgSC:x.bc?Math.round(x.fees/x.bc):0});});
+    return Object.values(m).sort(function(a,b){return a.p.localeCompare(b.p);}).map(function(x){return Object.assign({},x,{dr:drPct(x.del,x.ret),delSC:x.delBc?Math.round(x.delFees/x.delBc):0,avgSC:x.bc?Math.round(x.fees/x.bc):0});});
   },[rows,mode]);
 }
 function useSort(col,dir){
@@ -827,9 +848,25 @@ function CompareTab(props){
   var _hvS=useState(null);var hovS=_hvS[0],setHovS=_hvS[1];
   var rows=props.rows;
   var companies=useMemo(function(){return Array.from(new Set(rows.map(function(r){return r.source;}))).sort();},[rows]);
-  var cStats=useMemo(function(){var m={};companies.forEach(function(c){m[c]={del:0,ret:0,t:0,fees:0};});rows.forEach(function(r){if(m[r.source]){m[r.source].t++;m[r.source].fees+=r.fees||0;if(r.st===DEL)m[r.source].del++;else if(r.st===RET)m[r.source].ret++;}});return m;},[rows,companies]);
+  var cStats=useMemo(function(){
+    var m={};
+    companies.forEach(function(c){m[c]={del:0,ret:0,t:0,fees:0,bc:0,delFees:0,delBc:0};});
+    rows.forEach(function(r){
+      if(!m[r.source])return;
+      var f=r.fees||0;
+      m[r.source].t++;
+      m[r.source].fees+=f;
+      if(f>0)m[r.source].bc++;
+      if(r.st===DEL){m[r.source].del++;m[r.source].delFees+=f;if(f>0)m[r.source].delBc++;}
+      else if(r.st===RET)m[r.source].ret++;
+    });
+    return m;
+  },[rows,companies]);
   var _cs=useSort("t");var cs=_cs[0],cgo=_cs[1];
-  var cRows=companies.map(function(c){var st=cStats[c],dr=drPct(st.del,st.ret);return{c:c,st:st,dr:dr,avgSC:st.t?Math.round(st.fees/st.t):0,delSC:st.del?Math.round(st.fees/st.del):0};});
+  // avgSC: average fee across all orders that had any fee.
+  // delSC: average fee across delivered orders that had a fee (RTOs
+  // excluded). Same definitions as the overview KPIs.
+  var cRows=companies.map(function(c){var st=cStats[c],dr=drPct(st.del,st.ret);return{c:c,st:st,dr:dr,avgSC:st.bc?Math.round(st.fees/st.bc):0,delSC:st.delBc?Math.round(st.delFees/st.delBc):0};});
   var crMn=Math.min.apply(null,cRows.map(function(r){return r.dr;})),crMx=Math.max.apply(null,cRows.map(function(r){return r.dr;}));
   var sCR=useMemo(function(){return[].concat(cRows).sort(function(a,b){var col=cs.col,dir=cs.dir==="asc"?1:-1;if(col==="c")return dir*a.c.localeCompare(b.c);if(col==="t")return dir*(a.st.t-b.st.t);if(col==="del")return dir*(a.st.del-b.st.del);if(col==="ret")return dir*(a.st.ret-b.st.ret);if(col==="avgSC")return dir*(a.avgSC-b.avgSC);if(col==="delSC")return dir*(a.delSC-b.delSC);if(col==="dr")return dir*(a.dr-b.dr);return 0;});},[cRows,cs]);
   if(companies.length===0)return React.createElement("div",{style:{color:LGRAY,padding:40,textAlign:"center"}},"No data available");
@@ -1318,6 +1355,11 @@ function App(){
             var CHUNK = 50;
             var idToRow = {};
             apiRows.forEach(function(r){ if (r.order_id) idToRow[r.order_id] = r; });
+            // Per-chunk: persist to DB so progress survives a tab close,
+            // but DON'T trigger a React re-render — the user shouldn't
+            // see the Avg Shipping Cost KPI tick up live as chunks land.
+            // The final .then() below re-renders once with the complete
+            // numbers, so the KPI just appears with its true final value.
             var applyFees = function(fees){
               var chunkRows = [];
               Object.keys(fees).forEach(function(id){
@@ -1325,12 +1367,6 @@ function App(){
                 row.fees = parseFloat(fees[id]) || 0;
                 row.net  = Math.max(0, (row.cod || 0) - row.fees);
                 chunkRows.push(row);
-              });
-              setDs(function(prev){
-                return prev.map(function(d){
-                  if (d.connectorId !== conn.id) return d;
-                  return Object.assign({}, d, { rows: apiRows.map(apiRowToRow) });
-                });
               });
               if (chunkRows.length) doPersist(chunkRows, true);
             };
@@ -1361,6 +1397,14 @@ function App(){
             pe.then(function(){
               if (myEpoch !== fetchEpoch.current) return;
               console.log("[carrier-sync] "+conn.name+" → enriched "+ids.length+" deliveries with shipmentFees");
+              // Single re-render with the final fees — avoids the
+              // "60 → 70 → 100" tick-up the user reported.
+              setDs(function(prev){
+                return prev.map(function(d){
+                  if (d.connectorId !== conn.id) return d;
+                  return Object.assign({}, d, { rows: apiRows.map(apiRowToRow) });
+                });
+              });
               if (typeof loadOrders === "function") loadOrders();
             });
           }
