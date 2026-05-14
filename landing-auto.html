@@ -909,36 +909,30 @@ async function generateProductDescription(build) {
   const skillBlock = await __buildAllLandingAutoSkillsBlock();
   const sysPrompt = (skillBlock ? skillBlock + '\n\n---\n\n' : '') + PRODUCT_DESC_PROMPT;
 
-  // GPT-5 is a reasoning model: it spends tokens on internal thinking BEFORE
-  // emitting visible content. With a small budget the reasoning eats it all
-  // and `message.content` comes back empty. So:
-  //   • bump max_completion_tokens to 8000 (plenty of room for thinking + output)
-  //   • set reasoning_effort:"low" so most of the budget goes to actual writing
-  //     (creative copy doesn't need deep reasoning)
-  const r = await fetch('https://api.openai.com/v1/chat/completions', {
+  // gpt-5.5-pro is a deep-reasoning model and runs on the Responses API
+  // (not chat/completions). It's slower but produces the highest-quality
+  // copy. max_output_tokens covers reasoning + visible output combined.
+  const r = await fetch('https://api.openai.com/v1/responses', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
     body: JSON.stringify({
-      model: 'gpt-5',
-      max_completion_tokens: 8000,
-      reasoning_effort: 'low',
-      messages: [
-        { role: 'system', content: sysPrompt },
-        { role: 'user',   content: userMsg }
-      ]
+      model: 'gpt-5.5-pro',
+      instructions: sysPrompt,
+      input: userMsg,
+      max_output_tokens: 14000
     })
   });
   const data = await r.json();
   if (!r.ok) throw new Error((data && data.error && data.error.message) || ('OpenAI HTTP ' + r.status));
-  const choice = (data.choices || [])[0] || {};
-  let out = (choice.message?.content || '').trim();
-  // Strip accidental code fences
-  out = out.replace(/^```(?:html)?\s*/i, '').replace(/\s*```\s*$/i, '').trim();
+  let out = '';
+  (data.output || []).forEach(item => {
+    if (item.type === 'message' && Array.isArray(item.content)) {
+      item.content.forEach(c => { if (c.type === 'output_text') out += (c.text || ''); });
+    }
+  });
+  out = out.trim().replace(/^```(?:html)?\s*/i, '').replace(/\s*```\s*$/i, '').trim();
   if (!out) {
-    // Surface the most useful diagnostic so the progress panel shows WHY it's empty
-    const fr = choice.finish_reason || 'unknown';
-    const usage = data.usage ? ('reasoning_tokens=' + (data.usage.completion_tokens_details?.reasoning_tokens || 0) + ' / completion=' + (data.usage.completion_tokens || 0)) : '';
-    throw new Error('Empty GPT-5 response (finish_reason=' + fr + (usage ? ' · ' + usage : '') + '). Try raising max_completion_tokens or shortening Skills.');
+    throw new Error('Empty GPT-5.5-pro response (status: ' + (data.status || '?') + '). Try shortening the System Prompts.');
   }
   return out;
 }

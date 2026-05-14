@@ -317,6 +317,7 @@ const PROVIDERS = {
   ai: [
     { id: 'claude',     name: 'Claude (Anthropic)',  logo: 'logos/anthropic.svg' },
     { id: 'chatgpt',    name: 'ChatGPT (OpenAI)',    logo: 'logos/openai.svg' },
+    { id: 'gemini',     name: 'Gemini (Google)',     logo: 'logos/gemini.svg' },
     { id: 'openrouter', name: 'OpenRouter (unified)', logo: 'logos/openrouter.svg' },
   ],
 };
@@ -502,6 +503,17 @@ const PROVIDER_GUIDES = {
       'Open <a href="https://openrouter.ai/settings/credits" target="_blank" rel="noopener">openrouter.ai/settings/credits</a> and click <strong>Add credits</strong>. Minimum is $5 and it is shared across every model.',
       'Paste the key in the field below and Save. The Copywriting / Landing page / Headlines tools will route through OpenRouter when you pick "OpenRouter" as the model.'
     ]
+  },
+  gemini: {
+    title: 'How to connect Gemini (Google)',
+    note: 'Gemini powers the image models (Nano Banana). Image generation needs billing enabled on the Google Cloud project — the free tier does not include it.',
+    steps: [
+      'Go to <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a> and sign in with your Google account.',
+      'Click <strong>Create API key</strong>, then pick an existing Google Cloud project or create a new one.',
+      'Copy the key — it starts with <code>AIza</code>.',
+      'In <a href="https://console.cloud.google.com/billing" target="_blank" rel="noopener">Google Cloud → Billing</a>, enable billing on that project — image models return a quota error without it.',
+      'Paste the key in the field below and Save. The Landing page images tool uses it for Nano Banana Pro.'
+    ]
   }
 };
 
@@ -627,6 +639,10 @@ const PROVIDER_FIELDS = {
   openrouter: [
     {key: 'token', label: 'API Key', placeholder: 'sk-or-v1-...', required: true, secret: true, multiline: true,
      help: 'Saved in this browser (localStorage). One key works for Claude, GPT-4, Gemini and every other model OpenRouter routes to.'},
+  ],
+  gemini: [
+    {key: 'token', label: 'API Key', placeholder: 'AIza...', required: true, secret: true, multiline: true,
+     help: 'Saved in this browser (localStorage). Powers the image models (Nano Banana) — needs billing enabled on the Google Cloud project.'},
   ],
   // Generic for shipping / ads / confirmation
   _default: [
@@ -2630,6 +2646,7 @@ async function saveConnector() {
   if (section === 'ai' && !obj.name) {
     obj.name = provider === 'claude'     ? 'Claude (Anthropic)'
             : provider === 'chatgpt'    ? 'ChatGPT (OpenAI)'
+            : provider === 'gemini'     ? 'Gemini (Google)'
             : provider === 'openrouter' ? 'OpenRouter (unified)'
             : provider;
   }
@@ -2647,6 +2664,7 @@ async function saveConnector() {
       try {
         if (provider === 'claude')     localStorage.setItem('app.anthropicApiKey',  obj.token);
         if (provider === 'chatgpt')    localStorage.setItem('app.openaiApiKey',     obj.token);
+        if (provider === 'gemini')     localStorage.setItem('app.geminiApiKey',     obj.token);
         if (provider === 'openrouter') localStorage.setItem('app.openrouterApiKey', obj.token);
       } catch (e) { /* ignore */ }
     }
@@ -2853,6 +2871,7 @@ async function renderConnectorsHub(c) {
     { section: 'confirmation', provider: 'zomeza',       name: 'Zomeza',                  emoji: '☑️' },
     { section: 'ai',           provider: 'claude',       name: 'Claude (Anthropic)',      icon: 'logos/claude.svg' },
     { section: 'ai',           provider: 'chatgpt',      name: 'ChatGPT (OpenAI)',        icon: 'logos/chatgpt.svg' },
+    { section: 'ai',           provider: 'gemini',       name: 'Gemini (Google)',         icon: 'logos/gemini.svg' },
     { section: 'ai',           provider: 'openrouter',   name: 'OpenRouter',              icon: 'logos/openrouter.svg' },
   ];
 

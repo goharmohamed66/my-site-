@@ -120,8 +120,7 @@
   </aside>
   <div class="app-main">
     <div class="page">
-      <h1 style="margin-bottom:6px;">Headlines Generator</h1>
-      <p style="font-size:13px;color:#6D7175;margin:0 0 20px;direction:rtl;text-align:right;">البرومبت بيتسحب تلقائياً من System Prompts كل مرة — التاسك دي متوصّلة ببرومت «Headlines Generator».</p>
+      <h1 style="margin-bottom:18px;">Headlines Generator</h1>
       <div class="page-grid">
        <div class="page-col-left">
       <div class="panel">
@@ -319,26 +318,29 @@ async function callChatGPT(systemPrompt, userMessage, maxTokens) {
   if (window.aiKeysReady) { try { await window.aiKeysReady; } catch (e) {} }
   const apiKey = localStorage.getItem(OPENAI_KEY_LS) || '';
   if (!apiKey) throw new Error('No ChatGPT API key. Settings → Connect AI Tools → ChatGPT.');
-  const res = await fetch('https://api.openai.com/v1/chat/completions', {
+  const res = await fetch('https://api.openai.com/v1/responses', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'Authorization': 'Bearer ' + apiKey
     },
     body: JSON.stringify({
-      model: 'gpt-5',
-      max_completion_tokens: maxTokens || 1500,
-      reasoning_effort: 'minimal',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userMessage }
-      ]
+      model: 'gpt-5.5-pro',
+      instructions: systemPrompt,
+      input: userMessage,
+      max_output_tokens: (maxTokens || 1500) + 6000
     })
   });
   const data = await res.json();
   if (!res.ok) throw new Error((data && data.error && data.error.message) || ('HTTP ' + res.status));
-  const text = ((data.choices || [])[0] || {}).message?.content?.trim() || '';
-  if (!text) throw new Error('Empty response');
+  let text = '';
+  (data.output || []).forEach(item => {
+    if (item.type === 'message' && Array.isArray(item.content)) {
+      item.content.forEach(c => { if (c.type === 'output_text') text += (c.text || ''); });
+    }
+  });
+  text = text.trim();
+  if (!text) throw new Error('Empty response (status: ' + (data.status || '?') + ')');
   return text;
 }
 
