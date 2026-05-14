@@ -881,13 +881,15 @@ if ($action === 'refresh_all_fees') {
   @set_time_limit(0);
   @ignore_user_abort(true);
 
-  // Pull every Bosta-sourced row we know about. We need both order_id
-  // (tracking number — the UPDATE key) and raw._id (what Bosta's
-  // per-delivery GET expects in the URL). Source comparison is
+  // Pull every Bosta-sourced row we still need to enrich. We need both
+  // order_id (tracking number — the UPDATE key) and raw._id (what
+  // Bosta's per-delivery GET expects in the URL). Source comparison is
   // case-insensitive because older imports stored "Bosta" while newer
-  // pulls may differ.
+  // pulls may differ. fees IS NULL OR fees = 0 → "not enriched yet";
+  // this lets the UI retry after a 429 without redoing thousands of
+  // already-resolved deliveries.
   $sql = "SELECT id, order_id, raw, status FROM shipping_orders
-          WHERE LOWER(source) = 'bosta'";
+          WHERE LOWER(source) = 'bosta' AND (fees IS NULL OR fees = 0)";
   $params = [];
   if ($bid > 0) { $sql .= " AND brand_id = ?"; $params[] = $bid; }
   $q = $pdo->prepare($sql);
@@ -910,13 +912,16 @@ if ($action === 'refresh_all_fees') {
   $totalRows  = count($rows);
   $totalIds   = count($ids);
   $fees       = [];
-  $batch      = 10;
-  $pauseMs    = 100;
+  $batch      = 5;           // smaller batch — Bosta rate-limits aggressively
+  $pauseMs    = 250;         // 4 batches/sec ≈ 20 req/s — well under their cap
   $sampleRaw  = null;        // first non-empty response we see (success diagnosis)
   $sampleErr  = null;        // first failed response (auth / rate-limit diagnosis)
   $httpCounts = [];          // status_code → count
   $emptyBody  = 0;
   $noFeeField = 0;           // 2xx response but no recognized fee field
+  $rateLimited  = false;
+  $retryAfter   = 0;
+  $processedIds = 0;
 
   for ($i = 0; $i < $totalIds; $i += $batch) {
     $slice = array_slice($ids, $i, $batch);
@@ -935,16 +940,23 @@ if ($action === 'refresh_all_fees') {
       $handles[$did] = $ch;
     }
     do { curl_multi_exec($multi, $running); if ($running) curl_multi_select($multi); } while ($running > 0);
+    $batchRateLimited = false;
     foreach ($handles as $did => $ch) {
       $body = curl_multi_getcontent($ch);
       $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
       curl_multi_remove_handle($multi, $ch);
       curl_close($ch);
       $httpCounts[$code] = ($httpCounts[$code] ?? 0) + 1;
+      if ($code === 429) {
+        $batchRateLimited = true;
+        $j = json_decode($body ?: '{}', true);
+        $ra = (int)($j['retryAfter'] ?? 0);
+        if ($ra > $retryAfter) $retryAfter = $ra;
+        if ($sampleErr === null) $sampleErr = ['id' => $did, 'code' => $code, 'body' => substr((string)$body, 0, 400)];
+        continue;
+      }
       if (!$body) { $emptyBody++; continue; }
       $j = json_decode($body, true);
-      // Capture the first non-2xx as a diagnostic sample so the UI can
-      // surface auth / rate-limit / 404 issues from the alert directly.
       if ($code >= 400 && $sampleErr === null) {
         $sampleErr = ['id' => $did, 'code' => $code, 'body' => substr((string)$body, 0, 400)];
       }
@@ -964,6 +976,11 @@ if ($action === 'refresh_all_fees') {
       if (!$matched && $code < 400) $noFeeField++;
     }
     curl_multi_close($multi);
+    $processedIds = $i + count($slice);
+    // Bail out the moment Bosta starts 429-ing. The UI will sleep for
+    // retryAfter seconds and call us again — we'll resume where we left
+    // off because the SQL filter excludes rows that already got a fee.
+    if ($batchRateLimited) { $rateLimited = true; break; }
     if ($pauseMs > 0) usleep($pauseMs * 1000);
   }
 
@@ -985,12 +1002,15 @@ if ($action === 'refresh_all_fees') {
     'rows_in_db'       => $totalRows,
     'rows_with_id'     => $totalIds,
     'rows_missing_id'  => $missingId,
+    'processed_ids'    => $processedIds,
     'fees_returned'    => count($fees),
     'fees_nonzero'     => $withFees,
     'db_updated'       => $updated,
     'http_status'      => $httpCounts,
     'empty_body'       => $emptyBody,
     'ok_but_no_fee'    => $noFeeField,
+    'rate_limited'     => $rateLimited,
+    'retry_after'      => $rateLimited ? max(30, $retryAfter) : 0,
     'sample_response'  => $sampleRaw,
     'sample_error'     => $sampleErr,
   ]);

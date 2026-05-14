@@ -1682,25 +1682,58 @@ function App(){
           onClick:function(ev){
             var bostaConns=selectedConnIds.map(function(id){return shippingConnectors.find(function(c){return c.id===id;});}).filter(function(c){return c&&c.provider==='bosta';});
             if(!bostaConns.length){alert("No Bosta connector selected.");return;}
-            var btn=ev.currentTarget;var orig=btn.textContent;btn.textContent="Refreshing…";btn.disabled=true;
+            var btn=ev.currentTarget;var orig=btn.textContent;btn.disabled=true;
             console.log("[refresh_all_fees] starting for", bostaConns.map(function(c){return c.name;}));
             var bid=window.getActiveBrandId?(window.getActiveBrandId()||0):0;
             var qs=bid>0?("&brand_id="+bid):"";
-            Promise.all(bostaConns.map(function(c){
-              return apiFetch("/shipping.php?action=refresh_all_fees&connector_id="+c.id+qs,{method:"POST"})
-                .then(function(res){return {name:c.name,res:res};})
-                .catch(function(err){return {name:c.name,err:err.message||String(err)};});
-            })).then(function(results){
+            // Auto-resume on 429: each call enriches whatever's still
+            // missing fees in the DB; if Bosta rate-limits, the server
+            // returns rate_limited+retry_after and we sleep that long
+            // before calling again. Maxes out at 8 passes so a broken
+            // connector doesn't loop forever.
+            function runOne(conn){
+              var totals={passes:0,updated:0,nonzero:0,returned:0,lastHttp:null,lastErr:null,rowsLeft:null,rowsTotal:null};
+              function pass(){
+                totals.passes++;
+                btn.textContent="Refreshing… "+conn.name+" (pass "+totals.passes+")";
+                return apiFetch("/shipping.php?action=refresh_all_fees&connector_id="+conn.id+qs,{method:"POST"})
+                  .then(function(res){
+                    totals.updated  += (res.db_updated||0);
+                    totals.nonzero  += (res.fees_nonzero||0);
+                    totals.returned += (res.fees_returned||0);
+                    totals.lastHttp  = res.http_status;
+                    totals.lastErr   = res.sample_error;
+                    totals.rowsLeft  = res.rows_with_id;
+                    if(totals.rowsTotal===null) totals.rowsTotal = res.rows_with_id;
+                    console.log("[refresh_all_fees] "+conn.name+" pass "+totals.passes,res);
+                    if(res.rate_limited && totals.passes<8 && res.rows_with_id>0){
+                      var wait=Math.max(30,res.retry_after||60);
+                      btn.textContent=conn.name+" rate-limited, waiting "+wait+"s…";
+                      return new Promise(function(rs){setTimeout(rs,wait*1000);}).then(pass);
+                    }
+                    if(!res.rate_limited && res.rows_with_id>0 && res.fees_returned>0 && totals.passes<8){
+                      // Still rows left to enrich but no rate-limit hit
+                      // mid-batch — usually means we hit the time budget
+                      // / nginx cap. Call again to keep draining.
+                      return pass();
+                    }
+                    return totals;
+                  });
+              }
+              return pass().then(function(t){return {name:conn.name,totals:t};})
+                .catch(function(err){return {name:conn.name,err:err.message||String(err)};});
+            }
+            Promise.all(bostaConns.map(runOne)).then(function(results){
               var lines=results.map(function(r){
                 if(r.err)return r.name+" → ERROR: "+r.err;
-                var x=r.res||{};
-                var http=x.http_status?Object.keys(x.http_status).map(function(k){return k+":"+x.http_status[k];}).join(" "):"-";
-                var line=r.name+" → DB rows: "+x.rows_in_db+", with _id: "+x.rows_with_id+", fees got: "+x.fees_returned+" (nonzero: "+x.fees_nonzero+"), DB updated: "+x.db_updated+"\n  HTTP: "+http+"  empty:"+x.empty_body+"  ok_no_fee:"+x.ok_but_no_fee;
-                if(x.sample_error)line+="\n  Error sample (id "+x.sample_error.id+", code "+x.sample_error.code+"): "+x.sample_error.body;
+                var t=r.totals||{};
+                var http=t.lastHttp?Object.keys(t.lastHttp).map(function(k){return k+":"+t.lastHttp[k];}).join(" "):"-";
+                var line=r.name+" → passes: "+t.passes+", DB updated: "+t.updated+", nonzero fees: "+t.nonzero+"/"+t.returned+", rows left: "+t.rowsLeft+"\n  Last HTTP: "+http;
+                if(t.lastErr)line+="\n  Last error (code "+t.lastErr.code+"): "+String(t.lastErr.body).slice(0,200);
                 return line;
               });
               alert("Refresh complete:\n\n"+lines.join("\n\n"));
-              console.log("[refresh_all_fees] results",results);
+              console.log("[refresh_all_fees] all results",results);
               if(typeof loadOrders==="function")loadOrders();
             }).finally(function(){btn.textContent=orig;btn.disabled=false;});
           },
