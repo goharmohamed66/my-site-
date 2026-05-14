@@ -1031,6 +1031,93 @@ if ($action === 'refresh_all_fees') {
   ]);
 }
 
+// POST /shipping.php?action=import_fees_csv[&brand_id=M]
+//   body: {"csv": "<raw CSV text of Bosta Wallet > Cash Cycles export>"}
+//
+// Bosta's bulk /deliveries/search API doesn't expose shipping fees, and
+// the per-delivery endpoint is rate-limited to a crawl. The merchant
+// dashboard's Wallet > Cash Cycles export, however, lists every closed
+// shipment with its exact "Bosta Fees" value. This endpoint parses that
+// CSV and bulk-updates shipping_orders.fees by tracking number — instant
+// and exactly matching the dashboard.
+if ($action === 'import_fees_csv') {
+  $body = json_decode(file_get_contents('php://input'), true);
+  $csv  = is_array($body) ? ($body['csv'] ?? '') : '';
+  if (!is_string($csv) || trim($csv) === '') err('Empty CSV body', 400);
+
+  // Strip UTF-8 BOM, normalize line endings.
+  $csv   = preg_replace('/^\xEF\xBB\xBF/', '', $csv);
+  $lines = preg_split('/\r\n|\r|\n/', $csv);
+  $lines = array_values(array_filter($lines, function($l){ return trim($l) !== ''; }));
+  if (count($lines) < 2) err('CSV has no data rows', 400);
+
+  // Arabic-Indic digits → ASCII, so fee/COD values parse regardless of
+  // the dashboard's locale.
+  $ar2en = function($s){
+    return strtr((string)$s, [
+      '٠'=>'0','١'=>'1','٢'=>'2','٣'=>'3','٤'=>'4',
+      '٥'=>'5','٦'=>'6','٧'=>'7','٨'=>'8','٩'=>'9',
+    ]);
+  };
+
+  $header = str_getcsv($lines[0]);
+  // Locate the tracking-number and Bosta-fees columns. Fee match is
+  // prioritized so a generic "fee" substring doesn't beat "bosta fees".
+  $tnIdx = -1; $feeIdx = -1; $feeRank = 99;
+  foreach ($header as $i => $h) {
+    $hl = strtolower(trim($h));
+    if ($tnIdx < 0 && (strpos($hl,'tracking') !== false || strpos($hl,'awb') !== false)) {
+      $tnIdx = $i;
+    }
+    $rank = -1;
+    if     (strpos($hl,'bosta fee') !== false)    $rank = 0;
+    elseif (strpos($hl,'shipping fee') !== false) $rank = 1;
+    elseif ($hl === 'fees' || $hl === 'fee')      $rank = 2;
+    elseif (strpos($hl,'fee') !== false)          $rank = 3;
+    if ($rank >= 0 && $rank < $feeRank) { $feeRank = $rank; $feeIdx = $i; }
+  }
+  if ($tnIdx < 0 || $feeIdx < 0) {
+    err('Could not find tracking-number / fees columns in the CSV header', 400, [
+      'headers' => $header,
+      'hint'    => 'Export from Bosta dashboard: Wallet → Cash Cycles → Export.',
+    ]);
+  }
+
+  $upd = $pdo->prepare(
+    "UPDATE shipping_orders
+        SET fees = ?, net = GREATEST(0, cod - ?)
+      WHERE LOWER(source) = 'bosta' AND order_id = ?"
+  );
+  $csvRows = 0; $parsed = 0; $skipped = 0; $updated = 0; $matched = 0;
+  $pdo->beginTransaction();
+  for ($i = 1; $i < count($lines); $i++) {
+    $r = str_getcsv($lines[$i]);
+    $csvRows++;
+    $tn  = isset($r[$tnIdx])  ? trim((string)$r[$tnIdx])  : '';
+    $raw = isset($r[$feeIdx]) ? trim((string)$r[$feeIdx]) : '';
+    // Keep digits, dot and minus only — drop currency text, commas,
+    // spaces. abs() because Bosta sometimes lists the fee as a negative
+    // deduction in the cycle.
+    $fee = abs((float)preg_replace('/[^0-9.\-]/', '', $ar2en($raw)));
+    if ($tn === '' || $fee <= 0) { $skipped++; continue; }
+    $parsed++;
+    $upd->execute([$fee, $fee, $tn]);
+    $rc = $upd->rowCount();
+    $updated += $rc;
+    if ($rc > 0) $matched++;
+  }
+  $pdo->commit();
+
+  send_json([
+    'csv_rows'     => $csvRows,
+    'parsed'       => $parsed,
+    'skipped'      => $skipped,
+    'db_updated'   => $updated,
+    'tracking_col' => $header[$tnIdx],
+    'fee_col'      => $header[$feeIdx],
+  ]);
+}
+
 if ($action === 'fetch') {
   $cid = (int)($_GET['connector_id'] ?? 0);
   if (!$cid) err('connector_id required');
