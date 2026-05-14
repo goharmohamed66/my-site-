@@ -3222,24 +3222,10 @@ function openSkillModal(editing) {
       <input class="form-input" id="sk_name" placeholder="Egyptian Copywriter" value="${escape(e.name || '')}">
     </div>
     <div class="form-row" style="grid-template-columns:1fr;gap:6px;margin-bottom:14px;">
-      <label class="form-label">Slug <span style="color:#6D7175;font-weight:400;">(used by tools, lowercase + hyphens)</span></label>
-      <input class="form-input" id="sk_slug" placeholder="egyptian-copywriter" value="${escape(e.slug || '')}" ${editing ? '' : ''}>
-    </div>
-    <div class="form-row" style="grid-template-columns:1fr;gap:6px;margin-bottom:14px;">
-      <label class="form-label">Description</label>
-      <textarea class="form-textarea" id="sk_desc" placeholder="Generate Egyptian-Arabic ad copies. Use when asked for product copy or hook variations." style="min-height:90px;">${escape(e.description || '')}</textarea>
-    </div>
-    <div class="form-row" style="grid-template-columns:1fr;gap:6px;margin-bottom:14px;">
-      <label class="form-label">Instructions</label>
-      <textarea class="form-textarea" id="sk_instr" placeholder="Write copies in Egyptian Arabic dialect, focus on emotional hooks…" style="min-height:240px;font-family:'Consolas','Monaco',monospace;font-size:12.5px;line-height:1.5;">${escape(e.instructions || '')}</textarea>
+      <label class="form-label">Prompt</label>
+      <textarea class="form-textarea" id="sk_instr" placeholder="Write the full task prompt here…" style="min-height:320px;font-family:'Consolas','Monaco',monospace;font-size:12.5px;line-height:1.5;">${escape(e.instructions || '')}</textarea>
     </div>
   `;
-  // Auto-slug from name on creation only
-  if (!editing) {
-    $('sk_name').addEventListener('input', () => {
-      $('sk_slug').value = $('sk_name').value.trim().toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
-    });
-  }
   // Modal save button label
   $('modalSave').textContent = editing ? 'Save' : 'Create';
   $('modalBackdrop').classList.add('open');
@@ -3248,11 +3234,15 @@ function openSkillModal(editing) {
 async function saveSkill() {
   const editing = modalCtx.editing;
   const name         = $('sk_name').value.trim();
-  const slug         = $('sk_slug').value.trim().toLowerCase().replace(/[^a-z0-9-]+/g,'-').replace(/^-+|-+$/g,'');
-  const description  = $('sk_desc').value.trim();
   const instructions = $('sk_instr').value;
-  if (!name)  { toast('Name is required',  true); return; }
-  if (!slug)  { toast('Slug is required',  true); return; }
+  if (!name) { toast('Name is required', true); return; }
+  // Slug + description are no longer shown in the form. Keep the existing
+  // values when editing; for a new prompt, derive the slug from the name.
+  const slug = (editing && editing.slug)
+    ? editing.slug
+    : name.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
+  const description = (editing && editing.description) || '';
+  if (!slug) { toast('Name must contain letters or numbers', true); return; }
   try {
     $('modalSave').disabled = true;
     const body = { name, slug, description, instructions };
