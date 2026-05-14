@@ -134,7 +134,8 @@
   </aside>
   <div class="app-main">
     <div class="page">
-      <h1 style="margin-bottom:18px;">Copywriting</h1>
+      <h1 style="margin-bottom:6px;">Copywriting</h1>
+      <p class="sub">البرومبت بيتسحب تلقائياً من System Prompts كل مرة — التاسك دي متوصّلة ببرومت «Copywriter».</p>
       <div class="page-grid">
        <div class="page-col-left">
       <div class="panel">
@@ -166,10 +167,8 @@
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
             <label for="modelSelect" style="font-size:13px;color:#1A1A1A;font-weight:500;">Model:</label>
             <select class="field-input" id="modelSelect" style="width:auto;min-width:200px;padding:8px 12px;background:#FFFFFF;">
-              <option value="agent">Ai agent</option>
               <option value="claude">Claude (Anthropic)</option>
               <option value="chatgpt">ChatGPT (OpenAI)</option>
-              <option value="demo">Demo (preview, no API)</option>
             </select>
           </div>
           <div style="display:flex;align-items:center;gap:10px;">
@@ -276,459 +275,27 @@ $('driveFolderBtn').addEventListener('click', () => {
   );
 });
 
-// ── SKILLS LOADER (Settings → Brain → Skills) ──────────────────────────
-// Pulls active skill instructions from the backend and prepends them to the
-// AI system prompt so the model speaks in the user's saved voice/style.
-const __SKILLS_API   = 'https://indigo-dog-836598.hostingersite.com/github/api/skills.php';
-const __SKILLS_TOKEN = 'tk_4d2b9f7a8c6e1530a4f2d9b7e8c6a1f5';
-const __skillCache = {};
-async function loadSkill(slug) {
-  // cache disabled — always fetch fresh so updated skills apply immediately
-  try {
-    const r = await fetch(__SKILLS_API + '?slug=' + encodeURIComponent(slug) + '&_t=' + Date.now(), {
-      headers: { 'Authorization': 'Bearer ' + __SKILLS_TOKEN }
-    });
-    if (!r.ok) { __skillCache[slug] = null; return null; }
-    const d = await r.json();
-    __skillCache[slug] = d.instructions || null;
-    return __skillCache[slug];
-  } catch (e) { __skillCache[slug] = null; return null; }
-}
-// Load multiple skills, concatenate non-empty ones with blank lines between.
-async function buildSkillBlock(slugs) {
-  const parts = await Promise.all(slugs.map(slug => loadSkill(slug).then(text => ({ slug, text }))));
-  const out = [];
-  for (const p of parts) {
-    if (!p.text) continue;
-    if (p.slug === 'egyptian-writing-voice') {
-      // Voice skill = STYLE EXAMPLES, not instructions. Frame it that way so
-      // the model imitates the rhythm/wording instead of just listing rules.
-      out.push(
-        '## STYLE REFERENCE — How to write (Egyptian voice)\n' +
-        'Below are real examples of the exact tone, rhythm, word choice, sentence length and emotional pull the user wants. Study them carefully. When you write, match this voice as closely as a human copywriter would imitate a mentor — same rhythm, same colloquialisms, same punch. Do NOT copy any line verbatim; mirror the STYLE.\n\n' +
-        '──────── EXAMPLES START ────────\n' +
-        p.text + '\n' +
-        '──────── EXAMPLES END ────────'
-      );
-    } else if (p.slug === 'about-gohar') {
-      out.push('## USER PROFILE — Who you are writing for\n' + p.text);
-    } else {
-      // Per-task skill (copywriter / landing / headlines): treat as instructions
-      out.push('## TASK INSTRUCTIONS\n' + p.text);
-    }
-  }
-  return out.join('\n\n---\n\n');
-}
-
-// Load EVERY active skill from Settings → Brain → Skills and concatenate them.
-// This way any new skill the user adds is automatically picked up by every AI
-// tool — no code change needed. Order: base voice first (so it sets the tone),
-// other skills after.
-let __allSkillsCache = null;
-async function loadAllSkills() {
-  if (__allSkillsCache) return __allSkillsCache;
-  try {
-    const r = await fetch(__SKILLS_API, { headers: { 'Authorization': 'Bearer ' + __SKILLS_TOKEN } });
-    if (!r.ok) { __allSkillsCache = []; return []; }
-    const d = await r.json();
-    const rows = (d.rows || []).filter(s => s.instructions && s.instructions.trim());
-    // Voice/base skill first (sets the foundational tone) so other skills layer on top.
-    rows.sort((a, b) => {
-      const aBase = /voice|tone|base/i.test(a.slug) ? -1 : 0;
-      const bBase = /voice|tone|base/i.test(b.slug) ? -1 : 0;
-      return aBase - bBase;
-    });
-    __allSkillsCache = rows;
-    return rows;
-  } catch (e) { __allSkillsCache = []; return []; }
-}
-async function buildAllSkillsBlock() {
-  const rows = await loadAllSkills();
-  if (!rows.length) return '';
-  return rows.map(s =>
-    '## Skill: ' + (s.name || s.slug) + ' (/' + s.slug + ')\n' +
-    (s.description ? s.description + '\n\n' : '') +
-    s.instructions
-  ).join('\n\n---\n\n');
-}
-
-// ── TECH OP AGENT (Media Buyer Persona) ──────────────────────────────
-// Heavy persona prompt that turns whichever LLM is available into a focused
-// Egyptian-market media buyer / direct-response copywriter. Layered on TOP of
-// the user's saved Skills so personal voice still wins.
-const AGENT_PERSONA = `أنت "Tech Op Agent" — ميديا باير محترف ومخضرم في السوق المصري، خبرتك أكثر من 8 سنين في الـ DTC على فيسبوك وإنستجرام وتيك توك.
-
-## شخصيتك المهنية:
-- شُفت آلاف الكامبينز وعارف اللي بيكنفرت واللي بيموت.
-- بتفكر دايماً كـ "Hook → Pain → Promise → Proof → CTA".
-- بتعرف نفسية المستهلك المصري: اللغة، التريبت، الأسعار، الـ objections، الـ trust signals.
-- مهووس بالـ CTR ومعدل التحويل، بتحارب على كل كلمة.
-
-## قواعد العمل:
-1. التزم بالـ Skills المحفوظة فوق — هي الصوت والستايل بتاع المستخدم.
-2. اكتب بالعامية المصرية الطبيعية، بلاش فصحى، بلاش كلام AI.
-3. كل سطر لازم يخدم: hook قوي / pain حقيقي / benefit ملموس / CTA واضح.
-4. أرقام محددة وتفاصيل، مش كلام عام (بدل "كتير" قول "5 آلاف عميل").
-5. لو فيه أكثر من نسخة، كل نسخة بانجل مختلف (Pain / Desire / Curiosity / Social Proof / Authority / Urgency).
-6. ابعد عن الكلمات المُستهلكة (رائع، مذهل، الأفضل في…).
-
-## الجودة:
-- النص لازم يخلي القارئ يقف عن السكرول.
-- لو الـ output طلع متوسط، اعمله re-write أقوى قبل ما ترجعه.
-- أي كلمة لو شيلتها مش هتفرق = شيلها.
-
-أنت مش chatbot. أنت بتشتغل لحساب صاحب البزنس.`;
-
-// Pick the best available provider (Claude > GPT > OpenRouter) so the agent
-// works no matter what key the user has configured.
-function pickAgentProvider() {
-  if (localStorage.getItem(ANTHROPIC_KEY_LS))  return 'claude';
-  if (localStorage.getItem(OPENAI_KEY_LS))     return 'chatgpt';
-  if (localStorage.getItem(OPENROUTER_KEY_LS)) return 'openrouter';
-  return null;
-}
-
-// Run a single pass through whichever provider is picked.
-async function __agentSinglePass(sub, system, userMessage, maxTokens) {
-  if (sub === 'chatgpt')    return callChatGPT(system, userMessage, maxTokens);
-  if (sub === 'openrouter') return callOpenRouter(system, userMessage, maxTokens);
-  return callClaude(system, userMessage, maxTokens);
-}
-
-// Two-pass refine: draft → self-critique against media-buyer criteria → rewrite.
-// Costs ~2x tokens but yields noticeably stronger, less generic output.
-const AGENT_REFINE_PROMPT = `أنت دلوقتي بتراجع مسودة كوبي بعقلية ميديا باير ناقد. اعمل التالي بترتيب:
-
-1. اقرأ المسودة كأنك مستهلك مصري بيعدّي على فيسبوك بسرعة. هل هتقف؟ هل هتقرأ؟ هل هتدوس؟
-2. شطب أي:
-   - كلمات مُستهلكة (رائع، مذهل، الأفضل، عالي الجودة، تجربة لا تُنسى).
-   - جمل عامة بدون أرقام أو تفاصيل ملموسة.
-   - أي حشو أو تكرار.
-   - أي صياغة بتحس إنها ChatGPT.
-3. قوّي الـ hook في أول 6 كلمات.
-4. خلي كل benefit يربط بـ pain حقيقي.
-5. خلي الـ CTA واضح ومحدد.
-
-ارجع النسخة المُحسّنة فقط، من غير شرح، من غير تعليق، من غير "النسخة المحسنة:".`;
-
-async function callAgent(systemPrompt, userMessage, maxTokens) {
-  if (window.aiKeysReady) { try { await window.aiKeysReady; } catch (e) {} }
-  const hasClaude  = !!localStorage.getItem(ANTHROPIC_KEY_LS);
-  const hasGPT     = !!localStorage.getItem(OPENAI_KEY_LS);
-  const hasOR      = !!localStorage.getItem(OPENROUTER_KEY_LS);
-  if (!hasClaude && !hasGPT && !hasOR) {
-    throw new Error('Agent needs at least one AI key (Settings → Connectors → Claude / ChatGPT / OpenRouter).');
-  }
-  const label = $('generateLabel');
-  const setLabel = (txt) => { if (label) label.innerHTML = '<span class="spinner"></span> ' + txt; };
-  const agentPrompt = AGENT_PERSONA + '\n\n---\n\n' + systemPrompt;
-
-  // ── Solo flow (only one provider configured) — original 2-pass refine ──
-  if (!(hasClaude && hasGPT)) {
-    const sub = hasClaude ? 'claude' : (hasGPT ? 'chatgpt' : 'openrouter');
-    setLabel('Drafting…');
-    const draft = await __agentSinglePass(sub, agentPrompt, userMessage, maxTokens);
-    setLabel('Refining…');
-    const refined = await __agentSinglePass(
-      sub,
-      AGENT_PERSONA + '\n\n---\n\n' + AGENT_REFINE_PROMPT,
-      'الطلب الأصلي:\n' + userMessage + '\n\n---\n\nالمسودة المطلوب تحسينها:\n' + draft,
-      maxTokens
-    );
-    return refined || draft;
-  }
-
-  // ── Ensemble flow (Claude + ChatGPT both available) ──────────────────
-  // Pass 1: Both models draft IN PARALLEL from the same prompt.
-  setLabel('Drafting (Claude + ChatGPT in parallel)…');
-  const [draftClaude, draftGPT] = await Promise.all([
-    callClaude(agentPrompt, userMessage, maxTokens).catch(e => '[Claude draft failed: ' + e.message + ']'),
-    callChatGPT(agentPrompt, userMessage, maxTokens).catch(e => '[ChatGPT draft failed: ' + e.message + ']'),
-  ]);
-
-  // Pass 2: Cross-review — each model critiques the OTHER one's draft.
-  setLabel('Cross-reviewing…');
-  const crossPrompt = (label) =>
-    'إنت بتراجع مسودة كتبها موديل تاني (' + label + '). شغلتك:\n' +
-    '1. اقرأها بعقلية مستهلك مصري حقيقي بيعدّي على فيسبوك.\n' +
-    '2. قارنها بالـ STYLE REFERENCE فوق — هل الـ rhythm صح؟ الكلام طبيعي؟ بيـ match الأمثلة؟\n' +
-    '3. شطب أي كلام مُستهلك أو AI-sounding أو حشو.\n' +
-    '4. لو الموديل التاني فاته شيء من المطلوب — كمّله.\n' +
-    '5. ارجع النسخة المُحسّنة فقط، من غير شرح ولا "النسخة المحسنة:".';
-  const [refinedByGPT, refinedByClaude] = await Promise.all([
-    callChatGPT(
-      AGENT_PERSONA + '\n\n---\n\n' + crossPrompt('Claude'),
-      'الطلب الأصلي:\n' + userMessage + '\n\n---\n\nمسودة Claude:\n' + draftClaude,
-      maxTokens
-    ).catch(() => draftClaude),
-    callClaude(
-      AGENT_PERSONA + '\n\n---\n\n' + crossPrompt('ChatGPT'),
-      'الطلب الأصلي:\n' + userMessage + '\n\n---\n\nمسودة ChatGPT:\n' + draftGPT,
-      maxTokens
-    ).catch(() => draftGPT),
-  ]);
-
-  // Pass 3: Final synthesis — Claude (the stronger reasoner) picks the best
-  // pieces from both refined versions and produces ONE final cut.
-  setLabel('Final synthesis…');
-  const synthPrompt = AGENT_PERSONA + '\n\n---\n\n' +
-    'بين إيدك نسختين كتبهم Claude و ChatGPT بعد ما راجع كل واحد فيهم على التاني. ' +
-    'مهمتك: تطلع نسخة واحدة نهائية تكون أحسن من الاتنين. اشتغل بالخطوات دي:\n\n' +
-    '1. قارن النسختين سطر سطر. اختار أقوى hook، أصدق pain، أوضح benefit، أحسن CTA.\n' +
-    '2. تأكد إن الـ TONE والـ rhythm matching الـ STYLE REFERENCE اللي فوق.\n' +
-    '3. تأكد عدد الكلمات قريب من الأمثلة (مش أطول، مش أقصر بشكل ملحوظ).\n' +
-    '4. شيل أي تكرار بين المصدرين، اخلطهم بذكاء.\n' +
-    '5. ارجع النسخة النهائية فقط — نص نضيف، من غير "النسخة النهائية:" ولا أي كلام مقدمة.';
-  try {
-    const final = await callClaude(
-      synthPrompt,
-      'الطلب الأصلي:\n' + userMessage + '\n\n---\n\nنسخة 1 (Claude refined by GPT):\n' + refinedByGPT +
-      '\n\n---\n\nنسخة 2 (GPT refined by Claude):\n' + refinedByClaude,
-      maxTokens
-    );
-    return final || refinedByClaude || refinedByGPT;
-  } catch (e) {
-    // If synthesis fails, return whichever refined draft we have
-    return refinedByClaude || refinedByGPT;
-  }
-}
-// Format past memories into a system-prompt block ("Past examples to learn from")
-function buildMemoryBlock(memories) {
-  if (!memories.length) return '';
-  const examples = memories.map((m, i) =>
-    'Example ' + (i + 1) + (m.input_summary ? ' (' + m.input_summary.slice(0, 80) + '…)' : '') +
-    ':\n' + (m.output || '').slice(0, 1500)
-  ).join('\n\n---\n\n');
-  return 'Past outputs you produced (learn the user\'s voice and style from them — match patterns, do NOT copy verbatim):\n\n' + examples;
-}
-
-const SYSTEM_PROMPT = `أنت كوبي رايتر مصري محترف، بتكتب نصوص بيع بنفس أسلوب الإعلانات الحقيقية على فيسبوك.
-🎯 المطلوب:
-اكتب نص بنفس الشكل (Structure + Spacing) ده بالظبط:
-• عنوان في أول سطر
-• سطر فاضي
-• مقدمة (3 أو 4 جمل قصيرة)
-• سطر فاضي
-• نقاط تبدأ بـ ✅ (كل نقطة في سطر لوحدها)
-• سطر فاضي
-• CTA يبدأ بـ 🛑
-⚠️ مهم جداً:
-• حافظ على نفس المسافات بين السطور (line breaks) زي المثال بالظبط
-• كل عنصر في سطر منفصل
-• متدمجش أي جزء في بعضه
-━━━━━━━━━━━━━━━━━━━
-📌 قواعد العنوان:
-لكي تكتب عنوان جيد التزم بالتالي:
-حاول أن تجعل العنوان طويلاً نوعا ما (17 كلمة).
-استخدم الأرقام لأنها تعطي إحساس بالثقة وتؤثر في نفس القارئ
-استخدم العناصر الملفتة مثل (- الـ Emojis)
-استخدم الكلمات القوية (أفضل - أقوى - المؤثرات - التغيرات)
-يعتمد على المشاعر ( 10 خطوات لإنقاص الوزن ستغير حياتك للأفضل)
-راقب منافسيك والمؤثرين في مجالك وحاول أن تستلهم منهم بعض الأفكار
-
-
-
-━━━━━━━━━━━━━━━━━━━
-📌 المشاعر (استخدم واحدة أو أكثر):
-الخوف - السعادة - الذنب - الفخر - الغيرة - الخجل - الراحة - الثقة - الطمع - الانتماء
-📌 العوامل:
-الأرقام - الفضول - الصدمة - التخصيص - السؤال - التحذير
-━━━━━━━━━━━━━━━━━━━
-📌 المقدمة:
-• 3 أو 4 جمل
-• لازم ومهم المقدمة تكون  30 كلمة
-• تحتوي على كلمة "أنت" مرة واحدة على الأقل
-• تشير لمشكلة أو إحساس
-• لا تلمح للحل
-• لا تكرر العنوان
-
-المقدمة (Continuous Style — مهم جداً):
-• تُكتب كسطر واحد متصل (فقرة واحدة فقط)
-• بدون تقسيم أو نزول سطر جديد داخل المقدمة
-• تكون عبارة عن تدفق طبيعي للكلام (زي ما حد بيتكلم)
-━━━━━━━━━━━━━━━━━━━
-📌 النقاط:
-•  5 نقاط
-• كل نقطة تبدأ بـ ✅
-•لازم ومهم  كل نقطة تكون  15 كلمة
-• كل نقطة منفعة (مش ميزة)
-━━━━━━━━━━━━━━━━━━━
-📌 CTA:
-• يبدأ بـ 🛑
-• فيه عرض (خصم / شحن مجاني / ضمان)
-• فيه إحساس بالإلحاح
-━━━━━━━━━━━━━━━━━━━
-🧠 الأسلوب:
-• عامية مصرية طبيعية جداً
-• كأنك بتكلم صاحبك
-• جمل قصيرة
-• إيقاع سريع
-• بسيط ومباشر
-🚫 ممنوع:
-• الفصحى
-• الأسلوب الرسمي
-• دمج الفقرات
-• تغيير شكل التنسيق
-
-مهم جداَ هبعتلك أمثلة تتلعم منها طريقة الكلام لازم تحاكي طريقة الكلام بحيث احس ان انسان اللي بيتكلم وانا الللي كاتب امثلة الكوبي دي بنفسي ف حاول تكون بتتكلم بنفس الطريقة كأن انسان اللي كاتب الكوبي مش ذكاء اصتناعي
-
-مثال 1
-قصص القرآن أفضل حاجة تتعلم منها حلول لأعظم مشاكل في حياة الإنسان وأكبرها ❤️
-🟢 وكمان ارتباطك بالوحي وحبك للقرآن مش هييجي من فراغ ومحتاج تعرف ليه تحب القرآن
-🟢 كل ده وأكتر بكتير بيعمله أفضل كتابين هتقرأهم في حياتك وهيحببوك في القراءة للمبدع أدهم الشرقاوي
-🟢 كتباب نحن نقص عليك اللي جمعلك قصص القرآن واداك العبر منها ومطلوب تتعلم منها ايه
-🟢 وكتاب وبالحق أنزلناه اللي هيخليك ترتبط بالقرآن ارتباط فظيع وهيحببك أكتر في القرآن ويخليك تبدأ في الحفظ برغبة عالية وإيمان عالي
-🛑 اطلب نسختك دلوقتي واستمتع بزيادة في الإيمان وحب للقرآن وارتباط بيه والرغبة في حفظة كاملاً كمان
-لو عاوز تحب القراءة أكتر هيكون هما دول أفضل كتابين تبدأ بيهم
-
-مثال 2
-
-🔥 النفسية القوية مش صدفة… دي نتيجة قلب متصل بربنا
-
-في زحمة الحياة، اللي بيكمل بثبات هو اللي محافظ على علاقته بربنا…
-اللي كل يوم بيقوّي قلبه بالقرآن، وبيعرف يتكلم مع ربنا بالدعاء.
-
-📘 كتاب "أول مرة أتدبر القرآن"
-هيخليك تحس إنك بتقرأ القرآن لأول مرة، تفهمه، وتعيشه بكل تفاصيله.
-
-🕊️ كتاب "أول مرة أتَلذّذ بالدعاء"
-هيغير نظرتك للدعاء، ويخليك تدعي من قلبك، وتفهم ليه ساعات بتتأخر الاستجابة.
-
-✅ لو عايز نفسية تواجه الحياة برضا وطموح
-✅ لو بتدور على راحة قلب حقيقية
-✅ لو عايز تستمر بعد رمضان بقلب عامر
-
-📚 دول الكتابين اللي لازم يبدأ بيهم كل مسلم حقيقي.
-
-🛑 اطلبهم دلوقتي بخصم 50% لفترة محدودة، مع ضمان استبدال واسترجاع لمدة 30 يوم بدون إبداء أي أسباب لضمان الرضاء التام!
-
-مثال 3
-
-
-كتابين هيخلوك من واحد لا تفقه شئ عن دينك ولا عن الخشوع في الصلاة والحفاظ عليها لشخص واثق في كل معلومة بيقولها عن الدين وبينتظر الصلاة بفارغ الصبر وبيصلي بكل خشوع وحب ❤
-
-🛑 هتتصدم لما تعرف ان في ناس كتير مسلمة في البطاقة بس وفي حجات كتير أوي متعرفهاش عن الدين
-
- والأغلب مش بيحافظ على الصلاة ولو صلى مش بيصلي بخشوع وبيخطف الصلاة
-
- ولو قعدت في قعدة فيها كلام عن الدين هتلاقي أغلب المعلومات اللي بتتقال غلط ما بين حديث ضعيف لحديث موضوع وكتير بيفتي بدون علم
-
-✅ من النهارده هتعرف عن الصلاة حجات تعلقك بكل فرض وتربطك بالصلاة وتخليك تنتظرها وتصلي بخشوع تام
-
-✅ وكمان هتصحح للناس معلوماتها عن الدين لما تتعلم وهتفيد وتنصح أهلك وأصحابك وهتتكلم بكل ثقة وفهم صحيح
-
-✅ هتعرف الحجات اللي لا غنى عنها لكل مسلم وفرض عليه يتعلمها وكل ده في كتب متوسطة تخلصها في أسبوعين
-
-✅ هتقرب من ربنا أكتر بكتير من الأول وهتحب دينك وتنتمي ليه وترتبط بيه أكتر ومش بعيد ترجع تحفظ قرآن زي زمان
-
-🛑 اطلب أهم كتابين في حياة المسلم الآن بخصم 50% وشحن مجاني وهيوصلوا لحد باب بيتك في أسرع وقت
-
-مثال 4
-
-
-🛑 ورد القرآن اليومي هو غذاء الروح بس مش هتحافظ عليه لو بتقرأ وانت مش فاهم حاجة
-
-نفسنا نحفظ قرآن بس مش قادرين نرتبط ونحب القرآن لدرجة اننا منفوتش يوم من غير ورد قراءة كبير وحفظ يومي زي ما الصحابة كانوا مرتبطين بالقرآن الكريم ومتعلقين بيه
-
-✅ عدم فهم القرآن هيخليك تمل وتترك بدري بدري ومش هتكمل
-✅ نفسك تحفظ وتفهم القرآن وترتبط بيه وتحبه أكتر من نفسك
-✅ حابب يكون ليك ورد يومي بتتمنى لو تصحى علشان تبدأ بيه يومك
-✅ تستمتع بقراءة القرآن في الصلاة وفي قيام الليل وانت مستوعبه
-✅ تمشي تقرأ في الشارع وانت هايم في حب القرآن بدون كلل أو ملل
-✅ ومعاه أول مرة اتلذذ بالدعاء اللي هيعرفك كل تفاصيل الدعاء ويخليك ترتبط وتتعلق بيه وتدعي كل يوم
-
-🛑 اطلب نسختك الآن بخصم 50% وشحن مجاني واستمتع بالقرب الله والارتباط بالوحي
-
-مثال 5
-
-
-3 كتب هيحطوا قواعد لحياتك تعيش بيها وتحل لك كل مشاكلك اليومية بدل تضييع الوقت على السوشيال ميديا وكمان هيحببوك جدا في القراءة ❤️
-
-🛑 كتير مننا بيرجع من شغله يقضيها على السوشيال ميديا وفين وفين لما يلاقي بوست يستحق القراءة ومفيد فعلا و 90% من البوستات أي كلام وخلاص
-
-🛑 وللأسف الكلام ده بيأثر على حياتنا بشكل سلبي وبيتزرع جوا عقولنا قواعد مزيفة بتتحكم في حياتنا وبنطبقها غصب عننا لأن مفيش غيرها
-
-✅ بس تخيل لو لقيت أصدق كلام على وجه الأرض رسائل من القرآن ورسائل من النبي ورسائل من الصحابة جايين يحطولك قواعد وأسس تمشي عليها تحل كل مشاكل حياتك فعلا وهتحفظها غصب عنك وهتمشي بيها في يومك
-
-✅ تخيل يبقى كل موقف عندك ليه حل حقيقي يبهرك ويبهر اللي حواليك لأنه فعلا حل صادق ورسائل تطمن قلبك وتطبطب عليه بدل تضيع الوقت في بوستات فارغة
-
-✅  وكمان أوعدك هتحب القراءة جداااا بعد الكتب دي وسهل تخلصهم على فكرة لو قرأت كام صفحة قبل ما تنام وحتى تنام وانت مطمن ومستعد لبكره
-
-🛑 اطلب مجموعة رسائل دلوقتي بخصم 50% وشحن مجاني وسريع لحد باب بيتك اطلبهم فوراً واستمتع بقرائتهم
-https://rasikhun.com/all-rasa2l
-
-مثال : كتير بنبقى نفسنا نعرف أكتر عن القرآن علشان نتعلق بيه ونرتبط بيه ونحب نقراء الورد اليومي ونحفظ كمان بكل حب
-مثال: كتابين هيخلوك من واحد لا تفقه شئ عن دينك ولا عن الخشوع في الصلاة والحفاظ عليها لشخص واثق في كل معلومة بيقولها عن الدين وبينتظر الصلاة بفارغ الصبر وبيصلي بكل خشوع وحب
-مثال :3 كتب هيحطوا قواعد لحياتك تعيش بيها وتحل لك كل مشاكلك اليومية بدل تضييع الوقت على السوشيال ميديا وكمان هيحببوك جدا في القراءة
-مثال :قلوب كتير أرهقتها الحياة ومتاعبتها ومصاعبها ويأتي أدهم الشرقاوي بقلمه البديع ليغوص في القرآن والسنة ويخرج بآخر مؤلفاته لعامة الناس
-مثال :كتير بنبقى نفسنا نعرف أكتر عن القرآن علشان نتعلق بيه ونرتبط بيه ونحب نقراء الورد اليومي ونحفظ كمان بكل حب
-مثال : كتابين هيخلوك من واحد لا تفقه شئ عن دينك ولا عن الخشوع في الصلاة والحفاظ عليها لشخص واثق في كل معلومة بيقولها عن الدين وبينتظر الصلاة بفارغ الصبر وبيصلي بكل خشوع وحب
-مثال : دلوقتي تقدر تفهم القرآن زي ما فهمه الصحابة وقلبك يتعلق بيه لأنه الحبل الوحيد المتصل بالسماء وأصدق كلام على الأرض
-
-
-
-مثال : أسرار الإرتباط بالقرآن وليه في ناس بترتبط بالقرآن وبتحب تعيش معاه بل وممكن تمشي تقرأ في الشارع ومش فارق معاهم كل هموم الدنيا ده محتاجين نعرفه
-مثال :أساسيات الدين لازم تكون عندك وإلا هتكون آثم لأن طلب العلم فريضة على كل مسلم وتقصيرك في الصلاة وعدم الحفاظ عليها 100% هيخلي موقفك صعب يوم القيامة لأنها أول ما يسأل عليه العبد وان صلحت صلح عمله وان فسدت فسد عمله
-مثال :كتير مننا بيرجع من شغله يقضيها على السوشيال ميديا وفين وفين لما يلاقي بوست يستحق القراءة ومفيد فعلا و 90% من البوستات أي كلام وخلاص
-وللأسف الكلام ده بيأثر على حياتنا بشكل سلبي وبيتزرع جوا عقولنا قواعد مزيفة بتتحكم في حياتنا وبنطبقها غصب عننا لأن مفيش غيرها
-مثال :أسرار الإرتباط بالقرآن وليه في ناس بترتبط بالقرآن وبتحب تعيش معاه بل وممكن تمشي تقرأ في الشارع ومش فارق معاهم كل هموم الدنيا ده محتاجين نعرفه
-مثال :أساسيات الدين لازم تكون عندك وإلا هتكون آثم لأن طلب العلم فريضة على كل مسلم وتقصيرك في الصلاة وعدم الحفاظ عليها 100% هيخلي موقفك صعب يوم القيامة لأنها أول ما يسأل عليه العبد وان صلحت صلح عمله وان فسدت فسد عمله
-مثال : كتير من المسلمين بيقرأ قرآن وهو مش فاهم جزء كبير منه ودي كارثة لأنه الحقيقة الوحيدة على الأرض واللي لازم حياتك تمشي كلها بيه من ساعة ما تصحى ولحد ما تنام
-
-مثال : حب القرآن مش بييجي غير بمعرفة قوية بفضل القرآن وتأثيره على الصحابة
-لو عرفنا ليه الصحابة كانوا مرتبطين بالوحي وعرفنا حب النبي للقرآن هنرتبط بيه اكتر
-لكل القلوب المرهقة من زحمة الحياة هتخرج مفيش عندك غير هم الآخرة
-مثال :من النهارده هتعرف عن الصلاة حجات تعلقك بكل فرض وتربطك بالصلاة وتخليك تنتظرها وتصلي بخشوع تام
-وكمان هتصحح للناس معلوماتها عن الدين لما تتعلم وهتفيد وتنصح أهلك وأصحابك وهتتكلم بكل ثقة وفهم صحيح
-هتقرب من ربنا أكتر بكتير من الأول وهتحب دينك وتنتمي ليه وترتبط بيه أكتر ومش بعيد ترجع تحفظ قرآن زي زمان
-مثال :تخيل لو لقيت أصدق كلام على وجه الأرض رسائل من القرآن ورسائل من النبي ورسائل من الصحابة جايين يحطولك قواعد وأسس تمشي عليها تحل كل مشاكل حياتك فعلا وهتحفظها غصب عنك وهتمشي بيها في يومك
-تخيل يبقى كل موقف عندك ليه حل حقيقي يبهرك ويبهر اللي حواليك لأنه فعلا حل صادق ورسائل تطمن قلبك وتطبطب عليه بدل تضيع الوقت في بوستات فارغة
-وكمان أوعدك هتحب القراءة جداااا بعد الكتب دي وسهل تخلصهم على فكرة لو قرأت كام صفحة قبل ما تنام وحتى تنام وانت مطمن ومستعد لبكره
-مثال :لكل مهموم ولكل منكسر من مصائب ومشاكل ومنغصات الحياة
-جاء اليوم لتعرف حقيقة الدنيا وترتبط بالآخرة وترتبط بالقرآن والسنة
-ولكل القلوب المرهقة من زحمة الحياة هتخرج مفيش عندك غير هم الآخرة
-مثال :حب القرآن مش بييجي غير بمعرفة قوية بفضل القرآن وتأثيره على الصحابة
-لو عرفنا ليه الصحابة كانوا مرتبطين بالوحي وعرفنا حب النبي للقرآن هنرتبط بيه اكتر
-لكل القلوب المرهقة من زحمة الحياة هتخرج مفيش عندك غير هم الآخرة
-مثال :من النهارده هتعرف عن الصلاة حجات تعلقك بكل فرض وتربطك بالصلاة وتخليك تنتظرها وتصلي بخشوع تام
-وكمان هتصحح للناس معلوماتها عن الدين لما تتعلم وهتفيد وتنصح أهلك وأصحابك وهتتكلم بكل ثقة وفهم صحيح
-هتقرب من ربنا أكتر بكتير من الأول وهتحب دينك وتنتمي ليه وترتبط بيه أكتر ومش بعيد ترجع تحفظ قرآن زي زمان
-مثال : نفسك تحفظ وتفهم القرآن وترتبط بيه وتحبه أكتر من نفسك
-حابب يكون ليك ورد يومي بتتمنى لو تصحى علشان تبدأ بيه يومك
-تستمتع بقراءة القرآن في الصلاة وفي قيام الليل وانت مستوعبه
-____
-
-
-وده المثال النهائي اللي عايز زيه بالظبط في الكلمات والحروف وكل حاجة والمسافات والاستراكتشر وطريقة الكلام
-
-المثال
-
-🛑 ورد القرآن اليومي هو غذاء الروح بس مش هتحافظ عليه لو بتقرأ وانت مش فاهم حاجة
-
-نفسنا نحفظ قرآن بس مش قادرين نرتبط ونحب القرآن لدرجة اننا منفوتش يوم من غير ورد قراءة كبير وحفظ يومي زي ما الصحابة كانوا مرتبطين بالقرآن الكريم ومتعلقين بيه
-
-✅ عدم فهم القرآن هيخليك تمل وتترك بدري بدري ومش هتكمل
-✅ نفسك تحفظ وتفهم القرآن وترتبط بيه وتحبه أكتر من نفسك
-✅ حابب يكون ليك ورد يومي بتتمنى لو تصحى علشان تبدأ بيه يومك
-✅ تستمتع بقراءة القرآن في الصلاة وفي قيام الليل وانت مستوعبه
-✅ تمشي تقرأ في الشارع وانت هايم في حب القرآن بدون كلل أو ملل
-✅ ومعاه أول مرة اتلذذ بالدعاء اللي هيعرفك كل تفاصيل الدعاء ويخليك ترتبط وتتعلق بيه وتدعي كل يوم
-
-🛑 اطلب نسختك الآن بخصم 50% وشحن مجاني واستمتع بالقرب الله والارتباط بالوحي
-
-━━━━━━━━━━━━━━━━━━━
-INPUT DATA
-Product Details:
-[PASTE PRODUCT DETAILS]
-Customer Reviews:
-[PASTE REVIEWS]
-━━━━━━━━━━━━━━━━━━━
-ابدأ كتابة النص مباشرة بنفس الشكل والمسافات بالظبط بدون أي شرح`;
 
 const PROVIDER_LS = 'app.aiProvider';
 const ANTHROPIC_KEY_LS = 'app.anthropicApiKey';
 const OPENAI_KEY_LS = 'app.openaiApiKey';
-const OPENROUTER_KEY_LS = 'app.openrouterApiKey';
+
+// ── System prompt source — fetched fresh from the central System Prompts
+//    store (api/skills.php) on every run, so edits there apply right away.
+//    This task is wired to the "Copywriter" prompt.
+const SKILLS_API   = 'https://indigo-dog-836598.hostingersite.com/github/api/skills.php';
+const SKILLS_TOKEN = 'tk_4d2b9f7a8c6e1530a4f2d9b7e8c6a1f5';
+const TASK_PROMPT_SLUG = 'egyptian-copywriter';
+async function loadPrompt() {
+  const r = await fetch(SKILLS_API + '?slug=' + encodeURIComponent(TASK_PROMPT_SLUG) + '&_t=' + Date.now(), {
+    headers: { 'Authorization': 'Bearer ' + SKILLS_TOKEN }
+  });
+  if (!r.ok) throw new Error('تعذّر تحميل البرومبت (HTTP ' + r.status + ').');
+  const d = await r.json();
+  const instr = ((d && d.instructions) || '').trim();
+  if (!instr) throw new Error('برومبت التاسك فاضي — ضيفه من System Prompts في الإعدادات.');
+  return instr;
+}
 
 // Restore last-used provider
 const savedProvider = localStorage.getItem(PROVIDER_LS);
@@ -789,6 +356,7 @@ async function callChatGPT(systemPrompt, userMessage, maxTokens) {
     body: JSON.stringify({
       model: 'gpt-5',
       max_completion_tokens: maxTokens || 2000,
+      reasoning_effort: 'minimal',
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userMessage }
@@ -802,131 +370,6 @@ async function callChatGPT(systemPrompt, userMessage, maxTokens) {
   return text;
 }
 
-// Demo mode — returns N hard-coded copies (with angles) so the UI can be previewed without an API key.
-async function callDemo(angles, count) {
-  await new Promise(r => setTimeout(r, 800));
-  const samples = [
-    {
-      angle: 'الفضول',
-      copy: `🛑 كتاب هيخليك تتعلق بالقرآن وتعيش قصصه بقلب مختلف لأول مرة ❤️
-
-كتير مننا بيقرأ قرآن من غير ما يعيش القصص ويفهم العبر اللي وراها وانت ممكن تعدّي على آيات كبيرة من غير ما تحس بقيمتها وحلاوتها لأنك مش فاهم الـ context.
-
-✅ هتعيش قصص الأنبياء بكل تفاصيلها وكأنك بتشوفها قدامك بعينك
-✅ هتطلع من كل قصة بعبرة تحط نقاط في حياتك وقواعد تمشي عليها
-✅ هتحب القرآن أكتر وتربط نفسك بيه كل يوم بشكل مختلف خالص
-✅ أسلوب أدهم الشرقاوي البسيط والعميق هيخليك تخلص الكتاب في يومين
-✅ هتنصح كل اللي حواليك بالكتاب لأنه فعلاً غير شكل علاقتك بالقرآن
-
-🛑 اطلب نسختك دلوقتي بسعر 250 جنيه وشحن مجاني لكل المحافظات في خلال 48 ساعة`
-    },
-    {
-      angle: 'الخوف من ضياع الوقت',
-      copy: `🛑 ساعتين كل يوم على السوشيال ميديا مقابل صفر فايدة لقلبك وعقلك ❤️
-
-اوقاتنا بتروح في حاجات مش بتزيدنا حاجة وانت ممكن تخلص يومك من غير حتى آية واحدة فهمتها صح ولا قصة لمست قلبك ولا عبرة طبقتها في حياتك العملية.
-
-✅ هتقرأ كل يوم 20 دقيقة بس وتطلع بعبرة هتغير يومك
-✅ هتعرف قصص نبي زي ما الصحابة عرفوها بكل التفاصيل المهمة
-✅ هتحس إن وقتك بقى ليه قيمة فعلاً وقلبك بيكبر مش بيضيع
-✅ هتكلم اللي حواليك بثقة وفهم لكل آية ولكل موقف
-✅ هتنام مرتاح كل ليلة بإحساس إنك قربت من ربنا خطوة جديدة
-
-🛑 اطلب نسختك دلوقتي بخصم 30% وشحن مجاني وضمان استرجاع لـ 14 يوم`
-    },
-    {
-      angle: 'الانتماء',
-      copy: `🛑 الصحابة كانوا متعلقين بالقرآن لأنهم فهموه — والكتاب ده هيوصلك لنفس الإحساس ❤️
-
-في ناس بتقرأ قرآن وقلبها بيرتجف وفي ناس بتقرأ ومش حاسة بحاجة وانت لو من الناس اللي بتقرأ من غير ما تحس بحاجة، يبقى ده طبيعي لأنك مش فاهم القصص الجوة.
-
-✅ هتدخل عالم الصحابة وتشوف ليه كانوا متعلقين بكل آية
-✅ هتعرف قصص قراها رسول الله نفسه ووقف عندها وبكى
-✅ هتربط بين كل قصة وموقف من حياتك اليومية بشكل مدهش
-✅ هتحس إنك جزء من قافلة كبيرة من الناس اللي عاشوا بالقرآن
-✅ هترجع تحفظ زي زمان لما كنت طفل بس بفهم وحب أكتر بكتير
-
-🛑 اطلب نسختك الآن وانضم لآلاف القراء اللي غيروا علاقتهم بالقرآن`
-    },
-    {
-      angle: 'الراحة النفسية',
-      copy: `🛑 لو قلبك تعبان من زحمة الحياة، الكتاب ده هيقولك ربنا كاتبلك إيه ❤️
-
-في أيام بنحس فيها إن الدنيا واقفة علينا وانت محتاج صوت يطمنك ويقولك إن في حد فوق شايفك ومدبر كل حاجة بحكمة فوق ما تتخيل وكل قصة في القرآن بتأكدلك ده.
-
-✅ هتقرأ قصة النبي يوسف وانت في أصعب موقف فهتلاقي راحة فظيعة
-✅ هتفهم ليه ربنا بياخد منك حاجة وبيديك حاجة أحسن منها بكتير
-✅ هتعرف إن صبرك مش هيضيع وإن نهاية كل قصة فيها فرج وأمل
-✅ هتنام كل ليلة بقلب مرتاح ومعرف إن مفيش شر مطلق في حياتك
-✅ هتقدر تطمن أهلك واصحابك بنفس القصص اللي طمنت قلبك
-
-🛑 اطلب نسختك دلوقتي بخصم 50% وشحن مجاني واستمتع بالقرب من ربنا`
-    },
-    {
-      angle: 'الفخر بالنفس',
-      copy: `🛑 من النهارده بقى عندك معلومة قوية تتكلم بيها في أي قعدة عن الدين ❤️
-
-كتير مننا بيستحي يدخل في كلام عن الدين خوفاً من الغلط وانت ممكن تكون عايز تنصح حد قريبك بس مش بتلاقي الكلام المظبوط ولا الحجة القوية اللي تقنعه فبتسكت.
-
-✅ هتعرف أصول كل قصة وتقدر تحكيها لأي حد بكل ثقة وفهم
-✅ هتصحح المعلومات الغلط اللي بتنتشر بدون ما تخش في خلاف
-✅ هتنصح أهلك واصحابك بالكلام اللي يلمسهم فعلاً مش الكلام المحفوظ
-✅ هتحس بفخر إنك بقيت مرجع لأي حد عايز يفهم آية أو قصة
-✅ ولادك هيشوفوك وانت بتقرأ وبتحب الكتاب فهيمشوا على نفس الطريق
-
-🛑 اطلب نسختك الآن بخصم 50% وضمان استرجاع لـ 30 يوم بدون أسئلة`
-    },
-    {
-      angle: 'الإحساس بالذنب',
-      copy: `🛑 هتفضل تأجل علاقتك بالقرآن لحد إمتى؟ كل يوم بيعدي بدون فهم خسارة ❤️
-
-كل يوم بنقول هنبدأ بكرة هنحفظ بكرة هنفهم بكرة وانت لسه بتأجل من سنين والقرآن مفتوح على نفس الصفحة من شهور والإحساس بالذنب بيكبر كل يوم وانت مش عارف تبدأ منين.
-
-✅ هتبدأ من ساعة فتح الكتاب وهتلاقي نفسك مش قادر تسيبه
-✅ هتفهم في يومين أكتر مما فهمت في سنين من القراءة من غير دليل
-✅ هتمسح إحساس التقصير وتبدأ علاقة جديدة وحقيقية مع كلام ربنا
-✅ هتحس إن كل دقيقة في الكتاب بتقربك خطوة من اللي كنت بتأجلها
-✅ هتفتخر بنفسك إنك أخيراً بدأت مش بس قلت هبدأ بكرة
-
-🛑 اطلب نسختك دلوقتي وابدأ من الليلة بخصم 50% وشحن مجاني سريع`
-    }
-  ];
-  const out = [];
-  const n = Math.max(1, Math.min(samples.length, count || 3));
-  for (let i = 0; i < n; i++) {
-    const sample = samples[i % samples.length];
-    const angle = (angles && angles[i]) || sample.angle;
-    out.push(`ANGLE: ${angle}\n\n${sample.copy}`);
-  }
-  return out.join('\n\n===\n\n');
-}
-
-async function callOpenRouter(systemPrompt, userMessage, maxTokens) {
-  const apiKey = localStorage.getItem(OPENROUTER_KEY_LS) || '';
-  if (!apiKey) throw new Error('No OpenRouter API key. Settings → Connect AI Tools → OpenRouter.');
-  const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer ' + apiKey,
-      'HTTP-Referer': window.location.origin,
-      'X-Title': 'Sila Gallery'
-    },
-    body: JSON.stringify({
-      model: 'anthropic/claude-opus-4.7',
-      max_tokens: maxTokens || 2000,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userMessage }
-      ]
-    })
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error((data && data.error && data.error.message) || ('HTTP ' + res.status));
-  const text = ((data.choices || [])[0] || {}).message?.content?.trim() || '';
-  if (!text) throw new Error('Empty response');
-  return text;
-}
 
 function getAngles() {
   return $('anglesInput').value.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
@@ -940,19 +383,13 @@ function buildUserMessage(input, angles, count) {
     lines.push('');
   }
   if (count > 1) {
-    lines.push(`اكتب ${count} إعلانات منفصلة، كل واحد بنفس الـ structure (عنوان + سطر فاضي + مقدمة + سطر فاضي + 5 ✅ + سطر فاضي + 🛑 CTA).`);
-    lines.push('');
-    lines.push('قبل كل إعلان اكتب سطر فيه: ANGLE: <اسم الزاوية اللي بنيت الإعلان عليها>');
-    lines.push('بعدين سطر فاضي ثم الإعلان كامل.');
-    lines.push('افصل الإعلانات عن بعض بسطر فيه === فقط (ثلاث علامات يساوي).');
-    lines.push('');
+    lines.push(`اكتب ${count} نسخ منفصلة.`);
+    lines.push('قبل كل نسخة اكتب سطر فيه: ANGLE: <اسم الزاوية>');
+    lines.push('وافصل النسخ عن بعض بسطر فيه === فقط.');
   } else {
     if (angles.length) lines.push(`استخدم زاوية: ${angles[0]}`);
-    lines.push('قبل الإعلان اكتب سطر: ANGLE: <اسم الزاوية>');
-    lines.push('بعدين سطر فاضي ثم الإعلان كامل.');
-    lines.push('');
+    lines.push('قبل النسخة اكتب سطر فيه: ANGLE: <اسم الزاوية>');
   }
-  lines.push('بدون أي شرح أو commentary، الإعلان مباشرة.');
   return lines.join('\n');
 }
 
@@ -1047,14 +484,9 @@ async function generate() {
   label.innerHTML = '<span class="spinner"></span> Generating…';
 
   try {
-    // Load EVERY saved Skill so the AI sees all your voice/style/instructions
-    // — adding a new skill in Settings auto-applies here, no code change.
-    const skillBlock = await buildSkillBlock(['about-gohar', 'egyptian-writing-voice', 'egyptian-copywriter']);
-    const sysPrompt  = (skillBlock ? skillBlock + '\n\n---\n\n' : '') + SYSTEM_PROMPT;
-    const text = provider === 'demo'       ? await callDemo(angles, count)
-              : provider === 'agent'      ? await callAgent(sysPrompt, userMessage, maxTokens)
-              : provider === 'chatgpt'    ? await callChatGPT(sysPrompt, userMessage, maxTokens)
-              : provider === 'openrouter' ? await callOpenRouter(sysPrompt, userMessage, maxTokens)
+    const sysPrompt = await loadPrompt();
+    const text = provider === 'chatgpt'
+              ? await callChatGPT(sysPrompt, userMessage, maxTokens)
               : await callClaude(sysPrompt, userMessage, maxTokens);
 
     $('outEmpty').style.display = 'none';

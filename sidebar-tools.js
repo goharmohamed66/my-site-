@@ -33,6 +33,8 @@
     name: 'All tools',
     svg: '<svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor" aria-hidden="true"><path d="M11.452 0h1.698c.47 0 .85.38.85.85v1.699c0 .469-.38.85-.85.85h-1.699a.85.85 0 0 1-.849-.85v-1.7c0-.469.38-.849.85-.849M13.15 5.301h-1.699a.85.85 0 0 0-.849.85V7.85c0 .469.38.849.85.849h1.698c.47 0 .85-.38.85-.85V6.15a.85.85 0 0 0-.85-.849M.85 10.602h1.699c.469 0 .85.38.85.85v1.698c0 .47-.381.85-.85.85h-1.7A.85.85 0 0 1 0 13.15v-1.699c0-.469.38-.85.85-.85M7.85 10.602h-1.7a.85.85 0 0 0-.85.85v1.698c.001.47.381.85.85.85h1.7c.469 0 .849-.38.849-.85v-1.699a.85.85 0 0 0-.85-.85M13.15 10.602h-1.699a.85.85 0 0 0-.849.85v1.698c0 .47.38.85.85.85h1.698c.47 0 .85-.38.85-.85v-1.699a.85.85 0 0 0-.85-.85M6.15 5.301h1.7c.469 0 .849.38.849.85V7.85c0 .469-.38.849-.85.849H6.15a.85.85 0 0 1-.85-.85V6.15c.001-.469.381-.849.85-.849M2.549 5.301h-1.7a.85.85 0 0 0-.849.85V7.85c0 .469.38.849.85.849h1.699c.469 0 .85-.38.85-.85V6.15a.85.85 0 0 0-.85-.849M7.85 0h-1.7a.85.85 0 0 0-.85.85v1.699c.001.469.381.85.85.85h1.7c.469 0 .849-.381.849-.85v-1.7A.85.85 0 0 0 7.849 0M.85 0h1.699c.469 0 .85.38.85.85v1.699c0 .469-.381.85-.85.85h-1.7A.85.85 0 0 1 0 2.548v-1.7C0 .38.38 0 .85 0"/></svg>',
     children: [
+      { name:'Buyer Persona Generator', href:'buyer-persona.html', matchPaths:['buyer-persona.html'],
+        svg:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>' },
       { name:'Copywriting', href:'copywriting.html', matchPaths:['copywriting.html'],
         svg:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>' },
       { name:'Landing page content', href:'landing-page.html', matchPaths:['landing-page.html'],
@@ -405,26 +407,39 @@
     }
     return null;
   }
-  // For an existing group element, append any children defined in `group`
-  // that aren't already present (matched by href file name). Idempotent.
+  // For an existing group element, insert any children defined in `group`
+  // that aren't already present (matched by href file name) — keeping the
+  // JS array order, so e.g. "Buyer Persona Generator" lands ABOVE the
+  // hardcoded "Copywriting" instead of being appended at the end.
+  // Idempotent: presence is re-checked from the live DOM each iteration.
   function augmentGroupChildren(groupEl, group) {
     if (!groupEl || !group || !group.children) return;
     var items = groupEl.querySelector('.app-sidebar-group-items');
     if (!items) return;
     var prefix = getPathPrefix();
     var here = (location.pathname.split('/').pop() || '').toLowerCase();
-    // Build a Set of href filenames already in the group.
-    var have = new Set();
-    items.querySelectorAll('a[href]').forEach(function (a) {
-      have.add(lastSegment(a.getAttribute('href') || ''));
-    });
-    group.children.forEach(function (c) {
+    function findLink(fname) {
+      var hit = null;
+      items.querySelectorAll('a[href]').forEach(function (a) {
+        if (lastSegment(a.getAttribute('href') || '') === fname) hit = a;
+      });
+      return hit;
+    }
+    group.children.forEach(function (c, idx) {
       var fname = lastSegment(c.href);
-      if (have.has(fname)) return;
+      if (findLink(fname)) return;
       var isActive = (c.matchPaths || []).some(function (p) { return here === p; });
       var html = '<a href="' + prefix + c.href + '" class="app-sidebar-item ' + (isActive ? 'active' : '') + '">'
                + c.svg + '<span>' + c.name + '</span></a>';
-      items.insertAdjacentHTML('beforeend', html);
+      // Anchor before the first LATER sibling (by array order) that's
+      // already in the DOM; if none exists, append at the end.
+      var anchorEl = null;
+      for (var j = idx + 1; j < group.children.length; j++) {
+        anchorEl = findLink(lastSegment(group.children[j].href));
+        if (anchorEl) break;
+      }
+      if (anchorEl) anchorEl.insertAdjacentHTML('beforebegin', html);
+      else items.insertAdjacentHTML('beforeend', html);
     });
   }
   function injectToolGroups() {
@@ -469,9 +484,10 @@
     'clients.html'       : PRODUCTS_GROUP.children[0].svg,
     'sheets.html'        : PRODUCTS_GROUP.children[1].svg,
     // ── All tools children ──
-    'copywriting.html'   : ALL_TOOLS_GROUP.children[0].svg,
-    'landing-page.html'  : ALL_TOOLS_GROUP.children[1].svg,
-    'headlines.html'     : ALL_TOOLS_GROUP.children[2].svg,
+    'buyer-persona.html' : ALL_TOOLS_GROUP.children[0].svg,
+    'copywriting.html'   : ALL_TOOLS_GROUP.children[1].svg,
+    'landing-page.html'  : ALL_TOOLS_GROUP.children[2].svg,
+    'headlines.html'     : ALL_TOOLS_GROUP.children[3].svg,
     // ── Automation Tools children ──
     'landing-auto.html'         : AUTOMATION_TOOLS_GROUP.children[0].svg,
     'automation-fm-update.html' : AUTOMATION_TOOLS_GROUP.children[1].svg,

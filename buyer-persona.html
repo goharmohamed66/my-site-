@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Headlines Generator</title>
+<title>Buyer Persona Generator</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Almarai:wght@400;700;800&display=swap" rel="stylesheet">
 <style>
   *{box-sizing:border-box;margin:0;padding:0;}
@@ -26,13 +26,16 @@
     .page-grid{grid-template-columns:1fr;}
     .page-col-left{position:static;}
   }
-  .page h1{font-size:22px;font-weight:700;letter-spacing:-0.3px;margin-bottom:18px;}
+  .page h1{font-size:22px;font-weight:700;letter-spacing:-0.3px;margin-bottom:6px;}
+  .page p.sub{font-size:13px;color:#6D7175;margin-bottom:20px;}
   .panel{background:#FFFFFF;border:1px solid #E1E3E5;border-radius:12px;padding:20px;margin-bottom:16px;box-shadow:0 1px 0 rgba(0,0,0,0.05);}
+  .panel-title{font-size:14px;font-weight:600;color:#1A1A1A;margin-bottom:4px;display:flex;align-items:center;justify-content:space-between;gap:8px;}
+  .panel-desc{font-size:12px;color:#6D7175;margin-bottom:14px;}
   .field{margin-bottom:14px;}
   .field-label{display:flex;align-items:center;justify-content:space-between;font-size:13px;color:#1A1A1A;font-weight:500;margin-bottom:6px;}
   .field-hint{font-size:11px;color:#8A8A8A;font-weight:400;}
-  .field-input,.field-textarea{width:100%;padding:10px 12px;border:1px solid #DCDCDC;border-radius:8px;font-size:13px;font-family:inherit;color:#1A1A1A;background:#FFFFFF;line-height:1.55;}
-  .field-input:focus,.field-textarea:focus{outline:none;border-color:#1A1A1A;box-shadow:0 0 0 1px #1A1A1A;}
+  .field-input,.field-textarea{width:100%;padding:10px 12px;border:1px solid #DCDCDC;border-radius:8px;font-size:13px;font-family:inherit;color:#1A1A1A;background:#F1F1F1;line-height:1.55;}
+  .field-input:focus,.field-textarea:focus{outline:none;border-color:#1A1A1A;box-shadow:0 0 0 1px #1A1A1A;background:#FFFFFF;}
   .field-textarea{min-height:110px;resize:vertical;direction:rtl;text-align:right;font-family:'Almarai','Inter',system-ui,sans-serif;}
   .btn{display:inline-flex;align-items:center;gap:8px;padding:0 18px;height:38px;border-radius:8px;border:1px solid #1A1A1A;background:#1A1A1A;color:#FFFFFF;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;}
   .btn:hover:not(:disabled){background:#303030;}
@@ -42,15 +45,19 @@
   .out-card{background:#FFFFFF;border:1px solid #E1E3E5;border-radius:12px;padding:24px;box-shadow:0 1px 0 rgba(0,0,0,0.05);min-height:220px;}
   .out-empty{text-align:center;padding:40px 20px;color:#8A8A8A;font-size:13px;}
   .out-empty .ic{width:56px;height:56px;border-radius:14px;background:#F1F1F1;display:inline-flex;align-items:center;justify-content:center;margin-bottom:14px;color:#6D7175;}
-  .out-text{white-space:pre-wrap;line-height:1.85;font-size:15px;color:#1A1A1A;direction:rtl;text-align:right;font-family:'Almarai','Inter',system-ui,sans-serif;}
-  .headlines-list{display:flex;flex-direction:column;gap:10px;direction:rtl;text-align:right;font-family:'Almarai','Inter',system-ui,sans-serif;}
-  .headline-row{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:start;padding:14px 16px;border:1px solid #E1E3E5;border-radius:10px;background:#FAFAFA;transition:background .12s, border-color .12s;}
-  .headline-row:hover{background:#FFFFFF;border-color:#C9CCCF;}
-  .headline-row .num{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:#1A1A1A;color:#FFFFFF;font-size:11px;font-weight:700;margin-left:8px;flex-shrink:0;font-variant-numeric:tabular-nums;font-family:'Inter',system-ui,sans-serif;}
-  .headline-row .text{font-size:15px;line-height:1.65;color:#1A1A1A;}
-  .headline-row .copy-one{flex-shrink:0;direction:ltr;height:32px;padding:0 12px;font-size:12px;font-weight:500;border-radius:6px;border:1px solid #DCDCDC;background:#FFFFFF;color:#1A1A1A;cursor:pointer;display:inline-flex;align-items:center;gap:5px;font-family:'Inter',system-ui,sans-serif;}
-  .headline-row .copy-one:hover{background:#F5F5F5;border-color:#1A1A1A;}
-  .headline-row .copy-one.copied{background:#0E8345;color:#FFFFFF;border-color:#0E8345;}
+  .out-text{white-space:pre-wrap;line-height:1.85;font-size:14px;color:#1A1A1A;direction:rtl;text-align:right;font-family:'Almarai','Inter',system-ui,sans-serif;}
+  /* Persona render */
+  .persona{direction:rtl;text-align:right;font-family:'Almarai','Inter',system-ui,sans-serif;}
+  .persona-sec{border:1px solid #E1E3E5;border-radius:10px;margin-bottom:12px;overflow:hidden;}
+  .persona-sec-head{background:#F1F1F1;padding:9px 14px;font-size:13px;font-weight:700;color:#1A1A1A;border-bottom:1px solid #E1E3E5;}
+  .persona-sec-body{padding:12px 14px;font-size:14px;line-height:1.8;color:#1A1A1A;}
+  .persona-kv{display:flex;gap:8px;margin-bottom:5px;}
+  .persona-kv:last-child{margin-bottom:0;}
+  .persona-kv .k{flex-shrink:0;color:#6D7175;font-weight:700;font-size:12px;min-width:90px;}
+  .persona-kv .v{flex:1;}
+  .persona-list{margin:0;padding-right:20px;}
+  .persona-list li{margin-bottom:5px;}
+  .persona-sec.full .persona-sec-body{white-space:pre-wrap;}
   .out-toolbar{display:flex;justify-content:flex-end;gap:8px;margin-bottom:14px;}
   .err{background:#FEF2F2;border:1px solid #FECACA;color:#991B1B;border-radius:8px;padding:10px 12px;font-size:13px;margin-top:10px;}
   .spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;}
@@ -58,8 +65,6 @@
   .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1A1A1A;color:#FFFFFF;padding:10px 18px;border-radius:8px;font-size:13px;z-index:300;opacity:0;transition:opacity .2s;pointer-events:none;}
   .toast.show{opacity:1;}
   .toast.error{background:#D72C0D;}
-  .key-row{display:flex;align-items:center;gap:8px;}
-  .key-row input{flex:1;}
 </style>
 <script src="topbar.js?v=1777784143"></script>
 <script src="sidebar-tools.js?v=1777784143"></script>
@@ -87,13 +92,16 @@
           <span>All tools</span>
         </div>
         <div class="app-sidebar-group-items">
+          <a href="buyer-persona.html" class="app-sidebar-item active">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span>Buyer Persona Generator</span>
+          </a>
           <a href="copywriting.html" class="app-sidebar-item">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg><span>Copywriting</span>
           </a>
           <a href="landing-page.html" class="app-sidebar-item">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg><span>Landing page content</span>
           </a>
-          <a href="headlines.html" class="app-sidebar-item active">
+          <a href="headlines.html" class="app-sidebar-item">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4v16"/><path d="M18 4v16"/><path d="M6 12h12"/></svg><span>Headlines Generator</span>
           </a>
         </div>
@@ -120,79 +128,95 @@
   </aside>
   <div class="app-main">
     <div class="page">
-      <h1 style="margin-bottom:6px;">Headlines Generator</h1>
-      <p style="font-size:13px;color:#6D7175;margin:0 0 20px;direction:rtl;text-align:right;">البرومبت بيتسحب تلقائياً من System Prompts كل مرة — التاسك دي متوصّلة ببرومت «Headlines Generator».</p>
+      <h1 style="margin-bottom:6px;">Buyer Persona Generator</h1>
+      <p class="sub">البرومبت بيتسحب تلقائياً من System Prompts كل مرة — التاسك دي متوصّلة ببرومت «Buyer Persona Generator».</p>
       <div class="page-grid">
        <div class="page-col-left">
-      <div class="panel">
-        <div class="field">
-          <div class="field-label" style="justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;">
-            <span>Product details &amp; customer reviews <span style="color:#D72C0D;">*</span></span>
-            <span style="display:inline-flex;gap:6px;flex-wrap:wrap;">
-              <label for="folderInput" style="display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border:1px solid #DCDCDC;border-radius:6px;background:#FFFFFF;cursor:pointer;font-size:11px;font-weight:600;color:#1A1A1A;">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
-                Upload from device
-              </label>
-              <input id="folderInput" type="file" webkitdirectory directory multiple style="display:none;">
-              <button type="button" id="driveFolderBtn" style="display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border:1px solid #DCDCDC;border-radius:6px;background:#FFFFFF;cursor:pointer;font-size:11px;font-weight:600;color:#1A1A1A;font-family:inherit;">
-                <img src="logos/google-drive.svg" width="14" height="14" alt="" style="display:block;">
-                Upload from Drive
-              </button>
-            </span>
+        <div class="panel">
+          <div class="field">
+            <div class="field-label" style="justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;">
+              <span>Product details &amp; customer reviews <span style="color:#D72C0D;">*</span></span>
+              <span style="display:inline-flex;gap:6px;flex-wrap:wrap;">
+                <label for="folderInput" style="display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border:1px solid #DCDCDC;border-radius:6px;background:#FFFFFF;cursor:pointer;font-size:11px;font-weight:600;color:#1A1A1A;">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                  Upload from device
+                </label>
+                <input id="folderInput" type="file" webkitdirectory directory multiple style="display:none;">
+                <button type="button" id="driveFolderBtn" style="display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border:1px solid #DCDCDC;border-radius:6px;background:#FFFFFF;cursor:pointer;font-size:11px;font-weight:600;color:#1A1A1A;font-family:inherit;">
+                  <img src="logos/google-drive.svg" width="14" height="14" alt="" style="display:block;">
+                  Upload from Drive
+                </button>
+              </span>
+            </div>
+            <textarea class="field-textarea" id="productInput" placeholder="بيانات المنتج + آراء العملاء — اسم المنتج، السعر، الفايدة، الشحن، الضمان، ريفيوهات حقيقية..."></textarea>
+            <div id="folderSummary" style="display:none;margin-top:8px;padding:8px 12px;background:#F0FDF4;border:1px solid #BBF7D0;border-radius:6px;font-size:11px;color:#0F5132;line-height:1.5;"></div>
           </div>
-          <textarea class="field-textarea" id="productInput" placeholder="Example: Educational game for kids ages 5-12. Develops thinking, memory, and problem-solving. Reviews: 'my son plays it every day', 'better than any tablet game', 'his teacher noticed the difference'..."></textarea>
-          <div id="folderSummary" style="display:none;margin-top:8px;padding:8px 12px;background:#F0FDF4;border:1px solid #BBF7D0;border-radius:6px;font-size:11px;color:#0F5132;line-height:1.5;"></div>
-        </div>
 
-        <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
-          <div style="display:flex;align-items:center;gap:8px;">
-            <label for="modelSelect" style="font-size:13px;color:#1A1A1A;font-weight:500;">Model:</label>
-            <select class="field-input" id="modelSelect" style="width:auto;min-width:200px;padding:8px 12px;">
-              <option value="claude">Claude (Anthropic)</option>
-              <option value="chatgpt">ChatGPT (OpenAI)</option>
-            </select>
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+              <label for="modelSelect" style="font-size:13px;color:#1A1A1A;font-weight:500;">Model:</label>
+              <select class="field-input" id="modelSelect" style="width:auto;min-width:200px;padding:8px 12px;background:#FFFFFF;">
+                <option value="claude">Claude (Anthropic)</option>
+                <option value="chatgpt">ChatGPT (OpenAI)</option>
+              </select>
+            </div>
+            <button class="btn" id="generateBtn" type="button">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+              <span id="generateLabel">Generate persona</span>
+            </button>
           </div>
-          <button class="btn" id="generateBtn" type="button">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-            <span id="generateLabel">Generate headlines</span>
-          </button>
+          <div class="err" id="errBox" style="display:none;"></div>
         </div>
-        <div class="err" id="errBox" style="display:none;"></div>
-      </div>
        </div>
        <div class="page-col-right">
-      <div class="out-toolbar" id="outToolbar" style="display:none;">
-        <button class="btn btn-ghost" id="copyBtn" type="button">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-          <span>Copy all</span>
-        </button>
-        <button class="btn btn-ghost" id="regenBtn" type="button">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-          <span>Regenerate</span>
-        </button>
-      </div>
-
-      <div class="out-card" id="outCard">
-        <div class="out-empty" id="outEmpty">
-          <div class="ic">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4v16"/><path d="M18 4v16"/><path d="M6 12h12"/></svg>
-          </div>
-          <div>The 6 headlines will appear here after you click Generate.</div>
+        <div class="out-toolbar" id="outToolbar" style="display:none;">
+          <button class="btn btn-ghost" id="copyBtn" type="button">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            <span>Copy JSON</span>
+          </button>
+          <button class="btn btn-ghost" id="regenBtn" type="button">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+            <span>Regenerate</span>
+          </button>
         </div>
-        <div class="headlines-list" id="headlinesList" style="display:none;"></div>
-        <div class="out-text" id="outText" style="display:none;"></div>
-      </div>
+        <div class="out-card" id="outCard">
+          <div class="out-empty" id="outEmpty">
+            <div class="ic">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            </div>
+            <div>الـ Buyer Persona هتظهر هنا بعد ما تدوس Generate.</div>
+          </div>
+          <div class="persona" id="personaOut" style="display:none;"></div>
+          <div class="out-text" id="outText" style="display:none;"></div>
+        </div>
        </div>
       </div>
     </div>
-
     <div class="toast" id="toast"></div>
-  </div>
-</div>
 
 <script>
-// ── FOLDER UPLOAD (device or Drive) → fills Product Details textarea ────
 const $ = id => document.getElementById(id);
+const ANTHROPIC_KEY_LS  = 'app.anthropicApiKey';
+const OPENAI_KEY_LS     = 'app.openaiApiKey';
+
+// ── System prompt source — fetched fresh from the central System Prompts
+//    store (api/skills.php) on every run, so edits there apply right away.
+//    This task is wired to the "Buyer Persona Generator" prompt.
+const SKILLS_API   = 'https://indigo-dog-836598.hostingersite.com/github/api/skills.php';
+const SKILLS_TOKEN = 'tk_4d2b9f7a8c6e1530a4f2d9b7e8c6a1f5';
+const TASK_PROMPT_SLUG = 'buyer-bersona';
+async function loadPrompt() {
+  const r = await fetch(SKILLS_API + '?slug=' + encodeURIComponent(TASK_PROMPT_SLUG) + '&_t=' + Date.now(), {
+    headers: { 'Authorization': 'Bearer ' + SKILLS_TOKEN }
+  });
+  if (!r.ok) throw new Error('تعذّر تحميل البرومبت (HTTP ' + r.status + ').');
+  const d = await r.json();
+  const instr = ((d && d.instructions) || '').trim();
+  if (!instr) throw new Error('برومبت التاسك فاضي — ضيفه من System Prompts في الإعدادات.');
+  return instr;
+}
+
+// ── FOLDER UPLOAD (device or Drive) → fills Product Details textarea ────
 async function _extractText(file) {
   const ext = (file.name.split('.').pop() || '').toLowerCase();
   if (ext === 'txt' || ext === 'md' || ext === 'csv') return await file.text();
@@ -207,13 +231,7 @@ async function ingestFolderFiles(fileList) {
   const files = Array.from(fileList || []);
   if (!files.length) return;
   const folderName = (files[0].webkitRelativePath || files[0].name).split('/')[0] || '';
-  const textFiles = files
-    .filter(f => /\.(txt|md|csv|docx)$/i.test(f.name))
-    .sort((a, b) => {
-      const aRev = /reviews.*details/i.test(a.name) ? -1 : 0;
-      const bRev = /reviews.*details/i.test(b.name) ? -1 : 0;
-      return aRev - bRev;
-    });
+  const textFiles = files.filter(f => /\.(txt|md|csv|docx)$/i.test(f.name));
   if (!textFiles.length) { alert('No readable text/Word/Sheet file found in the folder.'); return; }
   let combined = ''; let totalChars = 0; const usedFiles = [];
   for (const f of textFiles) {
@@ -227,11 +245,11 @@ async function ingestFolderFiles(fileList) {
     } catch (e) { console.warn('skip', f.name, e.message); }
   }
   if (!combined) { alert('Could not extract text from any file.'); return; }
-  const ta = document.getElementById('productInput');
+  const ta = $('productInput');
   if (!ta.value.trim()) ta.value = combined.trim();
-  const sum = document.getElementById('folderSummary');
+  const sum = $('folderSummary');
   sum.style.display = 'block';
-  sum.textContent = '? ' + folderName + ' - ' + totalChars.toLocaleString() + ' chars from ' + usedFiles.length + ' file(s): ' + usedFiles.slice(0, 3).join(', ') + (usedFiles.length > 3 ? '...' : '');
+  sum.textContent = '✓ ' + folderName + ' — ' + totalChars.toLocaleString() + ' chars from ' + usedFiles.length + ' file(s): ' + usedFiles.slice(0, 3).join(', ') + (usedFiles.length > 3 ? '…' : '');
 }
 $('folderInput').addEventListener('change', (e) => ingestFolderFiles(e.target.files));
 $('driveFolderBtn').addEventListener('click', () => {
@@ -250,33 +268,7 @@ $('driveFolderBtn').addEventListener('click', () => {
   );
 });
 
-const PROVIDER_LS = 'app.aiProvider';
-const ANTHROPIC_KEY_LS = 'app.anthropicApiKey';
-const OPENAI_KEY_LS = 'app.openaiApiKey';
-
-// ── System prompt source — fetched fresh from the central System Prompts
-//    store (api/skills.php) on every run, so edits there apply right away.
-//    This task is wired to the "Headlines Generator" prompt.
-const SKILLS_API   = 'https://indigo-dog-836598.hostingersite.com/github/api/skills.php';
-const SKILLS_TOKEN = 'tk_4d2b9f7a8c6e1530a4f2d9b7e8c6a1f5';
-const TASK_PROMPT_SLUG = 'generate-headlines';
-async function loadPrompt() {
-  const r = await fetch(SKILLS_API + '?slug=' + encodeURIComponent(TASK_PROMPT_SLUG) + '&_t=' + Date.now(), {
-    headers: { 'Authorization': 'Bearer ' + SKILLS_TOKEN }
-  });
-  if (!r.ok) throw new Error('تعذّر تحميل البرومبت (HTTP ' + r.status + ').');
-  const d = await r.json();
-  const instr = ((d && d.instructions) || '').trim();
-  if (!instr) throw new Error('برومبت التاسك فاضي — ضيفه من System Prompts في الإعدادات.');
-  return instr;
-}
-
-const savedProvider = localStorage.getItem(PROVIDER_LS);
-if (savedProvider) $('modelSelect').value = savedProvider;
-$('modelSelect').addEventListener('change', () => {
-  localStorage.setItem(PROVIDER_LS, $('modelSelect').value);
-});
-
+// ── UI helpers ─────────────────────────────────────────────────────────
 function showToast(msg, isError) {
   const t = $('toast');
   t.textContent = msg;
@@ -289,6 +281,8 @@ function showError(msg) {
   else { e.style.display = 'none'; e.textContent = ''; }
 }
 
+// ── AI calls — the System Prompt box content is sent verbatim as the
+//    system message; the product data is the user message. ─────────────
 async function callClaude(systemPrompt, userMessage, maxTokens) {
   if (window.aiKeysReady) { try { await window.aiKeysReady; } catch (e) {} }
   const apiKey = localStorage.getItem(ANTHROPIC_KEY_LS) || '';
@@ -303,7 +297,7 @@ async function callClaude(systemPrompt, userMessage, maxTokens) {
     },
     body: JSON.stringify({
       model: 'claude-opus-4-7',
-      max_tokens: maxTokens || 1500,
+      max_tokens: maxTokens || 3000,
       system: systemPrompt,
       messages: [{ role: 'user', content: userMessage }]
     })
@@ -314,7 +308,6 @@ async function callClaude(systemPrompt, userMessage, maxTokens) {
   if (!text) throw new Error('Empty response');
   return text;
 }
-
 async function callChatGPT(systemPrompt, userMessage, maxTokens) {
   if (window.aiKeysReady) { try { await window.aiKeysReady; } catch (e) {} }
   const apiKey = localStorage.getItem(OPENAI_KEY_LS) || '';
@@ -327,7 +320,7 @@ async function callChatGPT(systemPrompt, userMessage, maxTokens) {
     },
     body: JSON.stringify({
       model: 'gpt-5',
-      max_completion_tokens: maxTokens || 1500,
+      max_completion_tokens: maxTokens || 3000,
       reasoning_effort: 'minimal',
       messages: [
         { role: 'system', content: systemPrompt },
@@ -342,113 +335,109 @@ async function callChatGPT(systemPrompt, userMessage, maxTokens) {
   return text;
 }
 
+// ── Output rendering — parse the model's JSON and show it as structured
+//    sections in-page. Falls back to raw text if it isn't valid JSON. ───
+const SEC_LABELS = {
+  background: 'الخلفية', demographics: 'البيانات الديموغرافية', identifiers: 'المعرّفات',
+  goals: 'الأهداف', challenges: 'التحديات', how_we_help: 'إزاي بنساعده',
+  real_quotes: 'اقتباسات حقيقية من العميل', objections: 'الاعتراضات', usp: 'الميزة التنافسية (USP)',
+  marketing_message: 'الرسالة التسويقية', elevator_pitch: 'الجملة التعريفية'
+};
+const SUB_LABELS = {
+  education: 'التعليم', interests: 'الاهتمامات', employment: 'الوظيفة',
+  gender: 'النوع', age: 'السن', marital_status: 'الحالة الاجتماعية', income: 'الدخل', location: 'المكان',
+  keywords: 'كلماته', behaviors: 'سلوكه', media_habits: 'وسائطه',
+  primary: 'الأساسي', secondary: 'الثانوي'
+};
+function esc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+function extractJSON(text) {
+  // Strip ```json fences if the model added them, then grab the outermost
+  // { … } block so trailing/leading prose can't break the parse.
+  let t = String(text || '').trim();
+  t = t.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/i, '').trim();
+  const first = t.indexOf('{'), last = t.lastIndexOf('}');
+  if (first >= 0 && last > first) t = t.slice(first, last + 1);
+  return JSON.parse(t);
+}
+function renderSection(key, val) {
+  const head = SEC_LABELS[key] || key;
+  let bodyHtml = '';
+  if (Array.isArray(val)) {
+    bodyHtml = '<ul class="persona-list">' +
+      val.map(v => '<li>' + esc(v) + '</li>').join('') + '</ul>';
+  } else if (val && typeof val === 'object') {
+    bodyHtml = Object.keys(val).map(k =>
+      '<div class="persona-kv"><span class="k">' + esc(SUB_LABELS[k] || k) + '</span>' +
+      '<span class="v">' + esc(val[k]) + '</span></div>'
+    ).join('');
+  } else {
+    return '<div class="persona-sec full"><div class="persona-sec-head">' + esc(head) +
+           '</div><div class="persona-sec-body">' + esc(val) + '</div></div>';
+  }
+  return '<div class="persona-sec"><div class="persona-sec-head">' + esc(head) +
+         '</div><div class="persona-sec-body">' + bodyHtml + '</div></div>';
+}
+let __lastJsonText = '';
+function renderOutput(text) {
+  const personaEl = $('personaOut'), rawEl = $('outText'), emptyEl = $('outEmpty');
+  emptyEl.style.display = 'none';
+  let obj = null;
+  try { obj = extractJSON(text); } catch (e) { obj = null; }
+  if (obj && typeof obj === 'object') {
+    __lastJsonText = JSON.stringify(obj, null, 2);
+    personaEl.innerHTML = Object.keys(obj).map(k => renderSection(k, obj[k])).join('');
+    personaEl.style.display = 'block';
+    rawEl.style.display = 'none';
+  } else {
+    // Not valid JSON — show the raw model output so nothing is lost.
+    __lastJsonText = text;
+    rawEl.textContent = text;
+    rawEl.style.display = 'block';
+    personaEl.style.display = 'none';
+  }
+  $('outToolbar').style.display = 'flex';
+}
 
+// ── Generate ───────────────────────────────────────────────────────────
+let __busy = false;
 async function generate() {
+  if (__busy) return;
   showError('');
   const input = $('productInput').value.trim();
-  const provider = $('modelSelect').value;
+  if (!input) { showError('اكتب بيانات المنتج وآراء العملاء الأول.'); return; }
 
-  if (!input) { showToast('Enter product details first', true); return; }
-
-  const userMessage = `INPUT DATA
-${input}`;
-
-  const btn = $('generateBtn');
-  const label = $('generateLabel');
-  btn.disabled = true;
+  const model = $('modelSelect').value;
+  const btn = $('generateBtn'), label = $('generateLabel'), regen = $('regenBtn');
+  __busy = true;
+  btn.disabled = true; regen.disabled = true;
   label.innerHTML = '<span class="spinner"></span> Generating…';
-
   try {
     const sysPrompt = await loadPrompt();
-    const text = provider === 'chatgpt'
-              ? await callChatGPT(sysPrompt, userMessage, 1500)
-              : await callClaude(sysPrompt, userMessage, 1500);
-
-    $('outEmpty').style.display = 'none';
-    // Keep raw text for "Copy all"
-    $('outText').textContent = text;
-    // Parse into individual headlines and render with per-row copy buttons
-    renderHeadlines(text);
-    $('outToolbar').style.display = 'flex';
-  } catch (err) {
-    showError('Failed: ' + err.message);
+    const text = model === 'chatgpt'
+      ? await callChatGPT(sysPrompt, input, 3000)
+      : await callClaude(sysPrompt, input, 3000);
+    renderOutput(text);
+  } catch (e) {
+    showError(e.message || String(e));
   } finally {
-    btn.disabled = false;
-    label.textContent = 'Generate headlines';
+    __busy = false;
+    btn.disabled = false; regen.disabled = false;
+    label.textContent = 'Generate persona';
   }
 }
-
-// Parse the raw output into individual headlines (one per non-empty line),
-// strip leading numbering like "1- " / "1. " / "1) " so each card just shows
-// the headline text, then render each with its own Copy button.
-function parseHeadlines(text) {
-  return (text || '')
-    .split(/\r?\n/)
-    .map(l => l.trim())
-    .filter(l => l && !/^[-=━]+$/.test(l))   // drop separators
-    .map(l => l.replace(/^\s*\d+\s*[-.)]\s*/, '').trim())
-    .filter(Boolean);
-}
-
-function escapeHtml(s) {
-  return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-}
-
-function renderHeadlines(text) {
-  const list = $('headlinesList');
-  const headlines = parseHeadlines(text);
-  if (!headlines.length) {
-    list.style.display = 'none';
-    $('outText').style.display = 'block';
-    return;
-  }
-  list.style.display = 'flex';
-  $('outText').style.display = 'none';
-  list.innerHTML = headlines.map((h, i) => `
-    <div class="headline-row">
-      <div><span class="num">${i + 1}</span><span class="text">${escapeHtml(h)}</span></div>
-      <button class="copy-one" data-idx="${i}" type="button">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-        Copy
-      </button>
-    </div>
-  `).join('');
-
-  // Wire copy buttons
-  list.querySelectorAll('.copy-one').forEach(btn => {
-    btn.addEventListener('click', async () => {
-      const idx = +btn.dataset.idx;
-      const t = headlines[idx];
-      try {
-        await navigator.clipboard.writeText(t);
-      } catch (e) {
-        const ta = document.createElement('textarea');
-        ta.value = t; document.body.appendChild(ta); ta.select();
-        document.execCommand('copy'); document.body.removeChild(ta);
-      }
-      const originalHTML = btn.innerHTML;
-      btn.classList.add('copied');
-      btn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Copied';
-      setTimeout(() => { btn.classList.remove('copied'); btn.innerHTML = originalHTML; }, 1400);
-    });
-  });
-}
-
 $('generateBtn').addEventListener('click', generate);
 $('regenBtn').addEventListener('click', generate);
-
-$('copyBtn').addEventListener('click', async () => {
-  const txt = $('outText').textContent;
-  try {
-    await navigator.clipboard.writeText(txt);
-    showToast('Copied');
-  } catch (e) {
-    const ta = document.createElement('textarea');
-    ta.value = txt; document.body.appendChild(ta); ta.select();
-    document.execCommand('copy'); document.body.removeChild(ta);
-    showToast('Copied');
-  }
+$('copyBtn').addEventListener('click', () => {
+  if (!__lastJsonText) return;
+  navigator.clipboard.writeText(__lastJsonText)
+    .then(() => showToast('Copied'))
+    .catch(() => showToast('Copy failed', true));
 });
 </script>
+  </div>
+</div>
 </body>
 </html>

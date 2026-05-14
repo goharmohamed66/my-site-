@@ -227,7 +227,7 @@ const NAV = [
   { id: 'cms', label: 'CMS' },
   { id: 'shipping', label: 'Shipping companies' },
   { _section: 'Brain' },
-  { id: 'skills', label: 'Skills' },
+  { id: 'skills', label: 'System Prompts' },
   { id: 'connectors-hub', label: 'Connectors' },
   { _section: 'Team' },
   { id: 'users', label: 'Users' },
@@ -3156,20 +3156,20 @@ async function wireAutoLandDownload() {
 // "how the AI talks like me" instead of touching every tool.
 async function renderSkills(c) {
   c.innerHTML = `
-    <div class="settings-bread"><a href="/">Home</a> › Brain › Skills</div>
-    <h1 class="settings-title">Skills</h1>
+    <div class="settings-bread"><a href="/">Home</a> › Brain › System Prompts</div>
+    <h1 class="settings-title">System Prompts</h1>
     <div class="settings-subtitle">Reusable instructions the AI loads before every task — your voice, your formatting, your rules.</div>
     <div class="info-banner">
       <span class="ico">🧠</span>
-      <div>Each skill is a slug (e.g. <code>egyptian-copywriter</code>). Tools pick the matching skill by slug — Copywriting reads <code>egyptian-copywriter</code>, Landing Page Auto reads <code>egyptian-landing-page</code>, Headlines reads <code>generate-headlines</code>. Update the instructions here once, every tool benefits.</div>
+      <div>Each system prompt has a slug. Every task reads its own — Buyer Persona Generator reads <code>buyer-bersona</code>, Copywriting reads <code>egyptian-copywriter</code>, Headlines reads <code>generate-headlines</code>, Landing page content reads <code>egyptian-landing-page</code>. Edit the instructions here once and the task picks it up on its next run.</div>
     </div>
     <div class="panel">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
         <div>
-          <div class="panel-title">Saved skills</div>
+          <div class="panel-title">Saved system prompts</div>
           <div class="panel-desc" style="margin-bottom:0;" id="skillCount">Loading…</div>
         </div>
-        <button class="btn btn-primary" id="addSkillBtn">+ Add skill</button>
+        <button class="btn btn-primary" id="addSkillBtn">+ Add system prompt</button>
       </div>
       <div id="skillList"><div class="loading-state">Loading…</div></div>
     </div>
@@ -3186,9 +3186,9 @@ async function renderSkills(c) {
 }
 
 function renderSkillList(rows) {
-  $('skillCount').textContent = `${rows.length} ${rows.length===1?'skill':'skills'} saved.`;
+  $('skillCount').textContent = `${rows.length} ${rows.length===1?'system prompt':'system prompts'} saved.`;
   if (rows.length === 0) {
-    $('skillList').innerHTML = `<div class="empty-state">No skills yet. Click <strong>Add skill</strong> to write your first one.</div>`;
+    $('skillList').innerHTML = `<div class="empty-state">No system prompts yet. Click <strong>Add system prompt</strong> to write your first one.</div>`;
     return;
   }
   $('skillList').innerHTML = `<div class="item-list">${rows.map(it => `
@@ -3204,7 +3204,7 @@ function renderSkillList(rows) {
       </div>
     </div>`).join('')}</div>`;
   document.querySelectorAll('[data-del-skill]').forEach(b => b.addEventListener('click', async () => {
-    if (!confirm('Delete this skill?')) return;
+    if (!confirm('Delete this system prompt?')) return;
     try {
       await api('/skills.php?id=' + b.dataset.delSkill, {method: 'DELETE'});
       toast('Deleted');
@@ -3219,11 +3219,11 @@ function renderSkillList(rows) {
 
 function openSkillModal(editing) {
   modalCtx = { section: 'skills', editing: editing || null };
-  $('modalTitle').textContent = editing ? 'Edit skill' : 'Write skill instructions';
+  $('modalTitle').textContent = editing ? 'Edit system prompt' : 'Write system prompt';
   const e = editing || {};
   $('modalBody').innerHTML = `
     <div class="form-row" style="grid-template-columns:1fr;gap:6px;margin-bottom:14px;">
-      <label class="form-label">Skill name</label>
+      <label class="form-label">System prompt name</label>
       <input class="form-input" id="sk_name" placeholder="Egyptian Copywriter" value="${escape(e.name || '')}">
     </div>
     <div class="form-row" style="grid-template-columns:1fr;gap:6px;margin-bottom:14px;">
