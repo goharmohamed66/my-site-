@@ -912,7 +912,11 @@ if ($action === 'refresh_all_fees') {
   $fees       = [];
   $batch      = 10;
   $pauseMs    = 100;
-  $sampleRaw  = null;   // first non-empty response we see, for diagnosis
+  $sampleRaw  = null;        // first non-empty response we see (success diagnosis)
+  $sampleErr  = null;        // first failed response (auth / rate-limit diagnosis)
+  $httpCounts = [];          // status_code → count
+  $emptyBody  = 0;
+  $noFeeField = 0;           // 2xx response but no recognized fee field
 
   for ($i = 0; $i < $totalIds; $i += $batch) {
     $slice = array_slice($ids, $i, $batch);
@@ -933,18 +937,31 @@ if ($action === 'refresh_all_fees') {
     do { curl_multi_exec($multi, $running); if ($running) curl_multi_select($multi); } while ($running > 0);
     foreach ($handles as $did => $ch) {
       $body = curl_multi_getcontent($ch);
+      $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
       curl_multi_remove_handle($multi, $ch);
       curl_close($ch);
-      if (!$body) continue;
+      $httpCounts[$code] = ($httpCounts[$code] ?? 0) + 1;
+      if (!$body) { $emptyBody++; continue; }
       $j = json_decode($body, true);
+      // Capture the first non-2xx as a diagnostic sample so the UI can
+      // surface auth / rate-limit / 404 issues from the alert directly.
+      if ($code >= 400 && $sampleErr === null) {
+        $sampleErr = ['id' => $did, 'code' => $code, 'body' => substr((string)$body, 0, 400)];
+      }
       if (!is_array($j)) continue;
-      if ($sampleRaw === null) $sampleRaw = ['id' => $did, 'keys' => array_keys($j), 'shipmentFees' => $j['shipmentFees'] ?? null, 'priceAfterVat' => $j['priceAfterVat'] ?? null];
-      if (isset($j['shipmentFees']))             $fees[$did] = (float)$j['shipmentFees'];
-      elseif (isset($j['priceAfterVat']))        $fees[$did] = (float)$j['priceAfterVat'];
-      elseif (isset($j['shippingFee']))          $fees[$did] = (float)$j['shippingFee'];
-      elseif (isset($j['priceBeforeVat']))       $fees[$did] = (float)$j['priceBeforeVat'];
+      if ($sampleRaw === null && $code < 400) {
+        $sampleRaw = ['id' => $did, 'code' => $code, 'keys' => array_keys($j),
+                      'shipmentFees' => $j['shipmentFees'] ?? null,
+                      'priceAfterVat' => $j['priceAfterVat'] ?? null];
+      }
+      $matched = false;
+      if (isset($j['shipmentFees']))             { $fees[$did] = (float)$j['shipmentFees']; $matched = true; }
+      elseif (isset($j['priceAfterVat']))        { $fees[$did] = (float)$j['priceAfterVat']; $matched = true; }
+      elseif (isset($j['shippingFee']))          { $fees[$did] = (float)$j['shippingFee']; $matched = true; }
+      elseif (isset($j['priceBeforeVat']))       { $fees[$did] = (float)$j['priceBeforeVat']; $matched = true; }
       elseif (isset($j['wallet']['cashCycle']['shipping_fees']))
-                                                 $fees[$did] = (float)$j['wallet']['cashCycle']['shipping_fees'];
+                                                 { $fees[$did] = (float)$j['wallet']['cashCycle']['shipping_fees']; $matched = true; }
+      if (!$matched && $code < 400) $noFeeField++;
     }
     curl_multi_close($multi);
     if ($pauseMs > 0) usleep($pauseMs * 1000);
@@ -965,13 +982,17 @@ if ($action === 'refresh_all_fees') {
     if ($fee > 0) $withFees++;
   }
   send_json([
-    'rows_in_db'      => $totalRows,
-    'rows_with_id'    => $totalIds,
-    'rows_missing_id' => $missingId,
-    'fees_returned'   => count($fees),
-    'fees_nonzero'    => $withFees,
-    'db_updated'      => $updated,
-    'sample_response' => $sampleRaw,
+    'rows_in_db'       => $totalRows,
+    'rows_with_id'     => $totalIds,
+    'rows_missing_id'  => $missingId,
+    'fees_returned'    => count($fees),
+    'fees_nonzero'     => $withFees,
+    'db_updated'       => $updated,
+    'http_status'      => $httpCounts,
+    'empty_body'       => $emptyBody,
+    'ok_but_no_fee'    => $noFeeField,
+    'sample_response'  => $sampleRaw,
+    'sample_error'     => $sampleErr,
   ]);
 }
 

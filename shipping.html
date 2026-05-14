@@ -1694,7 +1694,10 @@ function App(){
               var lines=results.map(function(r){
                 if(r.err)return r.name+" → ERROR: "+r.err;
                 var x=r.res||{};
-                return r.name+" → DB rows: "+x.rows_in_db+", with _id: "+x.rows_with_id+", fees got: "+x.fees_returned+" (nonzero: "+x.fees_nonzero+"), DB updated: "+x.db_updated;
+                var http=x.http_status?Object.keys(x.http_status).map(function(k){return k+":"+x.http_status[k];}).join(" "):"-";
+                var line=r.name+" → DB rows: "+x.rows_in_db+", with _id: "+x.rows_with_id+", fees got: "+x.fees_returned+" (nonzero: "+x.fees_nonzero+"), DB updated: "+x.db_updated+"\n  HTTP: "+http+"  empty:"+x.empty_body+"  ok_no_fee:"+x.ok_but_no_fee;
+                if(x.sample_error)line+="\n  Error sample (id "+x.sample_error.id+", code "+x.sample_error.code+"): "+x.sample_error.body;
+                return line;
               });
               alert("Refresh complete:\n\n"+lines.join("\n\n"));
               console.log("[refresh_all_fees] results",results);
