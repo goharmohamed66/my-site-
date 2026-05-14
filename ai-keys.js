@@ -12,6 +12,7 @@
     claude:     'app.anthropicApiKey',
     chatgpt:    'app.openaiApiKey',
     openrouter: 'app.openrouterApiKey',
+    gemini:     'app.geminiApiKey',
   };
   global.aiKeysReady = (async () => {
     try {

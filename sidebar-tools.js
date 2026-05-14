@@ -39,6 +39,8 @@
         svg:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>' },
       { name:'Landing page content', href:'landing-page.html', matchPaths:['landing-page.html'],
         svg:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>' },
+      { name:'Landing page images', href:'landing-page-images.html', matchPaths:['landing-page-images.html'],
+        svg:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>' },
       { name:'Headlines Generator', href:'headlines.html', matchPaths:['headlines.html'],
         svg:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4v16"/><path d="M18 4v16"/><path d="M6 12h12"/></svg>' }
     ]
@@ -484,10 +486,11 @@
     'clients.html'       : PRODUCTS_GROUP.children[0].svg,
     'sheets.html'        : PRODUCTS_GROUP.children[1].svg,
     // ── All tools children ──
-    'buyer-persona.html' : ALL_TOOLS_GROUP.children[0].svg,
-    'copywriting.html'   : ALL_TOOLS_GROUP.children[1].svg,
-    'landing-page.html'  : ALL_TOOLS_GROUP.children[2].svg,
-    'headlines.html'     : ALL_TOOLS_GROUP.children[3].svg,
+    'buyer-persona.html'       : ALL_TOOLS_GROUP.children[0].svg,
+    'copywriting.html'         : ALL_TOOLS_GROUP.children[1].svg,
+    'landing-page.html'        : ALL_TOOLS_GROUP.children[2].svg,
+    'landing-page-images.html' : ALL_TOOLS_GROUP.children[3].svg,
+    'headlines.html'           : ALL_TOOLS_GROUP.children[4].svg,
     // ── Automation Tools children ──
     'landing-auto.html'         : AUTOMATION_TOOLS_GROUP.children[0].svg,
     'automation-fm-update.html' : AUTOMATION_TOOLS_GROUP.children[1].svg,

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Buyer Persona</title>
+<title>Landing page images</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Almarai:wght@400;700;800&display=swap" rel="stylesheet">
 <style>
   *{box-sizing:border-box;margin:0;padding:0;}
@@ -20,45 +20,48 @@
   .app-sidebar-group-items{display:flex;flex-direction:column;gap:2px;padding:2px 0;}
   .app-main{flex:1;min-width:0;display:flex;flex-direction:column;}
   .page{padding:24px 32px;max-width:none;width:100%;}
-  .page-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:24px;align-items:start;}
+  .page-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);gap:24px;align-items:start;}
   .page-col-left{position:sticky;top:72px;}
   @media (max-width: 1100px){
     .page-grid{grid-template-columns:1fr;}
     .page-col-left{position:static;}
   }
-  .page h1{font-size:22px;font-weight:700;letter-spacing:-0.3px;margin-bottom:6px;}
+  .page h1{font-size:22px;font-weight:700;letter-spacing:-0.3px;}
   .page p.sub{font-size:13px;color:#6D7175;margin-bottom:20px;}
   .panel{background:#FFFFFF;border:1px solid #E1E3E5;border-radius:12px;padding:20px;margin-bottom:16px;box-shadow:0 1px 0 rgba(0,0,0,0.05);}
-  .panel-title{font-size:14px;font-weight:600;color:#1A1A1A;margin-bottom:4px;display:flex;align-items:center;justify-content:space-between;gap:8px;}
+  .panel-title{font-size:14px;font-weight:600;color:#1A1A1A;margin-bottom:4px;}
   .panel-desc{font-size:12px;color:#6D7175;margin-bottom:14px;}
   .field{margin-bottom:14px;}
   .field-label{display:flex;align-items:center;justify-content:space-between;font-size:13px;color:#1A1A1A;font-weight:500;margin-bottom:6px;}
-  .field-hint{font-size:11px;color:#8A8A8A;font-weight:400;}
   .field-input,.field-textarea{width:100%;padding:10px 12px;border:1px solid #DCDCDC;border-radius:8px;font-size:13px;font-family:inherit;color:#1A1A1A;background:#F1F1F1;line-height:1.55;}
   .field-input:focus,.field-textarea:focus{outline:none;border-color:#1A1A1A;box-shadow:0 0 0 1px #1A1A1A;background:#FFFFFF;}
-  .field-textarea{min-height:110px;resize:vertical;direction:rtl;text-align:right;font-family:'Almarai','Inter',system-ui,sans-serif;}
+  .field-textarea{min-height:150px;resize:vertical;direction:rtl;text-align:right;font-family:'Almarai','Inter',system-ui,sans-serif;}
   .btn{display:inline-flex;align-items:center;gap:8px;padding:0 18px;height:38px;border-radius:8px;border:1px solid #1A1A1A;background:#1A1A1A;color:#FFFFFF;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;}
   .btn:hover:not(:disabled){background:#303030;}
   .btn:disabled{opacity:0.55;cursor:not-allowed;}
   .btn-ghost{background:#FFFFFF;color:#1A1A1A;border-color:#DCDCDC;}
   .btn-ghost:hover:not(:disabled){background:#F5F5F5;}
-  .out-card{background:#FFFFFF;border:1px solid #E1E3E5;border-radius:12px;padding:24px;box-shadow:0 1px 0 rgba(0,0,0,0.05);min-height:220px;}
-  .out-empty{text-align:center;padding:40px 20px;color:#8A8A8A;font-size:13px;}
+  /* Reference image dropzone */
+  .dropzone{border:1.5px dashed #C9CCCF;border-radius:10px;padding:18px;text-align:center;cursor:pointer;background:#FAFAFA;color:#6D7175;font-size:13px;transition:border-color .12s,background .12s;}
+  .dropzone:hover{border-color:#1A1A1A;background:#F5F5F5;}
+  .ref-preview{display:none;margin-top:12px;position:relative;}
+  .ref-preview img{width:100%;max-height:260px;object-fit:contain;border:1px solid #E1E3E5;border-radius:10px;background:#FFFFFF;}
+  .ref-preview .ref-clear{position:absolute;top:8px;right:8px;width:26px;height:26px;border-radius:50%;border:none;background:rgba(26,26,26,0.85);color:#fff;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;}
+  .out-card{background:#FFFFFF;border:1px solid #E1E3E5;border-radius:12px;padding:20px;box-shadow:0 1px 0 rgba(0,0,0,0.05);min-height:220px;}
+  .out-empty{text-align:center;padding:48px 20px;color:#8A8A8A;font-size:13px;}
   .out-empty .ic{width:56px;height:56px;border-radius:14px;background:#F1F1F1;display:inline-flex;align-items:center;justify-content:center;margin-bottom:14px;color:#6D7175;}
-  .out-text{white-space:pre-wrap;line-height:1.85;font-size:14px;color:#1A1A1A;direction:rtl;text-align:right;font-family:'Almarai','Inter',system-ui,sans-serif;}
-  /* Persona render */
-  .persona{direction:rtl;text-align:right;font-family:'Almarai','Inter',system-ui,sans-serif;}
-  .persona-sec{border:1px solid #E1E3E5;border-radius:10px;margin-bottom:12px;overflow:hidden;}
-  .persona-sec-head{background:#F1F1F1;padding:9px 14px;font-size:13px;font-weight:700;color:#1A1A1A;border-bottom:1px solid #E1E3E5;}
-  .persona-sec-body{padding:12px 14px;font-size:14px;line-height:1.8;color:#1A1A1A;}
-  .persona-kv{display:flex;gap:8px;margin-bottom:5px;}
-  .persona-kv:last-child{margin-bottom:0;}
-  .persona-kv .k{flex-shrink:0;color:#6D7175;font-weight:700;font-size:12px;min-width:90px;}
-  .persona-kv .v{flex:1;}
-  .persona-list{margin:0;padding-right:20px;}
-  .persona-list li{margin-bottom:5px;}
-  .persona-sec.full .persona-sec-body{white-space:pre-wrap;}
-  .out-toolbar{display:flex;justify-content:flex-end;gap:8px;margin-bottom:14px;}
+  .gallery{display:flex;flex-direction:column;gap:8px;}
+  .img-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px;}
+  .img-card{border:1px solid #E1E3E5;border-radius:10px;overflow:hidden;background:#FAFAFA;display:flex;flex-direction:column;}
+  .img-card img{width:100%;display:block;aspect-ratio:1/1;object-fit:cover;background:#F1F1F1;}
+  .img-card-foot{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;border-top:1px solid #E1E3E5;}
+  .img-card-foot .tag{font-size:11px;font-weight:700;color:#1A1A1A;font-family:'Inter',system-ui,sans-serif;}
+  .img-card-foot .dl{height:28px;padding:0 10px;font-size:11px;font-weight:600;border:1px solid #DCDCDC;border-radius:6px;background:#FFFFFF;color:#1A1A1A;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:5px;font-family:'Inter',system-ui,sans-serif;}
+  .img-card-foot .dl:hover{background:#F5F5F5;border-color:#1A1A1A;}
+  .img-skeleton{aspect-ratio:1/1;background:linear-gradient(90deg,#F1F1F1 25%,#E8E8E8 50%,#F1F1F1 75%);background-size:200% 100%;animation:sk 1.2s infinite;display:flex;align-items:center;justify-content:center;color:#9AA0A6;font-size:11px;}
+  @keyframes sk{to{background-position:-200% 0;}}
+  .img-failed{aspect-ratio:1/1;background:#FEF2F2;display:flex;align-items:center;justify-content:center;color:#991B1B;font-size:11px;text-align:center;padding:10px;line-height:1.5;}
+  .progress-line{font-size:12px;color:#6D7175;margin-bottom:12px;}
   .err{background:#FEF2F2;border:1px solid #FECACA;color:#991B1B;border-radius:8px;padding:10px 12px;font-size:13px;margin-top:10px;}
   .spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;}
   @keyframes spin{to{transform:rotate(360deg);}}
@@ -68,9 +71,7 @@
 </style>
 <script src="topbar.js?v=1777784143"></script>
 <script src="sidebar-tools.js?v=1779100000"></script>
-<script src="https://cdn.jsdelivr.net/npm/mammoth@1.6.0/mammoth.browser.min.js"></script>
 <script src="ai-keys.js?v=1779100000"></script>
-<script src="google-picker.js?v=1777784143"></script>
 </head>
 <body>
 <div class="app-shell">
@@ -92,7 +93,7 @@
           <span>All tools</span>
         </div>
         <div class="app-sidebar-group-items">
-          <a href="buyer-persona.html" class="app-sidebar-item active">
+          <a href="buyer-persona.html" class="app-sidebar-item">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span>Buyer Persona</span>
           </a>
           <a href="copywriting.html" class="app-sidebar-item">
@@ -100,6 +101,9 @@
           </a>
           <a href="landing-page.html" class="app-sidebar-item">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg><span>Landing page content</span>
+          </a>
+          <a href="landing-page-images.html" class="app-sidebar-item active">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg><span>Landing page images</span>
           </a>
           <a href="headlines.html" class="app-sidebar-item">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4v16"/><path d="M18 4v16"/><path d="M6 12h12"/></svg><span>Headlines Generator</span>
@@ -128,66 +132,55 @@
   </aside>
   <div class="app-main">
     <div class="page">
-      <h1 style="margin-bottom:6px;">Buyer Persona</h1>
-      <p class="sub">البرومبت بيتسحب تلقائياً من System Prompts كل مرة — التاسك دي متوصّلة ببرومت «Buyer Persona».</p>
+      <h1 style="margin-bottom:6px;">Landing page images</h1>
+      <p class="sub">البرومبت بيتسحب تلقائياً من System Prompts كل مرة — التاسك دي متوصّلة ببرومت «Landing page images».</p>
       <div class="page-grid">
        <div class="page-col-left">
         <div class="panel">
-          <div class="field">
-            <div class="field-label" style="justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;">
-              <span>Product details &amp; customer reviews <span style="color:#D72C0D;">*</span></span>
-              <span style="display:inline-flex;gap:6px;flex-wrap:wrap;">
-                <label for="folderInput" style="display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border:1px solid #DCDCDC;border-radius:6px;background:#FFFFFF;cursor:pointer;font-size:11px;font-weight:600;color:#1A1A1A;">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
-                  Upload from device
-                </label>
-                <input id="folderInput" type="file" webkitdirectory directory multiple style="display:none;">
-                <button type="button" id="driveFolderBtn" style="display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border:1px solid #DCDCDC;border-radius:6px;background:#FFFFFF;cursor:pointer;font-size:11px;font-weight:600;color:#1A1A1A;font-family:inherit;">
-                  <img src="logos/google-drive.svg" width="14" height="14" alt="" style="display:block;">
-                  Upload from Drive
-                </button>
-              </span>
-            </div>
-            <textarea class="field-textarea" id="productInput" placeholder="بيانات المنتج + آراء العملاء — اسم المنتج، السعر، الفايدة، الشحن، الضمان، ريفيوهات حقيقية..."></textarea>
-            <div id="folderSummary" style="display:none;margin-top:8px;padding:8px 12px;background:#F0FDF4;border:1px solid #BBF7D0;border-radius:6px;font-size:11px;color:#0F5132;line-height:1.5;"></div>
+          <div class="panel-title">صورة المنتج المرجعية <span style="color:#D72C0D;">*</span></div>
+          <div class="panel-desc">الموديل بيستخدم الصورة دي زي ما هي — مش بيعيد رسمها.</div>
+          <input id="refImageInput" type="file" accept="image/*" style="display:none;">
+          <div class="dropzone" id="dropzone">
+            اضغط لرفع صورة المنتج (PNG / JPG)
           </div>
+          <div class="ref-preview" id="refPreview">
+            <button type="button" class="ref-clear" id="refClear" aria-label="Remove">✕</button>
+            <img id="refImg" alt="reference">
+          </div>
+        </div>
 
+        <div class="panel">
+          <div class="field">
+            <div class="field-label"><span>تفاصيل المنتج + الريفيوهات <span style="color:#D72C0D;">*</span></span></div>
+            <textarea class="field-textarea" id="productInput" placeholder="اسم المنتج، الخامة، المقاس، الاستخدام، الفايدة... + ريفيوهات العملاء"></textarea>
+          </div>
           <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
             <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
               <label for="modelSelect" style="font-size:13px;color:#1A1A1A;font-weight:500;">Model:</label>
-              <select class="field-input" id="modelSelect" style="width:auto;min-width:200px;padding:8px 12px;background:#FFFFFF;">
-                <option value="claude">Claude (Anthropic)</option>
-                <option value="chatgpt">ChatGPT (OpenAI)</option>
+              <select class="field-input" id="modelSelect" style="width:auto;min-width:210px;padding:8px 12px;background:#FFFFFF;">
+                <option value="gemini-3-pro-image-preview">Nano Banana Pro</option>
+                <option value="gemini-2.5-flash-image">Nano Banana</option>
+                <option value="gpt-image-1">GPT Image (OpenAI)</option>
               </select>
             </div>
             <button class="btn" id="generateBtn" type="button">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-              <span id="generateLabel">Generate persona</span>
+              <span id="generateLabel">Generate images</span>
             </button>
           </div>
           <div class="err" id="errBox" style="display:none;"></div>
         </div>
        </div>
        <div class="page-col-right">
-        <div class="out-toolbar" id="outToolbar" style="display:none;">
-          <button class="btn btn-ghost" id="copyBtn" type="button">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-            <span>Copy JSON</span>
-          </button>
-          <button class="btn btn-ghost" id="regenBtn" type="button">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-            <span>Regenerate</span>
-          </button>
-        </div>
         <div class="out-card" id="outCard">
           <div class="out-empty" id="outEmpty">
             <div class="ic">
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
             </div>
-            <div>الـ Buyer Persona هتظهر هنا بعد ما تدوس Generate.</div>
+            <div>صور اللاندنج بيج هتظهر هنا بعد ما تدوس Generate.</div>
           </div>
-          <div class="persona" id="personaOut" style="display:none;"></div>
-          <div class="out-text" id="outText" style="display:none;"></div>
+          <div id="progressLine" class="progress-line" style="display:none;"></div>
+          <div class="gallery" id="gallery" style="display:none;"></div>
         </div>
        </div>
       </div>
@@ -196,15 +189,15 @@
 
 <script>
 const $ = id => document.getElementById(id);
-const ANTHROPIC_KEY_LS  = 'app.anthropicApiKey';
-const OPENAI_KEY_LS     = 'app.openaiApiKey';
+const ANTHROPIC_KEY_LS = 'app.anthropicApiKey';
+const OPENAI_KEY_LS    = 'app.openaiApiKey';
+const GEMINI_KEY_LS    = 'app.geminiApiKey';
 
 // ── System prompt source — fetched fresh from the central System Prompts
-//    store (api/skills.php) on every run, so edits there apply right away.
-//    This task is wired to the "Buyer Persona" prompt.
+//    store (api/skills.php) on every run. Wired to "Landing page images".
 const SKILLS_API   = 'https://indigo-dog-836598.hostingersite.com/github/api/skills.php';
 const SKILLS_TOKEN = 'tk_4d2b9f7a8c6e1530a4f2d9b7e8c6a1f5';
-const TASK_PROMPT_SLUG = 'buyer-bersona';
+const TASK_PROMPT_SLUG = 'landing-page-images';
 async function loadPrompt() {
   const r = await fetch(SKILLS_API + '?slug=' + encodeURIComponent(TASK_PROMPT_SLUG) + '&_t=' + Date.now(), {
     headers: { 'Authorization': 'Bearer ' + SKILLS_TOKEN }
@@ -216,57 +209,18 @@ async function loadPrompt() {
   return instr;
 }
 
-// ── FOLDER UPLOAD (device or Drive) → fills Product Details textarea ────
-async function _extractText(file) {
-  const ext = (file.name.split('.').pop() || '').toLowerCase();
-  if (ext === 'txt' || ext === 'md' || ext === 'csv') return await file.text();
-  if (ext === 'docx' && window.mammoth) {
-    const buf = await file.arrayBuffer();
-    const res = await window.mammoth.extractRawText({ arrayBuffer: buf });
-    return res.value || '';
-  }
-  return '';
-}
-async function ingestFolderFiles(fileList) {
-  const files = Array.from(fileList || []);
-  if (!files.length) return;
-  const folderName = (files[0].webkitRelativePath || files[0].name).split('/')[0] || '';
-  const textFiles = files.filter(f => /\.(txt|md|csv|docx)$/i.test(f.name));
-  if (!textFiles.length) { alert('No readable text/Word/Sheet file found in the folder.'); return; }
-  let combined = ''; let totalChars = 0; const usedFiles = [];
-  for (const f of textFiles) {
-    try {
-      const t = await _extractText(f);
-      if (t && t.trim()) {
-        combined += '## ' + f.name + '\n\n' + t.trim() + '\n\n---\n\n';
-        totalChars += t.length;
-        usedFiles.push(f.name);
-      }
-    } catch (e) { console.warn('skip', f.name, e.message); }
-  }
-  if (!combined) { alert('Could not extract text from any file.'); return; }
-  const ta = $('productInput');
-  if (!ta.value.trim()) ta.value = combined.trim();
-  const sum = $('folderSummary');
-  sum.style.display = 'block';
-  sum.textContent = '✓ ' + folderName + ' — ' + totalChars.toLocaleString() + ' chars from ' + usedFiles.length + ' file(s): ' + usedFiles.slice(0, 3).join(', ') + (usedFiles.length > 3 ? '…' : '');
-}
-$('folderInput').addEventListener('change', (e) => ingestFolderFiles(e.target.files));
-$('driveFolderBtn').addEventListener('click', () => {
-  const btn = $('driveFolderBtn');
-  const orig = btn.innerHTML;
-  btn.disabled = true; btn.innerHTML = 'Loading…';
-  pickGoogleDriveFolder(
-    (files) => { btn.disabled = false; btn.innerHTML = orig; ingestFolderFiles(files); },
-    {
-      onProgress: (p) => {
-        if (p.phase === 'listing') btn.innerHTML = 'Listing folder…';
-        else if (p.phase === 'downloading') btn.innerHTML = 'Downloading ' + p.current + '/' + p.total;
-      },
-      onError: (e) => { btn.disabled = false; btn.innerHTML = orig; alert('Drive: ' + e.message); }
-    }
-  );
-});
+// The image set this page produces (count per type follows the brief).
+const IMAGE_PLAN = [
+  { type: 'land_hero',         count: 1 },
+  { type: 'land_feature',      count: 3 },
+  { type: 'land_before_after', count: 1 },
+  { type: 'land_testimonial',  count: 1 },
+  { type: 'product',           count: 1 },
+];
+const TYPE_LABEL = {
+  land_hero: 'Hero', land_feature: 'Feature', land_before_after: 'Before / After',
+  land_testimonial: 'Testimonial', product: 'Product (catalog)'
+};
 
 // ── UI helpers ─────────────────────────────────────────────────────────
 function showToast(msg, isError) {
@@ -281,12 +235,43 @@ function showError(msg) {
   else { e.style.display = 'none'; e.textContent = ''; }
 }
 
-// ── AI calls — the System Prompt box content is sent verbatim as the
-//    system message; the product data is the user message. ─────────────
-async function callClaude(systemPrompt, userMessage, maxTokens) {
+// ── Reference image upload ─────────────────────────────────────────────
+let refFile = null;     // the File object (for gpt-image-1 edits)
+let refB64  = '';       // base64 payload (for Gemini + Claude vision)
+let refMime = '';
+$('dropzone').addEventListener('click', () => $('refImageInput').click());
+$('refImageInput').addEventListener('change', (e) => {
+  const f = (e.target.files || [])[0];
+  if (!f) return;
+  if (!/^image\//.test(f.type)) { showToast('الملف لازم يكون صورة', true); return; }
+  refFile = f;
+  refMime = f.type;
+  const reader = new FileReader();
+  reader.onload = () => {
+    const dataUrl = reader.result;
+    refB64 = String(dataUrl).split(',')[1] || '';
+    $('refImg').src = dataUrl;
+    $('refPreview').style.display = 'block';
+    $('dropzone').style.display = 'none';
+  };
+  reader.readAsDataURL(f);
+});
+$('refClear').addEventListener('click', () => {
+  refFile = null; refB64 = ''; refMime = '';
+  $('refImageInput').value = '';
+  $('refPreview').style.display = 'none';
+  $('dropzone').style.display = 'block';
+});
+
+// ── Stage 1: Claude turns the photographer brief + product data into a
+//    JSON list of ready image-generation prompts (sees the product image
+//    too, via vision, so the prompts describe the real product). ────────
+async function callClaude(systemPrompt, userText) {
   if (window.aiKeysReady) { try { await window.aiKeysReady; } catch (e) {} }
   const apiKey = localStorage.getItem(ANTHROPIC_KEY_LS) || '';
-  if (!apiKey) throw new Error('No Claude API key. Settings → Connect AI Tools → Claude.');
+  if (!apiKey) throw new Error('No Claude API key. Settings → Connectors → Claude.');
+  const content = [{ type: 'text', text: userText }];
+  if (refB64) content.push({ type: 'image', source: { type: 'base64', media_type: refMime, data: refB64 } });
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
@@ -297,9 +282,9 @@ async function callClaude(systemPrompt, userMessage, maxTokens) {
     },
     body: JSON.stringify({
       model: 'claude-opus-4-7',
-      max_tokens: maxTokens || 3000,
+      max_tokens: 3000,
       system: systemPrompt,
-      messages: [{ role: 'user', content: userMessage }]
+      messages: [{ role: 'user', content }]
     })
   });
   const data = await res.json();
@@ -308,97 +293,97 @@ async function callClaude(systemPrompt, userMessage, maxTokens) {
   if (!text) throw new Error('Empty response');
   return text;
 }
-async function callChatGPT(systemPrompt, userMessage, maxTokens) {
-  if (window.aiKeysReady) { try { await window.aiKeysReady; } catch (e) {} }
-  const apiKey = localStorage.getItem(OPENAI_KEY_LS) || '';
-  if (!apiKey) throw new Error('No ChatGPT API key. Settings → Connect AI Tools → ChatGPT.');
-  const res = await fetch('https://api.openai.com/v1/chat/completions', {
+
+// ── Stage 2: render one image prompt with the chosen image model ───────
+async function genGemini(model, prompt) {
+  const key = localStorage.getItem(GEMINI_KEY_LS) || '';
+  if (!key) throw new Error('No Gemini API key. Settings → Connectors → Gemini.');
+  const parts = [{ text: prompt }];
+  if (refB64) parts.push({ inlineData: { mimeType: refMime, data: refB64 } });
+  const res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + encodeURIComponent(key), {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer ' + apiKey
-    },
-    body: JSON.stringify({
-      model: 'gpt-5',
-      max_completion_tokens: maxTokens || 3000,
-      reasoning_effort: 'minimal',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userMessage }
-      ]
-    })
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ contents: [{ parts }] })
   });
   const data = await res.json();
   if (!res.ok) throw new Error((data && data.error && data.error.message) || ('HTTP ' + res.status));
-  const text = ((data.choices || [])[0] || {}).message?.content?.trim() || '';
-  if (!text) throw new Error('Empty response');
-  return text;
+  const outParts = (((data.candidates || [])[0] || {}).content || {}).parts || [];
+  const img = outParts.find(p => p.inlineData && p.inlineData.data);
+  if (!img) throw new Error('الموديل ما رجّعش صورة');
+  return 'data:' + (img.inlineData.mimeType || 'image/png') + ';base64,' + img.inlineData.data;
+}
+async function genGptImage(prompt) {
+  const key = localStorage.getItem(OPENAI_KEY_LS) || '';
+  if (!key) throw new Error('No OpenAI API key. Settings → Connectors → ChatGPT.');
+  const fd = new FormData();
+  fd.append('model', 'gpt-image-1');
+  fd.append('prompt', prompt);
+  fd.append('size', '1024x1024');
+  if (refFile) fd.append('image', refFile);
+  const endpoint = refFile
+    ? 'https://api.openai.com/v1/images/edits'
+    : 'https://api.openai.com/v1/images/generations';
+  const res = await fetch(endpoint, {
+    method: 'POST',
+    headers: { 'Authorization': 'Bearer ' + key },
+    body: fd
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error((data && data.error && data.error.message) || ('HTTP ' + res.status));
+  const b64 = (((data.data || [])[0]) || {}).b64_json;
+  if (!b64) throw new Error('الموديل ما رجّعش صورة');
+  return 'data:image/png;base64,' + b64;
+}
+async function renderImage(model, prompt) {
+  if (model === 'gpt-image-1') return genGptImage(prompt);
+  return genGemini(model, prompt);
 }
 
-// ── Output rendering — parse the model's JSON and show it as structured
-//    sections in-page. Falls back to raw text if it isn't valid JSON. ───
-const SEC_LABELS = {
-  background: 'الخلفية', demographics: 'البيانات الديموغرافية', identifiers: 'المعرّفات',
-  goals: 'الأهداف', challenges: 'التحديات', how_we_help: 'إزاي بنساعده',
-  real_quotes: 'اقتباسات حقيقية من العميل', objections: 'الاعتراضات', usp: 'الميزة التنافسية (USP)',
-  marketing_message: 'الرسالة التسويقية', elevator_pitch: 'الجملة التعريفية'
-};
-const SUB_LABELS = {
-  education: 'التعليم', interests: 'الاهتمامات', employment: 'الوظيفة',
-  gender: 'النوع', age: 'السن', marital_status: 'الحالة الاجتماعية', income: 'الدخل', location: 'المكان',
-  keywords: 'كلماته', behaviors: 'سلوكه', media_habits: 'وسائطه',
-  primary: 'الأساسي', secondary: 'الثانوي'
-};
-function esc(s) {
-  return String(s == null ? '' : s)
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-}
-function extractJSON(text) {
-  // Strip ```json fences if the model added them, then grab the outermost
-  // { … } block so trailing/leading prose can't break the parse.
+// ── Parse Claude's JSON list of image prompts ──────────────────────────
+function extractSpecs(text) {
   let t = String(text || '').trim();
   t = t.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/i, '').trim();
-  const first = t.indexOf('{'), last = t.lastIndexOf('}');
+  const first = t.indexOf('['), last = t.lastIndexOf(']');
   if (first >= 0 && last > first) t = t.slice(first, last + 1);
-  return JSON.parse(t);
+  const arr = JSON.parse(t);
+  if (!Array.isArray(arr)) throw new Error('الرد مش list');
+  return arr.filter(x => x && x.prompt).map(x => ({ type: x.type || 'image', prompt: String(x.prompt) }));
 }
-function renderSection(key, val) {
-  const head = SEC_LABELS[key] || key;
-  let bodyHtml = '';
-  if (Array.isArray(val)) {
-    bodyHtml = '<ul class="persona-list">' +
-      val.map(v => '<li>' + esc(v) + '</li>').join('') + '</ul>';
-  } else if (val && typeof val === 'object') {
-    bodyHtml = Object.keys(val).map(k =>
-      '<div class="persona-kv"><span class="k">' + esc(SUB_LABELS[k] || k) + '</span>' +
-      '<span class="v">' + esc(val[k]) + '</span></div>'
-    ).join('');
-  } else {
-    return '<div class="persona-sec full"><div class="persona-sec-head">' + esc(head) +
-           '</div><div class="persona-sec-body">' + esc(val) + '</div></div>';
-  }
-  return '<div class="persona-sec"><div class="persona-sec-head">' + esc(head) +
-         '</div><div class="persona-sec-body">' + bodyHtml + '</div></div>';
+
+// ── Gallery rendering ──────────────────────────────────────────────────
+function resetGallery(specs) {
+  const g = $('gallery');
+  g.innerHTML = '<div class="img-grid">' + specs.map((s, i) =>
+    '<div class="img-card" id="card-' + i + '">' +
+      '<div class="img-skeleton" id="slot-' + i + '">…</div>' +
+      '<div class="img-card-foot"><span class="tag">' + (TYPE_LABEL[s.type] || s.type) + '</span></div>' +
+    '</div>'
+  ).join('') + '</div>';
+  g.style.display = 'block';
+  $('outEmpty').style.display = 'none';
 }
-let __lastJsonText = '';
-function renderOutput(text) {
-  const personaEl = $('personaOut'), rawEl = $('outText'), emptyEl = $('outEmpty');
-  emptyEl.style.display = 'none';
-  let obj = null;
-  try { obj = extractJSON(text); } catch (e) { obj = null; }
-  if (obj && typeof obj === 'object') {
-    __lastJsonText = JSON.stringify(obj, null, 2);
-    personaEl.innerHTML = Object.keys(obj).map(k => renderSection(k, obj[k])).join('');
-    personaEl.style.display = 'block';
-    rawEl.style.display = 'none';
-  } else {
-    // Not valid JSON — show the raw model output so nothing is lost.
-    __lastJsonText = text;
-    rawEl.textContent = text;
-    rawEl.style.display = 'block';
-    personaEl.style.display = 'none';
-  }
-  $('outToolbar').style.display = 'flex';
+function fillSlot(i, type, dataUrl) {
+  const slot = $('slot-' + i);
+  if (!slot) return;
+  const img = document.createElement('img');
+  img.src = dataUrl;
+  img.alt = type;
+  slot.replaceWith(img);
+  const foot = $('card-' + i).querySelector('.img-card-foot');
+  const a = document.createElement('a');
+  a.className = 'dl';
+  a.href = dataUrl;
+  a.download = type + '-' + (i + 1) + '.png';
+  a.innerHTML = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Download';
+  foot.appendChild(a);
+}
+function failSlot(i, msg) {
+  const slot = $('slot-' + i);
+  if (!slot) return;
+  const div = document.createElement('div');
+  div.className = 'img-failed';
+  div.textContent = 'فشل: ' + msg;
+  slot.replaceWith(div);
 }
 
 // ── Generate ───────────────────────────────────────────────────────────
@@ -407,35 +392,56 @@ async function generate() {
   if (__busy) return;
   showError('');
   const input = $('productInput').value.trim();
-  if (!input) { showError('اكتب بيانات المنتج وآراء العملاء الأول.'); return; }
+  if (!refFile)  { showError('ارفع صورة المنتج المرجعية الأول.'); return; }
+  if (!input)    { showError('اكتب تفاصيل المنتج والريفيوهات.'); return; }
 
   const model = $('modelSelect').value;
-  const btn = $('generateBtn'), label = $('generateLabel'), regen = $('regenBtn');
-  __busy = true;
-  btn.disabled = true; regen.disabled = true;
-  label.innerHTML = '<span class="spinner"></span> Generating…';
+  const btn = $('generateBtn'), label = $('generateLabel');
+  __busy = true; btn.disabled = true;
+  label.innerHTML = '<span class="spinner"></span> Reading brief…';
+  $('progressLine').style.display = 'block';
+  $('progressLine').textContent = 'بقرأ البرومت وبجهّز وصف الصور…';
+
   try {
     const sysPrompt = await loadPrompt();
-    const text = model === 'chatgpt'
-      ? await callChatGPT(sysPrompt, input, 3000)
-      : await callClaude(sysPrompt, input, 3000);
-    renderOutput(text);
+    const planLine = IMAGE_PLAN.map(p => p.type + ' (' + p.count + ')').join('، ');
+    const total = IMAGE_PLAN.reduce((n, p) => n + p.count, 0);
+    const userText =
+      'تفاصيل المنتج والريفيوهات:\n' + input + '\n\n' +
+      'المطلوب: اطلعلي برومبتات توليد صور جاهزة على شكل JSON array بس — من غير أي نص قبله أو بعده.\n' +
+      'الشكل بالظبط: [{"type":"land_hero","prompt":"..."}, ...]\n' +
+      'الأنواع وعددها بالترتيب: ' + planLine + ' (الإجمالي ' + total + ').\n' +
+      'كل "prompt" يكون وصف بصري تفصيلي بالإنجليزي، ويبدأ بـ: Use the provided reference product image exactly as-is.';
+
+    const raw = await callClaude(sysPrompt, userText);
+    let specs = extractSpecs(raw);
+    if (!specs.length) throw new Error('الموديل ما رجّعش برومبتات صور صالحة.');
+
+    resetGallery(specs);
+    let done = 0, ok = 0;
+    for (let i = 0; i < specs.length; i++) {
+      label.innerHTML = '<span class="spinner"></span> Generating ' + (i + 1) + '/' + specs.length + '…';
+      $('progressLine').textContent = 'بولّد الصور… ' + (i + 1) + ' من ' + specs.length;
+      try {
+        const dataUrl = await renderImage(model, specs[i].prompt);
+        fillSlot(i, specs[i].type, dataUrl);
+        ok++;
+      } catch (e) {
+        failSlot(i, e.message || String(e));
+      }
+      done++;
+    }
+    $('progressLine').textContent = 'خلص — ' + ok + ' من ' + done + ' صورة اتولّدت.';
+    if (!ok) showError('كل الصور فشلت — شيك على مفتاح الموديل أو الـ quota.');
   } catch (e) {
     showError(e.message || String(e));
+    $('progressLine').style.display = 'none';
   } finally {
-    __busy = false;
-    btn.disabled = false; regen.disabled = false;
-    label.textContent = 'Generate persona';
+    __busy = false; btn.disabled = false;
+    label.textContent = 'Generate images';
   }
 }
 $('generateBtn').addEventListener('click', generate);
-$('regenBtn').addEventListener('click', generate);
-$('copyBtn').addEventListener('click', () => {
-  if (!__lastJsonText) return;
-  navigator.clipboard.writeText(__lastJsonText)
-    .then(() => showToast('Copied'))
-    .catch(() => showToast('Copy failed', true));
-});
 </script>
   </div>
 </div>
