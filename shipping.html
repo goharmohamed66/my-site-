@@ -1310,12 +1310,14 @@ function App(){
         if (conn.provider === 'bosta') {
           // 2) Background fee enrichment for Bosta. Each chunk's fees
           //    merged into apiRows AND pushed to /upload.php?update_fees=1
-          //    so the DB matches the UI even mid-pull.
-          var ids = apiRows.map(function(r){ return r.raw && r.raw._id; }).filter(Boolean);
+          //    so the DB matches the UI even mid-pull. Bosta's v2
+          //    per-business endpoint takes tracking numbers (AWBs), so
+          //    we key by order_id rather than the internal _id.
+          var ids = apiRows.map(function(r){ return r.order_id; }).filter(Boolean);
           if (ids.length) {
             var CHUNK = 50;
             var idToRow = {};
-            apiRows.forEach(function(r){ if (r.raw && r.raw._id) idToRow[r.raw._id] = r; });
+            apiRows.forEach(function(r){ if (r.order_id) idToRow[r.order_id] = r; });
             var applyFees = function(fees){
               var chunkRows = [];
               Object.keys(fees).forEach(function(id){

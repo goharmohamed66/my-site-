@@ -759,6 +759,12 @@ if ($action === 'enrich_fees') {
   @set_time_limit(0);
   @ignore_user_abort(true);
 
+  // Switched to Bosta's v2 per-business endpoint
+  // (GET /api/v2/deliveries/business/{trackingNumber}) — it carries
+  // wallet.cashCycle.bosta_fees (the exact "Bosta Fees" amount shown
+  // in the merchant dashboard's Cash Cycle) and has more generous rate
+  // headroom in practice than the legacy v0 /deliveries/{id} route.
+  // The frontend now passes tracking numbers in `ids`.
   $fees = [];
   $rateLimitHits = 0;
   $batch = 10;
@@ -767,10 +773,10 @@ if ($action === 'enrich_fees') {
     $slice = array_slice($ids, $i, $batch);
     $multi = curl_multi_init();
     $handles = [];
-    foreach ($slice as $id) {
-      $id = (string)$id;
-      if (!preg_match('/^[A-Za-z0-9_-]{1,40}$/', $id)) continue;
-      $ch = curl_init('https://app.bosta.co/api/v0/deliveries/' . $id);
+    foreach ($slice as $tn) {
+      $tn = (string)$tn;
+      if (!preg_match('/^[A-Za-z0-9_-]{1,40}$/', $tn)) continue;
+      $ch = curl_init('https://app.bosta.co/api/v2/deliveries/business/' . rawurlencode($tn));
       curl_setopt_array($ch, [
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_TIMEOUT        => HTTP_TIMEOUT,
@@ -779,14 +785,14 @@ if ($action === 'enrich_fees') {
         CURLOPT_HTTPHEADER     => ['Authorization: ' . $token, 'Content-Type: application/json'],
       ]);
       curl_multi_add_handle($multi, $ch);
-      $handles[$id] = $ch;
+      $handles[$tn] = $ch;
     }
     do {
       curl_multi_exec($multi, $running);
       if ($running) curl_multi_select($multi);
     } while ($running > 0);
     $batchHadRateLimit = false; $batchRetryAfter = 0;
-    foreach ($handles as $id => $ch) {
+    foreach ($handles as $tn => $ch) {
       $body = curl_multi_getcontent($ch);
       $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
       curl_multi_remove_handle($multi, $ch);
@@ -800,22 +806,23 @@ if ($action === 'enrich_fees') {
       }
       if (!$body) continue;
       $j = json_decode($body, true);
-      // shipmentFees is Bosta's public-API field that matches "Bosta
-      // Fees" under Wallet → Cash Cycle in the merchant dashboard.
-      // priceAfterVat / priceBeforeVat / shippingFee are alternate
-      // names some shipments expose. wallet.cashCycle.shipping_fees is
-      // not part of the public delivery response (kept only as a
-      // last-resort guard in case Bosta starts surfacing it).
-      if (isset($j['shipmentFees'])) {
-        $fees[$id] = (float)$j['shipmentFees'];
-      } elseif (isset($j['priceAfterVat'])) {
-        $fees[$id] = (float)$j['priceAfterVat'];
-      } elseif (isset($j['shippingFee'])) {
-        $fees[$id] = (float)$j['shippingFee'];
-      } elseif (isset($j['priceBeforeVat'])) {
-        $fees[$id] = (float)$j['priceBeforeVat'];
-      } elseif (isset($j['wallet']['cashCycle']['shipping_fees'])) {
-        $fees[$id] = (float)$j['wallet']['cashCycle']['shipping_fees'];
+      if (!is_array($j)) continue;
+      $d = isset($j['data']) && is_array($j['data']) ? $j['data'] : $j;
+      // Prefer the cash-cycle "bosta_fees" — that's the exact amount
+      // shown in the merchant dashboard. The others are fallbacks for
+      // shipments not yet booked into a cycle.
+      if (isset($d['wallet']['cashCycle']['bosta_fees'])) {
+        $fees[$tn] = (float)$d['wallet']['cashCycle']['bosta_fees'];
+      } elseif (isset($d['wallet']['cashCycle']['shipping_fees'])) {
+        $fees[$tn] = (float)$d['wallet']['cashCycle']['shipping_fees'];
+      } elseif (isset($d['shipmentFees'])) {
+        $fees[$tn] = (float)$d['shipmentFees'];
+      } elseif (isset($d['priceAfterVat'])) {
+        $fees[$tn] = (float)$d['priceAfterVat'];
+      } elseif (isset($d['shippingFee'])) {
+        $fees[$tn] = (float)$d['shippingFee'];
+      } elseif (isset($d['priceBeforeVat'])) {
+        $fees[$tn] = (float)$d['priceBeforeVat'];
       }
     }
     curl_multi_close($multi);
@@ -828,37 +835,38 @@ if ($action === 'enrich_fees') {
   send_json(['fees' => $fees]);
 }
 
-// GET /shipping.php?action=debug_bosta&connector_id=N&id=<delivery_id>
-//   returns: the raw Bosta /deliveries/{id} response plus the
-//   candidate fee fields we extract, so we can confirm which path
-//   actually carries the shipping fee for this account.
+// GET /shipping.php?action=debug_bosta&connector_id=N&tn=<trackingNumber>[&id=<_id>]
+//   Calls BOTH the v2 per-business endpoint and the v0 /deliveries/{id}
+//   endpoint so we can compare what each returns for the same shipment.
+//   The UI reads the result to confirm fees are reachable for this token.
 if ($action === 'debug_bosta') {
   $cid = (int)($_GET['connector_id'] ?? 0);
-  $id  = (string)($_GET['id'] ?? '');
-  if (!$cid || !$id) err('connector_id and id required');
-  if (!preg_match('/^[A-Za-z0-9_-]{1,40}$/', $id)) err('Invalid id');
+  $tn  = (string)($_GET['tn'] ?? $_GET['id'] ?? '');
+  if (!$cid || !$tn) err('connector_id and tn (tracking number) required');
+  if (!preg_match('/^[A-Za-z0-9_-]{1,40}$/', $tn)) err('Invalid tracking number');
   $stmt = $pdo->prepare("SELECT * FROM connectors WHERE id = ? AND active = 1 AND type = 'shipping' LIMIT 1");
   $stmt->execute([$cid]);
   $conn = $stmt->fetch();
   if (!$conn || $conn['provider'] !== 'bosta') err('Only Bosta supported here.', 400);
   $token = $conn['token'] ?? '';
   if (!$token) err('Bosta connector missing API key.');
-  $r = http_request('GET', 'https://app.bosta.co/api/v0/deliveries/' . $id,
+  $r2 = http_request('GET', 'https://app.bosta.co/api/v2/deliveries/business/' . rawurlencode($tn),
     ['Authorization: ' . $token, 'Content-Type: application/json']);
-  $j = json_decode($r['body'] ?: '{}', true);
+  $j2 = json_decode($r2['body'] ?: '{}', true);
+  $d2 = isset($j2['data']) && is_array($j2['data']) ? $j2['data'] : $j2;
   send_json([
-    'http_code'    => $r['code'],
-    'fee_fields'   => [
-      'shipmentFees'                       => $j['shipmentFees']                       ?? null,
-      'priceAfterVat'                      => $j['priceAfterVat']                      ?? null,
-      'shippingFee'                        => $j['shippingFee']                        ?? null,
-      'priceBeforeVat'                     => $j['priceBeforeVat']                     ?? null,
-      'wallet.cashCycle.shipping_fees'     => $j['wallet']['cashCycle']['shipping_fees'] ?? null,
-      'pricing.priceAfterVat'              => $j['pricing']['priceAfterVat']           ?? null,
-      'pricing.shipmentFees'               => $j['pricing']['shipmentFees']            ?? null,
+    'v2' => [
+      'http_code'      => $r2['code'],
+      'top_keys'       => is_array($j2) ? array_keys($j2) : [],
+      'data_keys'      => is_array($d2) ? array_keys($d2) : [],
+      'fee_fields' => [
+        'wallet.cashCycle.bosta_fees'    => $d2['wallet']['cashCycle']['bosta_fees']    ?? null,
+        'wallet.cashCycle.shipping_fees' => $d2['wallet']['cashCycle']['shipping_fees'] ?? null,
+        'shipmentFees'                   => $d2['shipmentFees']                         ?? null,
+        'priceAfterVat'                  => $d2['priceAfterVat']                        ?? null,
+      ],
+      'raw'            => $j2,
     ],
-    'top_level_keys' => is_array($j) ? array_keys($j) : [],
-    'raw'            => $j,
   ]);
 }
 
@@ -881,13 +889,13 @@ if ($action === 'refresh_all_fees') {
   @set_time_limit(0);
   @ignore_user_abort(true);
 
-  // Pull every Bosta-sourced row we still need to enrich. We need both
-  // order_id (tracking number — the UPDATE key) and raw._id (what
-  // Bosta's per-delivery GET expects in the URL). Source comparison is
-  // case-insensitive because older imports stored "Bosta" while newer
-  // pulls may differ. fees IS NULL OR fees = 0 → "not enriched yet";
-  // this lets the UI retry after a 429 without redoing thousands of
-  // already-resolved deliveries.
+  // Pull every Bosta-sourced row we still need to enrich. We use the
+  // tracking number (order_id) as the lookup key — Bosta's v2
+  // per-business endpoint takes the AWB/tracking number, not the
+  // internal _id, and may have a higher rate-limit ceiling than the
+  // legacy v0 /deliveries/{id} route. fees IS NULL OR fees = 0 means
+  // "not enriched yet"; the SQL filter lets every retry resume where
+  // the last one stopped instead of redoing 2000+ resolved deliveries.
   $sql = "SELECT id, order_id, raw, status FROM shipping_orders
           WHERE LOWER(source) = 'bosta' AND (fees IS NULL OR fees = 0)";
   $params = [];
@@ -899,14 +907,13 @@ if ($action === 'refresh_all_fees') {
   $idToOrder = []; $ids = [];
   $missingId = 0;
   foreach ($rows as $row) {
+    $tn  = trim((string)($row['order_id'] ?? ''));
     $raw = $row['raw'] ? json_decode($row['raw'], true) : null;
-    $did = is_array($raw) ? ($raw['_id'] ?? null) : null;
-    if (!$did || !preg_match('/^[A-Za-z0-9_-]{1,40}$/', $did)) { $missingId++; continue; }
-    $ids[] = $did;
-    $idToOrder[$did] = ['order_id' => $row['order_id'], 'cod' => 0];
-    // Pull COD from raw so we can recompute net = cod - fees.
+    // tracking number is a Bosta AWB like "20012345" — alphanumeric.
+    if ($tn === '' || !preg_match('/^[A-Za-z0-9_-]{1,40}$/', $tn)) { $missingId++; continue; }
+    $ids[] = $tn;
     $cod = is_array($raw) && isset($raw['cod']) ? (float)$raw['cod'] : 0;
-    $idToOrder[$did]['cod'] = $cod;
+    $idToOrder[$tn] = ['order_id' => $tn, 'cod' => $cod];
   }
 
   $totalRows  = count($rows);
@@ -927,8 +934,11 @@ if ($action === 'refresh_all_fees') {
     $slice = array_slice($ids, $i, $batch);
     $multi = curl_multi_init();
     $handles = [];
-    foreach ($slice as $did) {
-      $ch = curl_init('https://app.bosta.co/api/v0/deliveries/' . $did);
+    foreach ($slice as $tn) {
+      // v2 per-business endpoint: returns data.wallet.cashCycle.bosta_fees
+      // (the actual amount deducted under "Bosta Fees" in the dashboard
+      // Cash Cycle), keyed by tracking number rather than internal _id.
+      $ch = curl_init('https://app.bosta.co/api/v2/deliveries/business/' . rawurlencode($tn));
       curl_setopt_array($ch, [
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_TIMEOUT        => HTTP_TIMEOUT,
@@ -937,11 +947,11 @@ if ($action === 'refresh_all_fees') {
         CURLOPT_HTTPHEADER     => ['Authorization: ' . $token, 'Content-Type: application/json'],
       ]);
       curl_multi_add_handle($multi, $ch);
-      $handles[$did] = $ch;
+      $handles[$tn] = $ch;
     }
     do { curl_multi_exec($multi, $running); if ($running) curl_multi_select($multi); } while ($running > 0);
     $batchRateLimited = false;
-    foreach ($handles as $did => $ch) {
+    foreach ($handles as $tn => $ch) {
       $body = curl_multi_getcontent($ch);
       $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
       curl_multi_remove_handle($multi, $ch);
@@ -952,34 +962,39 @@ if ($action === 'refresh_all_fees') {
         $j = json_decode($body ?: '{}', true);
         $ra = (int)($j['retryAfter'] ?? 0);
         if ($ra > $retryAfter) $retryAfter = $ra;
-        if ($sampleErr === null) $sampleErr = ['id' => $did, 'code' => $code, 'body' => substr((string)$body, 0, 400)];
+        if ($sampleErr === null) $sampleErr = ['id' => $tn, 'code' => $code, 'body' => substr((string)$body, 0, 400)];
         continue;
       }
       if (!$body) { $emptyBody++; continue; }
       $j = json_decode($body, true);
       if ($code >= 400 && $sampleErr === null) {
-        $sampleErr = ['id' => $did, 'code' => $code, 'body' => substr((string)$body, 0, 400)];
+        $sampleErr = ['id' => $tn, 'code' => $code, 'body' => substr((string)$body, 0, 400)];
       }
       if (!is_array($j)) continue;
+      // v2 wraps the delivery in "data": {...}
+      $d = isset($j['data']) && is_array($j['data']) ? $j['data'] : $j;
       if ($sampleRaw === null && $code < 400) {
-        $sampleRaw = ['id' => $did, 'code' => $code, 'keys' => array_keys($j),
-                      'shipmentFees' => $j['shipmentFees'] ?? null,
-                      'priceAfterVat' => $j['priceAfterVat'] ?? null];
+        $sampleRaw = ['id' => $tn, 'code' => $code,
+                      'top_keys' => array_keys($j),
+                      'data_keys' => is_array($d) ? array_keys($d) : [],
+                      'wallet_cashCycle' => $d['wallet']['cashCycle'] ?? null,
+                      'shipmentFees' => $d['shipmentFees'] ?? null,
+                      'priceAfterVat' => $d['priceAfterVat'] ?? null];
       }
       $matched = false;
-      if (isset($j['shipmentFees']))             { $fees[$did] = (float)$j['shipmentFees']; $matched = true; }
-      elseif (isset($j['priceAfterVat']))        { $fees[$did] = (float)$j['priceAfterVat']; $matched = true; }
-      elseif (isset($j['shippingFee']))          { $fees[$did] = (float)$j['shippingFee']; $matched = true; }
-      elseif (isset($j['priceBeforeVat']))       { $fees[$did] = (float)$j['priceBeforeVat']; $matched = true; }
-      elseif (isset($j['wallet']['cashCycle']['shipping_fees']))
-                                                 { $fees[$did] = (float)$j['wallet']['cashCycle']['shipping_fees']; $matched = true; }
+      // Priority: cash-cycle bosta_fees (what the dashboard shows) first,
+      // then per-delivery shipmentFees / priceAfterVat as fallback for
+      // shipments not yet booked into a cycle.
+      if (isset($d['wallet']['cashCycle']['bosta_fees']))     { $fees[$tn] = (float)$d['wallet']['cashCycle']['bosta_fees']; $matched = true; }
+      elseif (isset($d['wallet']['cashCycle']['shipping_fees'])) { $fees[$tn] = (float)$d['wallet']['cashCycle']['shipping_fees']; $matched = true; }
+      elseif (isset($d['shipmentFees']))                       { $fees[$tn] = (float)$d['shipmentFees']; $matched = true; }
+      elseif (isset($d['priceAfterVat']))                      { $fees[$tn] = (float)$d['priceAfterVat']; $matched = true; }
+      elseif (isset($d['shippingFee']))                        { $fees[$tn] = (float)$d['shippingFee']; $matched = true; }
+      elseif (isset($d['priceBeforeVat']))                     { $fees[$tn] = (float)$d['priceBeforeVat']; $matched = true; }
       if (!$matched && $code < 400) $noFeeField++;
     }
     curl_multi_close($multi);
     $processedIds = $i + count($slice);
-    // Bail out the moment Bosta starts 429-ing. The UI will sleep for
-    // retryAfter seconds and call us again — we'll resume where we left
-    // off because the SQL filter excludes rows that already got a fee.
     if ($batchRateLimited) { $rateLimited = true; break; }
     if ($pauseMs > 0) usleep($pauseMs * 1000);
   }
@@ -989,8 +1004,8 @@ if ($action === 'refresh_all_fees') {
   $upd = $pdo->prepare("UPDATE shipping_orders SET fees = ?, net = ?
                         WHERE LOWER(source) = 'bosta' AND order_id = ?");
   $updated = 0; $withFees = 0;
-  foreach ($fees as $did => $fee) {
-    $meta = $idToOrder[$did] ?? null;
+  foreach ($fees as $tn => $fee) {
+    $meta = $idToOrder[$tn] ?? null;
     if (!$meta || !$meta['order_id']) continue;
     $cod = (float)$meta['cod'];
     $net = max(0, $cod - (float)$fee);
