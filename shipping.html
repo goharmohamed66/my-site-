@@ -327,25 +327,30 @@ function getPrev(from,to){if(!from||!to)return{from:null,to:null};var ms=to-from
 function chPct(c,p){if(!p)return null;var d=c-p,pv=(d/p)*100;return{diff:d,pct:+pv.toFixed(1),up:d>=0};}
 function useStats(rows){
   return useMemo(function(){
-    // delFees / delBc are scoped to delivered shipments only, so
-    // "Delivered Shipping Cost" reflects the actual cost per delivered
-    // order — not total fees (including RTO) divided by delivered count.
-    // avgSC stays portfolio-wide: total fees ÷ orders that had any fee
-    // (delivered + returned), matching the "Avg Shipping Cost" intent.
-    var del=0,ret=0,cod=0,net=0,fees=0,bc=0,delFees=0,delBc=0;
+    // Avg Shipping Cost matches Bosta's "Wallet > Cash Cycle" view:
+    // it counts only shipments Bosta has CLOSED a cash cycle on —
+    // i.e. delivered + returned-to-origin. Orders still moving
+    // (Received at warehouse, Route assigned, In transit, Exception,
+    // etc.) carry a fee on the API but Bosta hasn't booked them into
+    // a cycle yet, so the dashboard excludes them and so do we.
+    //   avgSC = (delivered_fees + returned_fees) / (delivered + returned with fee > 0)
+    //   delSC = delivered_fees / delivered_with_fee  (delivered only)
+    var del=0,ret=0,cod=0,net=0,fees=0,bc=0,
+        delFees=0,delBc=0,retFees=0,retBc=0;
     rows.forEach(function(r){
       var f=r.fees||0;
       if(r.st===DEL){del++;cod+=r.cod;delFees+=f;if(f>0)delBc++;}
-      else if(r.st===RET)ret++;
+      else if(r.st===RET){ret++;retFees+=f;if(f>0)retBc++;}
       net+=r.net;
       fees+=f;
       if(f>0)bc++;
     });
     var t=rows.length;
+    var closedFees=delFees+retFees, closedBc=delBc+retBc;
     return{t:t,del:del,ret:ret,cod:cod,net:net,fees:fees,
       dr:drPct(del,ret),rr:pct(ret,t),
       delSC:delBc?Math.round(delFees/delBc):0,
-      avgSC:bc?Math.round(fees/bc):0};
+      avgSC:closedBc?Math.round(closedFees/closedBc):0};
   },[rows]);
 }
 function useProds(rows){
@@ -384,15 +389,15 @@ function useTrend(rows,mode){
       if(mode==="month"){var y=d.getUTCFullYear(),mo=String(d.getUTCMonth()+1).padStart(2,"0");k=y+"-"+mo;lbl=k;}
       else if(mode==="day"){k=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");lbl=fmtDay(d);}
       else{var mon=getWeekMon(d),sun=new Date(mon);sun.setDate(mon.getDate()+6);k=mon.getFullYear()+"-"+String(mon.getMonth()+1).padStart(2,"0")+"-"+String(mon.getDate()).padStart(2,"0");lbl=fmtDay(mon)+" - "+fmtDay(sun);}
-      if(!m[k])m[k]={p:k,label:lbl,del:0,ret:0,t:0,fees:0,bc:0,delFees:0,delBc:0};
+      if(!m[k])m[k]={p:k,label:lbl,del:0,ret:0,t:0,fees:0,bc:0,delFees:0,delBc:0,retFees:0,retBc:0};
       var f=r.fees||0;
       m[k].t++;
       if(r.st===DEL){m[k].del++;m[k].delFees+=f;if(f>0)m[k].delBc++;}
-      else if(r.st===RET)m[k].ret++;
+      else if(r.st===RET){m[k].ret++;m[k].retFees+=f;if(f>0)m[k].retBc++;}
       m[k].fees+=f;
       if(f>0)m[k].bc++;
     });
-    return Object.values(m).sort(function(a,b){return a.p.localeCompare(b.p);}).map(function(x){return Object.assign({},x,{dr:drPct(x.del,x.ret),delSC:x.delBc?Math.round(x.delFees/x.delBc):0,avgSC:x.bc?Math.round(x.fees/x.bc):0});});
+    return Object.values(m).sort(function(a,b){return a.p.localeCompare(b.p);}).map(function(x){var closedBc=x.delBc+x.retBc,closedFees=x.delFees+x.retFees;return Object.assign({},x,{dr:drPct(x.del,x.ret),delSC:x.delBc?Math.round(x.delFees/x.delBc):0,avgSC:closedBc?Math.round(closedFees/closedBc):0});});
   },[rows,mode]);
 }
 function useSort(col,dir){
@@ -850,7 +855,7 @@ function CompareTab(props){
   var companies=useMemo(function(){return Array.from(new Set(rows.map(function(r){return r.source;}))).sort();},[rows]);
   var cStats=useMemo(function(){
     var m={};
-    companies.forEach(function(c){m[c]={del:0,ret:0,t:0,fees:0,bc:0,delFees:0,delBc:0};});
+    companies.forEach(function(c){m[c]={del:0,ret:0,t:0,fees:0,bc:0,delFees:0,delBc:0,retFees:0,retBc:0};});
     rows.forEach(function(r){
       if(!m[r.source])return;
       var f=r.fees||0;
@@ -858,15 +863,16 @@ function CompareTab(props){
       m[r.source].fees+=f;
       if(f>0)m[r.source].bc++;
       if(r.st===DEL){m[r.source].del++;m[r.source].delFees+=f;if(f>0)m[r.source].delBc++;}
-      else if(r.st===RET)m[r.source].ret++;
+      else if(r.st===RET){m[r.source].ret++;m[r.source].retFees+=f;if(f>0)m[r.source].retBc++;}
     });
     return m;
   },[rows,companies]);
   var _cs=useSort("t");var cs=_cs[0],cgo=_cs[1];
-  // avgSC: average fee across all orders that had any fee.
-  // delSC: average fee across delivered orders that had a fee (RTOs
-  // excluded). Same definitions as the overview KPIs.
-  var cRows=companies.map(function(c){var st=cStats[c],dr=drPct(st.del,st.ret);return{c:c,st:st,dr:dr,avgSC:st.bc?Math.round(st.fees/st.bc):0,delSC:st.delBc?Math.round(st.delFees/st.delBc):0};});
+  // avgSC: avg fee across closed shipments (delivered + returned).
+  // delSC: avg fee across delivered shipments only.
+  // Matches Bosta dashboard's Cash Cycle scope — pending/in-transit
+  // orders carry an API fee but aren't booked into a cycle yet.
+  var cRows=companies.map(function(c){var st=cStats[c],dr=drPct(st.del,st.ret);var closedBc=st.delBc+st.retBc,closedFees=st.delFees+st.retFees;return{c:c,st:st,dr:dr,avgSC:closedBc?Math.round(closedFees/closedBc):0,delSC:st.delBc?Math.round(st.delFees/st.delBc):0};});
   var crMn=Math.min.apply(null,cRows.map(function(r){return r.dr;})),crMx=Math.max.apply(null,cRows.map(function(r){return r.dr;}));
   var sCR=useMemo(function(){return[].concat(cRows).sort(function(a,b){var col=cs.col,dir=cs.dir==="asc"?1:-1;if(col==="c")return dir*a.c.localeCompare(b.c);if(col==="t")return dir*(a.st.t-b.st.t);if(col==="del")return dir*(a.st.del-b.st.del);if(col==="ret")return dir*(a.st.ret-b.st.ret);if(col==="avgSC")return dir*(a.avgSC-b.avgSC);if(col==="delSC")return dir*(a.delSC-b.delSC);if(col==="dr")return dir*(a.dr-b.dr);return 0;});},[cRows,cs]);
   if(companies.length===0)return React.createElement("div",{style:{color:LGRAY,padding:40,textAlign:"center"}},"No data available");
