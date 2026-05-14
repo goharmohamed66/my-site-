@@ -800,19 +800,22 @@ if ($action === 'enrich_fees') {
       }
       if (!$body) continue;
       $j = json_decode($body, true);
-      // Wallet → Cash Cycle → Bosta Fees is the authoritative source —
-      // it's what Bosta actually deducts from the merchant for the
-      // shipment, whether the order ended up Delivered or Returned.
-      // shipmentFees / priceAfterVat are kept as fallbacks for the rare
-      // shipment that doesn't have a cash-cycle entry yet (e.g. very
-      // fresh orders Bosta hasn't booked into a cycle).
-      $wcc = $j['wallet']['cashCycle']['shipping_fees'] ?? null;
-      if ($wcc !== null && $wcc !== '') {
-        $fees[$id] = (float)$wcc;
-      } elseif (isset($j['shipmentFees'])) {
+      // shipmentFees is Bosta's public-API field that matches "Bosta
+      // Fees" under Wallet → Cash Cycle in the merchant dashboard.
+      // priceAfterVat / priceBeforeVat / shippingFee are alternate
+      // names some shipments expose. wallet.cashCycle.shipping_fees is
+      // not part of the public delivery response (kept only as a
+      // last-resort guard in case Bosta starts surfacing it).
+      if (isset($j['shipmentFees'])) {
         $fees[$id] = (float)$j['shipmentFees'];
       } elseif (isset($j['priceAfterVat'])) {
         $fees[$id] = (float)$j['priceAfterVat'];
+      } elseif (isset($j['shippingFee'])) {
+        $fees[$id] = (float)$j['shippingFee'];
+      } elseif (isset($j['priceBeforeVat'])) {
+        $fees[$id] = (float)$j['priceBeforeVat'];
+      } elseif (isset($j['wallet']['cashCycle']['shipping_fees'])) {
+        $fees[$id] = (float)$j['wallet']['cashCycle']['shipping_fees'];
       }
     }
     curl_multi_close($multi);
@@ -823,6 +826,153 @@ if ($action === 'enrich_fees') {
     if ($pauseMs > 0) usleep($pauseMs * 1000);
   }
   send_json(['fees' => $fees]);
+}
+
+// GET /shipping.php?action=debug_bosta&connector_id=N&id=<delivery_id>
+//   returns: the raw Bosta /deliveries/{id} response plus the
+//   candidate fee fields we extract, so we can confirm which path
+//   actually carries the shipping fee for this account.
+if ($action === 'debug_bosta') {
+  $cid = (int)($_GET['connector_id'] ?? 0);
+  $id  = (string)($_GET['id'] ?? '');
+  if (!$cid || !$id) err('connector_id and id required');
+  if (!preg_match('/^[A-Za-z0-9_-]{1,40}$/', $id)) err('Invalid id');
+  $stmt = $pdo->prepare("SELECT * FROM connectors WHERE id = ? AND active = 1 AND type = 'shipping' LIMIT 1");
+  $stmt->execute([$cid]);
+  $conn = $stmt->fetch();
+  if (!$conn || $conn['provider'] !== 'bosta') err('Only Bosta supported here.', 400);
+  $token = $conn['token'] ?? '';
+  if (!$token) err('Bosta connector missing API key.');
+  $r = http_request('GET', 'https://app.bosta.co/api/v0/deliveries/' . $id,
+    ['Authorization: ' . $token, 'Content-Type: application/json']);
+  $j = json_decode($r['body'] ?: '{}', true);
+  send_json([
+    'http_code'    => $r['code'],
+    'fee_fields'   => [
+      'shipmentFees'                       => $j['shipmentFees']                       ?? null,
+      'priceAfterVat'                      => $j['priceAfterVat']                      ?? null,
+      'shippingFee'                        => $j['shippingFee']                        ?? null,
+      'priceBeforeVat'                     => $j['priceBeforeVat']                     ?? null,
+      'wallet.cashCycle.shipping_fees'     => $j['wallet']['cashCycle']['shipping_fees'] ?? null,
+      'pricing.priceAfterVat'              => $j['pricing']['priceAfterVat']           ?? null,
+      'pricing.shipmentFees'               => $j['pricing']['shipmentFees']            ?? null,
+    ],
+    'top_level_keys' => is_array($j) ? array_keys($j) : [],
+    'raw'            => $j,
+  ]);
+}
+
+// POST /shipping.php?action=refresh_all_fees&connector_id=N[&brand_id=M]
+//   Walks every Bosta row in shipping_orders, extracts _id from the
+//   stored raw JSON, calls /deliveries/{id} in parallel batches, and
+//   UPDATEs fees+net+status in the DB synchronously. Returns counts
+//   so the caller can confirm the refresh actually populated values.
+if ($action === 'refresh_all_fees') {
+  $cid = (int)($_GET['connector_id'] ?? 0);
+  if (!$cid) err('connector_id required');
+  $bid = (int)($_GET['brand_id'] ?? 0);
+  $stmt = $pdo->prepare("SELECT * FROM connectors WHERE id = ? AND active = 1 AND type = 'shipping' LIMIT 1");
+  $stmt->execute([$cid]);
+  $conn = $stmt->fetch();
+  if (!$conn || $conn['provider'] !== 'bosta') err('Only Bosta supports fee refresh.', 400);
+  $token = $conn['token'] ?? '';
+  if (!$token) err('Bosta connector is missing the API key.');
+
+  @set_time_limit(0);
+  @ignore_user_abort(true);
+
+  // Pull every Bosta-sourced row we know about. We need both order_id
+  // (tracking number — the UPDATE key) and raw._id (what Bosta's
+  // per-delivery GET expects in the URL). Source comparison is
+  // case-insensitive because older imports stored "Bosta" while newer
+  // pulls may differ.
+  $sql = "SELECT id, order_id, raw, status FROM shipping_orders
+          WHERE LOWER(source) = 'bosta'";
+  $params = [];
+  if ($bid > 0) { $sql .= " AND brand_id = ?"; $params[] = $bid; }
+  $q = $pdo->prepare($sql);
+  $q->execute($params);
+  $rows = $q->fetchAll();
+
+  $idToOrder = []; $ids = [];
+  $missingId = 0;
+  foreach ($rows as $row) {
+    $raw = $row['raw'] ? json_decode($row['raw'], true) : null;
+    $did = is_array($raw) ? ($raw['_id'] ?? null) : null;
+    if (!$did || !preg_match('/^[A-Za-z0-9_-]{1,40}$/', $did)) { $missingId++; continue; }
+    $ids[] = $did;
+    $idToOrder[$did] = ['order_id' => $row['order_id'], 'cod' => 0];
+    // Pull COD from raw so we can recompute net = cod - fees.
+    $cod = is_array($raw) && isset($raw['cod']) ? (float)$raw['cod'] : 0;
+    $idToOrder[$did]['cod'] = $cod;
+  }
+
+  $totalRows  = count($rows);
+  $totalIds   = count($ids);
+  $fees       = [];
+  $batch      = 10;
+  $pauseMs    = 100;
+  $sampleRaw  = null;   // first non-empty response we see, for diagnosis
+
+  for ($i = 0; $i < $totalIds; $i += $batch) {
+    $slice = array_slice($ids, $i, $batch);
+    $multi = curl_multi_init();
+    $handles = [];
+    foreach ($slice as $did) {
+      $ch = curl_init('https://app.bosta.co/api/v0/deliveries/' . $did);
+      curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT        => HTTP_TIMEOUT,
+        CURLOPT_SSL_VERIFYPEER => true,
+        CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_HTTPHEADER     => ['Authorization: ' . $token, 'Content-Type: application/json'],
+      ]);
+      curl_multi_add_handle($multi, $ch);
+      $handles[$did] = $ch;
+    }
+    do { curl_multi_exec($multi, $running); if ($running) curl_multi_select($multi); } while ($running > 0);
+    foreach ($handles as $did => $ch) {
+      $body = curl_multi_getcontent($ch);
+      curl_multi_remove_handle($multi, $ch);
+      curl_close($ch);
+      if (!$body) continue;
+      $j = json_decode($body, true);
+      if (!is_array($j)) continue;
+      if ($sampleRaw === null) $sampleRaw = ['id' => $did, 'keys' => array_keys($j), 'shipmentFees' => $j['shipmentFees'] ?? null, 'priceAfterVat' => $j['priceAfterVat'] ?? null];
+      if (isset($j['shipmentFees']))             $fees[$did] = (float)$j['shipmentFees'];
+      elseif (isset($j['priceAfterVat']))        $fees[$did] = (float)$j['priceAfterVat'];
+      elseif (isset($j['shippingFee']))          $fees[$did] = (float)$j['shippingFee'];
+      elseif (isset($j['priceBeforeVat']))       $fees[$did] = (float)$j['priceBeforeVat'];
+      elseif (isset($j['wallet']['cashCycle']['shipping_fees']))
+                                                 $fees[$did] = (float)$j['wallet']['cashCycle']['shipping_fees'];
+    }
+    curl_multi_close($multi);
+    if ($pauseMs > 0) usleep($pauseMs * 1000);
+  }
+
+  // Persist: UPDATE fees + net by (source, order_id). source matched
+  // case-insensitively above so use the same predicate here.
+  $upd = $pdo->prepare("UPDATE shipping_orders SET fees = ?, net = ?
+                        WHERE LOWER(source) = 'bosta' AND order_id = ?");
+  $updated = 0; $withFees = 0;
+  foreach ($fees as $did => $fee) {
+    $meta = $idToOrder[$did] ?? null;
+    if (!$meta || !$meta['order_id']) continue;
+    $cod = (float)$meta['cod'];
+    $net = max(0, $cod - (float)$fee);
+    $upd->execute([(float)$fee, $net, $meta['order_id']]);
+    $updated += $upd->rowCount();
+    if ($fee > 0) $withFees++;
+  }
+  send_json([
+    'rows_in_db'      => $totalRows,
+    'rows_with_id'    => $totalIds,
+    'rows_missing_id' => $missingId,
+    'fees_returned'   => count($fees),
+    'fees_nonzero'    => $withFees,
+    'db_updated'      => $updated,
+    'sample_response' => $sampleRaw,
+  ]);
 }
 
 if ($action === 'fetch') {
