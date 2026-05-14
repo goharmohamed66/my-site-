@@ -321,7 +321,8 @@ async function callChatGPT(systemPrompt, userMessage, maxTokens) {
       model: 'gpt-5.5-pro',
       instructions: systemPrompt,
       input: userMessage,
-      max_output_tokens: (maxTokens || 3000) + 6000
+      max_output_tokens: (maxTokens || 3000) + 6000,
+      text: { format: { type: 'json_object' } }
     })
   });
   const data = await res.json();
@@ -418,9 +419,12 @@ async function generate() {
   label.innerHTML = '<span class="spinner"></span> Generating…';
   try {
     const sysPrompt = await loadPrompt();
+    // The user message must mention "JSON" — required by the model's JSON
+    // output mode, and it reinforces the prompt's JSON-only rule.
+    const userMsg = input + '\n\nرجّع الناتج JSON بالـ schema المحدد فقط — من غير أي نص أو markdown قبله أو بعده.';
     const text = model === 'chatgpt'
-      ? await callChatGPT(sysPrompt, input, 3000)
-      : await callClaude(sysPrompt, input, 3000);
+      ? await callChatGPT(sysPrompt, userMsg, 3000)
+      : await callClaude(sysPrompt, userMsg, 3000);
     renderOutput(text);
   } catch (e) {
     showError(e.message || String(e));
