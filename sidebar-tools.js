@@ -35,6 +35,8 @@
     children: [
       { name:'Extract Reviews & Details', href:'extract-reviews.html', matchPaths:['extract-reviews.html'],
         svg:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="14" y2="16"/></svg>' },
+      { name:'Book Reviews', href:'book-reviews.html', matchPaths:['book-reviews.html'],
+        svg:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>' },
       { name:'Buyer Persona', href:'buyer-persona.html', matchPaths:['buyer-persona.html'],
         svg:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>' },
       { name:'Copywriting', href:'copywriting.html', matchPaths:['copywriting.html'],
@@ -508,12 +510,13 @@
     'sheets.html'        : PRODUCTS_GROUP.children[1].svg,
     // ── All tools children ──
     'extract-reviews.html'     : ALL_TOOLS_GROUP.children[0].svg,
-    'buyer-persona.html'       : ALL_TOOLS_GROUP.children[1].svg,
-    'copywriting.html'         : ALL_TOOLS_GROUP.children[2].svg,
-    'creative-image-ads.html'  : ALL_TOOLS_GROUP.children[3].svg,
-    'headlines.html'           : ALL_TOOLS_GROUP.children[4].svg,
-    'landing-page.html'        : ALL_TOOLS_GROUP.children[5].svg,
-    'landing-page-images.html' : ALL_TOOLS_GROUP.children[6].svg,
+    'book-reviews.html'        : ALL_TOOLS_GROUP.children[1].svg,
+    'buyer-persona.html'       : ALL_TOOLS_GROUP.children[2].svg,
+    'copywriting.html'         : ALL_TOOLS_GROUP.children[3].svg,
+    'creative-image-ads.html'  : ALL_TOOLS_GROUP.children[4].svg,
+    'headlines.html'           : ALL_TOOLS_GROUP.children[5].svg,
+    'landing-page.html'        : ALL_TOOLS_GROUP.children[6].svg,
+    'landing-page-images.html' : ALL_TOOLS_GROUP.children[7].svg,
     // ── Automation Tools children ──
     'landing-auto.html'         : AUTOMATION_TOOLS_GROUP.children[0].svg,
     'automation-fm-update.html' : AUTOMATION_TOOLS_GROUP.children[1].svg,
