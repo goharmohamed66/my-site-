@@ -879,7 +879,6 @@ var ALL_TOOLS_GRID_SVG='<path d="M11.452 0h1.698c.47 0 .85.38.85.85v1.699c0 .469
 function GridIcon(){return React.createElement("svg",{width:16,height:16,viewBox:"0 0 14 14",fill:"currentColor",style:{flexShrink:0},dangerouslySetInnerHTML:{__html:ALL_TOOLS_GRID_SVG}});}
 var TOOL_ICON_SVGS={
   extractReviews:'<path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="14" y2="16"/>',
-  bookReviews:'<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>',
   buyerPersona:'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
   copywriting:'<path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/>',
   creativeAds:'<path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/>',
@@ -890,7 +889,6 @@ var TOOL_ICON_SVGS={
 function ToolIcon(p){return React.createElement("svg",{width:16,height:16,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:1.75,strokeLinecap:"round",strokeLinejoin:"round",style:{flexShrink:0},dangerouslySetInnerHTML:{__html:TOOL_ICON_SVGS[p.name]||""}});}
 var ALL_TOOLS_ITEMS=[
   {label:"Extract Reviews & Details",href:"extract-reviews.html",icon:"extractReviews"},
-  {label:"Book Reviews",href:"book-reviews.html",icon:"bookReviews"},
   {label:"Buyer Persona",href:"buyer-persona.html",icon:"buyerPersona"},
   {label:"Copywriting",href:"copywriting.html",icon:"copywriting"},
   {label:"Creative Image Ads",href:"creative-image-ads.html",icon:"creativeAds"},
