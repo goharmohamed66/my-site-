@@ -92,7 +92,10 @@
         <div class="panel">
           <div class="panel-title">Product / Book URLs</div>
           <div class="panel-desc">
-            One URL per line. Amazon (any region) → routed through Apify with a full star × sort sweep for the deepest review pull (paid per review). Abjjad → routed through our own free server-side scraper that walks the site's paginator to capture <strong>every</strong> review. Mix and match in the same input.
+            One URL per line. Auto-routes per URL:<br>
+            • <strong>Amazon</strong> → Apify junglee sweep first. If a product has more than 100 reviews and you've saved Amazon Session cookies in <em>Settings → Connectors → Amazon Session</em>, the tool auto-escalates to the cookie-based scraper to pull the rest. Small products stay on junglee (cheaper).<br>
+            • <strong>Abjjad</strong> → our own free server-side scraper that walks the site's paginator to capture <strong>every</strong> review.<br>
+            Mix and match in the same input.
           </div>
           <div class="field">
             <textarea class="field-textarea" id="urlsInput" placeholder="https://www.amazon.com/dp/B0XXXX
@@ -162,17 +165,24 @@ async function loadApifyToken() {
 
 // ── Per-site backend configuration ─────────────────────────────────────
 // Each URL routes to a different backend:
-//   Amazon  → Apify junglee/amazon-reviews-scraper (paid per review, but
-//             walks every star × sort combination to capture the full set)
-//   Abjjad  → our own /api/scrape-abjjad.php (free, walks the AJAX page
-//             endpoint to capture 100% of reviews)
-//   Generic → Apify website-content-crawler fallback for any other URL
+//   Amazon (small, <100 reviews)
+//     → Apify junglee/amazon-reviews-scraper, star × sort sweep, paid
+//       per review but caps at ~100/product without login.
+//   Amazon (large, 100+ reviews) AND Amazon Session connector saved
+//     → Apify webdatalabs/amazon-reviews-scraper passing the user's
+//       Amazon cookies. Amazon's /product-reviews/ paginator works
+//       fully for a logged-in session, so the Actor pulls every review.
+//   Abjjad  → our own /api/scrape-abjjad.php (free).
+//   Generic → Apify website-content-crawler fallback.
 const ACTOR_BY_SITE = {
-  amazon:  'junglee~amazon-reviews-scraper',
-  generic: 'apify~website-content-crawler'
+  amazon:           'junglee~amazon-reviews-scraper',
+  amazonAuthorized: 'webdatalabs~amazon-reviews-scraper',
+  generic:          'apify~website-content-crawler'
 };
 const ABJJAD_SCRAPE_API = API_BASE + '/scrape-abjjad.php';
 const IMAGE_PROXY = API_BASE + '/fetch-image.php';
+const LARGE_PRODUCT_THRESHOLD = 100; // when junglee's cap is likely a problem
+
 function detectSite(url) {
   try {
     const host = new URL(url).hostname.toLowerCase();
@@ -180,6 +190,74 @@ function detectSite(url) {
     if (/(^|\.)abjjad\./.test(host)) return 'abjjad';
     return 'generic';
   } catch (e) { return 'generic'; }
+}
+function amazonDomainOf(url) {
+  try {
+    const host = new URL(url).hostname.toLowerCase().replace(/^www\./, '');
+    return host; // e.g. amazon.eg
+  } catch (e) { return ''; }
+}
+
+// Looks up an Amazon Session connector matching the given amazon domain
+// (so amazon.eg URLs can use a different cookie set than amazon.com).
+// Returns null when none is saved — the caller stays on junglee in that
+// case even if the product is large.
+async function loadAmazonCookies(domain) {
+  const r = await fetch(API_BASE + '/connectors.php?type=scraping&_t=' + Date.now(), {
+    headers: { 'Authorization': 'Bearer ' + API_TOKEN }
+  });
+  if (!r.ok) return null;
+  const d = await r.json();
+  const rows = (d.rows || []).filter(x => x.provider === 'amazon_session' && x.token);
+  if (!rows.length) return null;
+  // Prefer one whose meta.domain matches; fall back to the first row.
+  const match = rows.find(r => (r.meta && r.meta.domain || '').toLowerCase() === (domain || '').toLowerCase());
+  return (match || rows[0]).token;
+}
+
+// Call webdatalabs/amazon-reviews-scraper with the user's session cookies
+// so it can paginate the full /product-reviews/ list. Returns reviews in
+// our normalized shape (same as normalizeAmazon's review entries).
+async function fetchAmazonAuthorized(url, cookies, apifyToken, maxReviews) {
+  const runUrl = 'https://api.apify.com/v2/acts/' + ACTOR_BY_SITE.amazonAuthorized + '/run-sync-get-dataset-items?token=' + encodeURIComponent(apifyToken);
+  const res = await fetch(runUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      productUrls: [url],
+      amazonCookies: cookies,
+      maxReviewsPerProduct: Math.max(100, maxReviews || 500),
+      starRatings: ['1','2','3','4','5'],
+      sortBy: 'all'
+    })
+  });
+  if (!res.ok) {
+    const t = await res.text();
+    let msg = 'HTTP ' + res.status;
+    try { const j = JSON.parse(t); msg = (j.error && j.error.message) || msg; } catch (e) {}
+    throw new Error(msg);
+  }
+  const items = await res.json();
+  // Different Actor → different field names. Map onto the shape that
+  // normalizeAmazon's review entries already use.
+  return items.map(it => ({
+    author: it.userName || it.author || it.reviewerName || '',
+    rating: it.rating || it.ratingScore || it.stars || null,
+    title:  it.title || it.reviewTitle || '',
+    body:   String(it.body || it.reviewText || it.text || it.reviewDescription || '').trim(),
+    date:   it.date || it.reviewDate || it.timestamp || '',
+    verified: !!(it.verified || it.isVerified || it.verifiedPurchase),
+    variant:  it.variation || it.variant || ''
+  })).filter(r => r.body || r.title);
+}
+
+// Stable key for dedupe across actors that don't share review IDs.
+// Author + date + first 40 chars of body usually uniquely identifies
+// a review even when the two scrapers normalize text slightly differently.
+function normalizeReviewKey(r) {
+  if (!r) return '';
+  const head = String(r.body || '').replace(/\s+/g, ' ').slice(0, 40).toLowerCase();
+  return (r.author || '') + '|' + (r.date || '') + '|' + head;
 }
 
 // Maps the /api/scrape-abjjad.php response shape onto the product shape
@@ -594,6 +672,9 @@ async function onExtract() {
       label.innerHTML = '<span class="spinner"></span> Amazon (' + (i + 1) + '/' + buckets.amazon.length + ')…';
       $('progressLine').textContent = 'URL ' + (i + 1) + '/' + buckets.amazon.length + ': starting full sweep (5★→1★ × helpful + recent)…';
       try {
+        // Stage 1 — junglee sweep. Always run this. It returns product
+        // details (title, brand, features, images, etc.) AND up to ~100
+        // reviews. For small products this is the only pass we need.
         const items = await fetchAllAmazonReviews(url, maxReviews, token, (lbl, n, added, total, err, step, totalSteps) => {
           if (lbl === 'early-exit') {
             $('progressLine').textContent = 'URL ' + (i + 1) + '/' + buckets.amazon.length + ' — exhausted at step ' + step + '/' + totalSteps + '. Total reviews: ' + total;
@@ -603,6 +684,35 @@ async function onExtract() {
           $('progressLine').textContent = 'URL ' + (i + 1) + '/' + buckets.amazon.length + ' — step ' + step + '/' + totalSteps + ' ' + lbl + tail;
         });
         const p = normalizeAmazon(items, url);
+
+        // Stage 2 — auto-escalate to cookie-based scraper if the product
+        // is larger than what junglee can reach AND the user has saved
+        // Amazon Session cookies for this domain. Otherwise stop with
+        // whatever junglee returned.
+        const totalReviewCount = Number(p.ratingCount || 0);
+        const captured = p.reviews.length;
+        if (totalReviewCount > LARGE_PRODUCT_THRESHOLD && captured < totalReviewCount * 0.95) {
+          const domain = amazonDomainOf(url);
+          const cookies = await loadAmazonCookies(domain);
+          if (cookies) {
+            $('progressLine').textContent = 'URL ' + (i + 1) + '/' + buckets.amazon.length + ' — product has ' + totalReviewCount + ' reviews, junglee captured ' + captured + '. Escalating to cookie-based webdatalabs scraper…';
+            try {
+              const extra = await fetchAmazonAuthorized(url, cookies, token, totalReviewCount);
+              const seen = new Set(p.reviews.map(r => normalizeReviewKey(r)));
+              let added = 0;
+              extra.forEach(r => {
+                const k = normalizeReviewKey(r);
+                if (k && !seen.has(k)) { seen.add(k); p.reviews.push(r); added++; }
+              });
+              $('progressLine').textContent = 'URL ' + (i + 1) + '/' + buckets.amazon.length + ' — webdatalabs added ' + added + ' new. Total reviews: ' + p.reviews.length;
+            } catch (e2) {
+              $('progressLine').textContent = 'URL ' + (i + 1) + '/' + buckets.amazon.length + ' — webdatalabs failed (' + e2.message.slice(0, 80) + '). Keeping junglee result.';
+            }
+          } else {
+            $('progressLine').textContent = 'URL ' + (i + 1) + '/' + buckets.amazon.length + ' — product has ' + totalReviewCount + ' reviews but no Amazon Session cookies are saved. Stopping at ' + captured + '. (Add cookies in Settings → Connectors → Amazon Session to pull the rest.)';
+          }
+        }
+
         products.push(p);
         $('results').insertAdjacentHTML('beforeend', renderProduct(p, products.length - 1));
       } catch (e) {
