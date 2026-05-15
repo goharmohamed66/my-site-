@@ -157,11 +157,6 @@
           <div id="folderSummary" style="display:none;margin-top:8px;padding:8px 12px;background:#F0FDF4;border:1px solid #BBF7D0;border-radius:6px;font-size:11px;color:#0F5132;line-height:1.5;"></div>
         </div>
 
-        <div class="field">
-          <div class="field-label"><span>Angles (one per line, optional)</span><span class="field-hint">Each copy will use one angle, in order.</span></div>
-          <textarea class="field-textarea" id="anglesInput" placeholder="مثال:&#10;الخوف من ضياع الوقت&#10;الفضول&#10;الفخر بالإنجاز&#10;الراحة النفسية" style="min-height:90px;"></textarea>
-        </div>
-
         <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
             <label for="modelSelect" style="font-size:13px;color:#1A1A1A;font-weight:500;">Model:</label>
@@ -373,23 +368,13 @@ async function callChatGPT(systemPrompt, userMessage, maxTokens) {
 }
 
 
-function getAngles() {
-  return $('anglesInput').value.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
-}
-
-function buildUserMessage(input, angles, count) {
+function buildUserMessage(input, count) {
   const lines = ['INPUT DATA', input, ''];
-  if (angles.length) {
-    lines.push('Angles to use (in this order):');
-    angles.slice(0, count).forEach((a, i) => lines.push(`${i + 1}. ${a}`));
-    lines.push('');
-  }
   if (count > 1) {
     lines.push(`اكتب ${count} نسخ منفصلة.`);
     lines.push('قبل كل نسخة اكتب سطر فيه: ANGLE: <اسم الزاوية>');
     lines.push('وافصل النسخ عن بعض بسطر فيه === فقط.');
   } else {
-    if (angles.length) lines.push(`استخدم زاوية: ${angles[0]}`);
     lines.push('قبل النسخة اكتب سطر فيه: ANGLE: <اسم الزاوية>');
   }
   return lines.join('\n');
@@ -473,11 +458,10 @@ async function generate() {
   const input = $('productInput').value.trim();
   const provider = $('modelSelect').value;
   const count = parseInt($('countValue').textContent, 10) || 1;
-  const angles = getAngles();
 
   if (!input) { showToast('Enter product details first', true); return; }
 
-  const userMessage = buildUserMessage(input, angles, count);
+  const userMessage = buildUserMessage(input, count);
   const maxTokens = Math.max(2000, count * 700);
 
   const btn = $('generateBtn');
