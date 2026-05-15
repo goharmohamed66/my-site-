@@ -68,9 +68,18 @@
   .copy-btn{height:30px;padding:0 12px;font-size:12px;font-weight:600;border-radius:7px;border:1px solid #DCDCDC;background:#FFFFFF;color:#1A1A1A;cursor:pointer;display:inline-flex;align-items:center;gap:6px;font-family:inherit;}
   .copy-btn:hover{background:#F5F5F5;border-color:#1A1A1A;}
   .copy-btn.copied{background:#0E8345;color:#FFFFFF;border-color:#0E8345;}
+  /* Image gallery */
+  .img-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;margin-top:6px;}
+  .img-grid .img-tile{position:relative;border:1px solid #E1E3E5;border-radius:8px;overflow:hidden;background:#FFFFFF;aspect-ratio:1/1;display:flex;align-items:center;justify-content:center;}
+  .img-grid .img-tile img{max-width:100%;max-height:100%;object-fit:contain;display:block;}
+  .img-grid .img-tile .dl-one{position:absolute;bottom:4px;right:4px;background:rgba(26,26,26,0.85);color:#FFFFFF;font-size:10px;font-weight:700;padding:3px 7px;border-radius:5px;text-decoration:none;}
+  .img-grid .img-tile .dl-one:hover{background:#1A1A1A;}
+  .images-toolbar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:6px 0 8px;}
+  .images-toolbar .count{font-size:12px;color:#6D7175;}
 </style>
 <script src="topbar.js?v=1779200000"></script>
 <script src="sidebar-tools.js?v=1779100000"></script>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 </head>
 <body>
 <div class="app-shell">
@@ -113,14 +122,18 @@ https://www.abjjad.com/book/123456"></textarea>
           </div>
           <div id="progressLine" class="progress-line" style="display:none;"></div>
           <div id="results"></div>
-          <div id="resultsToolbar" style="display:none;margin-top:14px;">
+          <div id="resultsToolbar" style="display:none;margin-top:14px;flex-wrap:wrap;gap:8px;">
             <button class="btn btn-ghost" id="copyAllBtn" type="button">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
               <span>Copy all as text</span>
             </button>
-            <button class="btn btn-ghost" id="downloadJsonBtn" type="button" style="margin-left:8px;">
+            <button class="btn btn-ghost" id="downloadJsonBtn" type="button">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
               <span>Download JSON</span>
+            </button>
+            <button class="btn btn-ghost" id="downloadAllImagesBtn" type="button">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+              <span id="downloadAllImagesLabel">Download all images (ZIP)</span>
             </button>
           </div>
         </div>
@@ -159,6 +172,7 @@ const ACTOR_BY_SITE = {
   generic: 'apify~website-content-crawler'
 };
 const ABJJAD_SCRAPE_API = API_BASE + '/scrape-abjjad.php';
+const IMAGE_PROXY = API_BASE + '/fetch-image.php';
 function detectSite(url) {
   try {
     const host = new URL(url).hostname.toLowerCase();
@@ -194,6 +208,7 @@ function normalizeAbjjad(d, requestedUrl) {
     price:       null,
     breadcrumb:  (d.genre || []).join(' › '),
     thumbnail:   d.image || '',
+    images:      d.image ? [d.image] : [],
     reviews
   };
 }
@@ -360,6 +375,15 @@ function normalizeAmazon(items, requestedUrl) {
     ? (product.price.value + ' ' + (product.price.currency || ''))
     : null;
 
+  // Prefer high-res images for the download; fall back to gallery thumbs.
+  // Dedupe in case both arrays overlap.
+  const images = [];
+  const seenImg = new Set();
+  const pushImg = (u) => { if (u && !seenImg.has(u)) { seenImg.add(u); images.push(u); } };
+  if (product.thumbnailImage) pushImg(product.thumbnailImage);
+  (product.highResolutionImages || []).forEach(pushImg);
+  (product.galleryThumbnails || []).forEach(pushImg);
+
   return {
     url: product.unNormalizedProductUrl || product.url || requestedUrl,
     title: product.title || '(untitled)',
@@ -372,6 +396,7 @@ function normalizeAmazon(items, requestedUrl) {
     price,
     breadcrumb: product.breadCrumbs || '',
     thumbnail: product.thumbnailImage || (product.galleryThumbnails && product.galleryThumbnails[0]) || '',
+    images,
     reviews
   };
 }
@@ -419,6 +444,24 @@ function renderProduct(p, idx) {
     ? '<img src="' + escapeHtml(p.thumbnail) + '" alt="" style="width:90px;height:90px;object-fit:contain;border:1px solid #E1E3E5;border-radius:8px;background:#FFFFFF;float:right;margin:0 0 10px 14px;">'
     : '';
 
+  const imagesHtml = (p.images && p.images.length) ? (
+    '<div class="rb-section-title">Product images (' + p.images.length + ')</div>'
+    + '<div class="images-toolbar">'
+    +   '<span class="count">High-res — click each tile to open, or use Download images for this product.</span>'
+    +   '<button class="copy-btn" data-dl-product="' + idx + '" type="button">'
+    +     '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>'
+    +     '<span>Download images</span>'
+    +   '</button>'
+    + '</div>'
+    + '<div class="img-grid">' + p.images.map((src, i) =>
+        '<div class="img-tile">'
+        +   '<a href="' + escapeHtml(src) + '" target="_blank" rel="noopener"><img loading="lazy" src="' + escapeHtml(src) + '" alt="image ' + (i + 1) + '"></a>'
+        +   '<a class="dl-one" href="' + escapeHtml(IMAGE_PROXY + '?url=' + encodeURIComponent(src) + '&token=' + API_TOKEN) + '" download="' + (p.asin || 'image') + '-' + (i + 1) + '.jpg">↓</a>'
+        + '</div>'
+      ).join('')
+    + '</div>'
+  ) : '';
+
   const reviewsHtml = p.reviews && p.reviews.length
     ? p.reviews.map(r => `
         <div class="review-card">
@@ -441,6 +484,7 @@ function renderProduct(p, idx) {
       <div class="rb-section-title">About this item</div>
       ${bullets}
       ${descHtml}
+      ${imagesHtml}
       <div class="rb-section-title">Reviews (${p.reviews ? p.reviews.length : 0})</div>
       <div class="rb-reviews">${reviewsHtml}</div>
     </div>`;
@@ -620,6 +664,112 @@ $('downloadJsonBtn').addEventListener('click', () => {
   a.download = 'extracted-products-' + Date.now() + '.json';
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+});
+
+// ── Image download helpers ────────────────────────────────────────────
+// Amazon's m.media-amazon.com lacks an Access-Control-Allow-Origin
+// header for our domain, so a raw fetch from JS is blocked. The
+// /api/fetch-image.php proxy streams the bytes back same-origin so the
+// browser can pack them into a ZIP. The proxy validates the URL as an
+// image and serves with the correct Content-Type.
+async function fetchImageBlob(srcUrl) {
+  const r = await fetch(IMAGE_PROXY + '?url=' + encodeURIComponent(srcUrl) + '&token=' + API_TOKEN);
+  if (!r.ok) throw new Error('proxy HTTP ' + r.status);
+  return r.blob();
+}
+function extFor(url, mime) {
+  if (mime && /jpeg/i.test(mime)) return 'jpg';
+  if (mime && /png/i.test(mime))  return 'png';
+  if (mime && /webp/i.test(mime)) return 'webp';
+  const m = url.toLowerCase().match(/\.(jpe?g|png|webp|gif)(\?|$)/);
+  return m ? m[1].replace('jpeg', 'jpg') : 'jpg';
+}
+function safeSlug(s) {
+  return String(s || 'product').replace(/[^\w؀-ۿ-]+/gu, '_').slice(0, 60).replace(/^_+|_+$/g, '') || 'product';
+}
+
+async function downloadProductImages(product, btnEl) {
+  if (!product || !product.images || !product.images.length) {
+    showToast('No images for this product', true); return;
+  }
+  const originalLabel = btnEl && btnEl.querySelector('span');
+  const originalText = originalLabel && originalLabel.textContent;
+  if (btnEl) btnEl.disabled = true;
+  try {
+    const zip = new JSZip();
+    const folder = zip.folder(safeSlug(product.title));
+    for (let i = 0; i < product.images.length; i++) {
+      if (originalLabel) originalLabel.textContent = 'Fetching ' + (i + 1) + '/' + product.images.length + '…';
+      try {
+        const blob = await fetchImageBlob(product.images[i]);
+        const ext  = extFor(product.images[i], blob.type);
+        folder.file((product.asin || 'image') + '-' + String(i + 1).padStart(2, '0') + '.' + ext, blob);
+      } catch (e) { /* skip failed image */ }
+    }
+    if (originalLabel) originalLabel.textContent = 'Zipping…';
+    const zipBlob = await zip.generateAsync({ type: 'blob' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(zipBlob);
+    a.download = safeSlug(product.title) + '-images.zip';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    showToast('Downloaded ' + product.images.length + ' image(s)');
+  } catch (e) {
+    showToast('Download failed: ' + e.message, true);
+  } finally {
+    if (btnEl) btnEl.disabled = false;
+    if (originalLabel && originalText) originalLabel.textContent = originalText;
+  }
+}
+
+// Per-product "Download images" buttons (rendered inline by renderProduct).
+$('results').addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-dl-product]');
+  if (!btn) return;
+  const idx = +btn.dataset.dlProduct;
+  if (!isNaN(idx) && __lastProducts[idx]) downloadProductImages(__lastProducts[idx], btn);
+});
+
+// Top-level "Download all images (ZIP)" — packs every product's images
+// into one ZIP, with each product in its own subfolder.
+$('downloadAllImagesBtn').addEventListener('click', async () => {
+  if (!__lastProducts.length) return;
+  const withImages = __lastProducts.filter(p => p.images && p.images.length);
+  if (!withImages.length) { showToast('No product images to download', true); return; }
+  const btn = $('downloadAllImagesBtn');
+  const lbl = $('downloadAllImagesLabel');
+  const orig = lbl.textContent;
+  btn.disabled = true;
+  try {
+    const zip = new JSZip();
+    let done = 0;
+    const total = withImages.reduce((n, p) => n + p.images.length, 0);
+    for (const product of withImages) {
+      const folder = zip.folder(safeSlug(product.title));
+      for (let i = 0; i < product.images.length; i++) {
+        done++;
+        lbl.textContent = 'Fetching ' + done + ' / ' + total + '…';
+        try {
+          const blob = await fetchImageBlob(product.images[i]);
+          const ext  = extFor(product.images[i], blob.type);
+          folder.file((product.asin || 'image') + '-' + String(i + 1).padStart(2, '0') + '.' + ext, blob);
+        } catch (e) { /* skip on failure */ }
+      }
+    }
+    lbl.textContent = 'Zipping…';
+    const zipBlob = await zip.generateAsync({ type: 'blob' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(zipBlob);
+    a.download = 'all-product-images-' + Date.now() + '.zip';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    showToast('Downloaded ' + done + ' image(s) across ' + withImages.length + ' product(s)');
+  } catch (e) {
+    showToast('Download failed: ' + e.message, true);
+  } finally {
+    btn.disabled = false;
+    lbl.textContent = orig;
+  }
 });
 </script>
 </body>
