@@ -147,15 +147,15 @@ async function loadApifyToken() {
   return row.token;
 }
 
-// ── Apify Actor configuration ──────────────────────────────────────────
-// Picked at runtime once we know which site the URL belongs to. The actor
-// IDs are public Apify-store actors that are battle-tested for each site.
-// Replace these with your own Actor ID if you have a custom one.
+// ── Site adapter configuration ─────────────────────────────────────────
+// Each site routes to its own backend: Amazon uses Apify (paid per
+// review), abjjad uses our own PHP scraper (free — no per-call cost),
+// everything else falls back to Apify's generic website crawler.
 const ACTOR_BY_SITE = {
   amazon:  'junglee~amazon-reviews-scraper',
-  abjjad:  null, // generic fallback — see runActor()
   generic: 'apify~website-content-crawler'
 };
+const ABJJAD_SCRAPE_API = API_BASE + '/scrape-abjjad.php';
 function detectSite(url) {
   try {
     const host = new URL(url).hostname.toLowerCase();
@@ -353,6 +353,37 @@ function normalizeGeneric(items, url) {
   };
 }
 
+// Maps the /api/scrape-abjjad.php response shape onto the same product
+// shape Amazon uses, so renderProduct + asPlainText work uniformly.
+function normalizeAbjjad(d) {
+  if (!d || !d.ok) return { url: (d && d.url) || '', title: '(failed)', details: [], reviews: [], error: (d && d.error) || 'unknown' };
+  const reviews = (d.reviews || []).map(r => ({
+    author: r.author || '',
+    rating: r.rating,
+    title:  '',
+    body:   String(r.body || '').trim(),
+    date:   r.date || '',
+    verified: false,
+    variant: ''
+  }));
+  const details = [];
+  if (d.summary) details.push(d.summary);
+  return {
+    url:        d.url,
+    title:      d.title || '(untitled)',
+    brand:      d.author || '',
+    asin:       d.isbn || '',
+    details,
+    description: '',
+    rating:     d.rating || null,
+    ratingCount: d.ratingCount || d.reviewCount || null,
+    price:      null,
+    breadcrumb: (d.genre || []).join(' › '),
+    thumbnail:  d.image || '',
+    reviews
+  };
+}
+
 // ── Render one product block ───────────────────────────────────────────
 function escapeHtml(s) {
   return String(s == null ? '' : s)
@@ -474,16 +505,43 @@ async function onExtract() {
   $('resultsToolbar').style.display = 'none';
 
   try {
-    const token = await loadApifyToken();
     const products = [];
 
-    // Bucket URLs by site so we can batch all Amazon URLs into one Actor
-    // run (much faster than one run per URL + cheaper Apify usage).
-    const buckets = { amazon: [], generic: [] };
+    // Bucket URLs by site. abjjad uses our own server-side scraper
+    // (no Apify, no per-call cost). Amazon + generic use Apify.
+    const buckets = { abjjad: [], amazon: [], generic: [] };
     urls.forEach(u => {
       const site = detectSite(u);
       (buckets[site] || buckets.generic).push(u);
     });
+
+    // Only require an Apify token if we have URLs that actually need it.
+    const needsApify = buckets.amazon.length || buckets.generic.length;
+    const token = needsApify ? await loadApifyToken() : null;
+
+    for (let i = 0; i < buckets.abjjad.length; i++) {
+      const url = buckets.abjjad[i];
+      label.innerHTML = '<span class="spinner"></span> Abjjad (' + (i + 1) + '/' + buckets.abjjad.length + ')…';
+      $('progressLine').textContent = 'URL ' + (i + 1) + '/' + buckets.abjjad.length + ': scraping abjjad book page + all review pages…';
+      try {
+        const r = await fetch(ABJJAD_SCRAPE_API + '?url=' + encodeURIComponent(url) + '&_t=' + Date.now(), {
+          headers: { 'Authorization': 'Bearer ' + API_TOKEN }
+        });
+        const data = await r.json();
+        if (!r.ok || !data.ok) throw new Error((data && data.error) || ('HTTP ' + r.status));
+        const p = normalizeAbjjad(data);
+        products.push(p);
+        $('results').insertAdjacentHTML('beforeend', renderProduct(p, products.length - 1));
+        $('progressLine').textContent = 'URL ' + (i + 1) + '/' + buckets.abjjad.length + ': ' + p.reviews.length + ' reviews captured.';
+      } catch (e) {
+        products.push({ url, title: '(failed)', error: e.message, details: [], reviews: [] });
+        $('results').insertAdjacentHTML('beforeend',
+          '<div class="result-block" style="background:#FEF2F2;border-color:#FECACA;">' +
+            '<a href="' + escapeHtml(url) + '" target="_blank" rel="noopener" style="font-size:11px;color:#991B1B;">' + escapeHtml(url) + '</a>' +
+            '<div class="rb-title" style="color:#991B1B;">Failed: ' + escapeHtml(e.message) + '</div>' +
+          '</div>');
+      }
+    }
 
     for (let i = 0; i < buckets.amazon.length; i++) {
       const url = buckets.amazon[i];
