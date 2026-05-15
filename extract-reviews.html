@@ -93,8 +93,7 @@
           <div class="panel-title">Product / Book URLs</div>
           <div class="panel-desc">
             One URL per line. Auto-routes per URL:<br>
-            • <strong>Amazon (≤100 reviews)</strong> → full star × sort sweep, captures every available review.<br>
-            • <strong>Amazon (&gt;100 reviews)</strong> → 5★ reviews only (the marketing-gold subset). Junglee can't reach the full set on bigger products, and a focused 5★ pull is more useful for copywriting than a thin slice across all stars.<br>
+            • <strong>Amazon</strong> → full sweep across every star bucket × both sort orders. Pulls as many reviews as the Actor can return regardless of rating (typically 30–100 unique per product depending on how diversified the rankings are; 10 calls × ~10 = 100 ceiling).<br>
             • <strong>Abjjad</strong> → free server-side scraper that walks the site's paginator and returns <strong>every</strong> text review.<br>
             Mix and match in the same input.
           </div>
@@ -260,16 +259,11 @@ async function runActor(actorId, input, token) {
 }
 
 // Fetch reviews for an Amazon URL. The Actor caps each filter call at
-// ~10 reviews regardless of maxReviews. Strategy:
-//
-//   1. Run fiveStar/helpful first — this also returns product details
-//      (incl. reviewsCount) so we can decide what to do next.
-//   2. Read product.reviewsCount. If it's > LARGE_PRODUCT_THRESHOLD, the
-//      product has more reviews than a full sweep can capture anyway, so
-//      we only pull 5★ reviews (the "marketing gold" subset) — one more
-//      call with fiveStar/recent is enough.
-//   3. Otherwise (small product), we sweep all star buckets × both sorts
-//      to get up to ~100 unique reviews — covers every star.
+// ~10 reviews regardless of maxReviews. To pull as many as possible we
+// run a sweep across every star bucket × both sort orders, deduping by
+// reviewId. That's the practical max for junglee on a single product
+// (typically 40–100 unique reviews depending on how diversified the
+// helpful vs recent rankings are).
 //
 // Sequential, not parallel — each Actor run reserves 4096MB and the
 // Apify free tier caps concurrent runs at 8192MB.
@@ -277,74 +271,44 @@ async function fetchAllAmazonReviews(url, maxReviewsPerBucket, token, onProgress
   const seen = new Set();
   const out = [];
   let combo = 0;
-
-  function ingest(items) {
-    let added = 0;
-    items.forEach(it => {
-      const id = it.reviewId;
-      if (!id || seen.has(id)) return;
-      seen.add(id);
-      out.push(it);
-      added++;
-    });
-    return added;
-  }
-
-  // Stage 1 — fiveStar/helpful. Always run, captures product details.
-  combo++;
-  let firstItems = [];
-  try {
-    firstItems = await runActor(
-      ACTOR_BY_SITE.amazon,
-      inputForAmazon(url, maxReviewsPerBucket, 'fiveStar', 'helpful', true),
-      token
-    );
-    const added = ingest(firstItems);
-    if (onProgress) onProgress('fiveStar/helpful', firstItems.length, added, out.length, null, combo, '?');
-  } catch (e) {
-    if (onProgress) onProgress('fiveStar/helpful', 0, 0, 0, e.message, combo, '?');
-    return out;
-  }
-
-  // Read reviewsCount off the product object on any review item.
-  const product = (firstItems.find(it => it.product) || {}).product || {};
-  const reviewsCount = Number(product.reviewsCount || 0);
-  const fiveStarOnly = reviewsCount > LARGE_PRODUCT_THRESHOLD;
-
-  // Stage 2 — pick the bucket plan based on size.
-  const plan = fiveStarOnly
-    ? [['fiveStar', 'recent']]                                      // 1 more call
-    : (function () {                                                 // full sweep
-        const arr = [];
-        STAR_BUCKETS.forEach(s => SORT_ORDERS.forEach(o => arr.push([s, o])));
-        return arr.filter(([s, o]) => !(s === 'fiveStar' && o === 'helpful')); // skip the one we did
-      })();
-  const totalCombos = 1 + plan.length;
-
-  if (fiveStarOnly && onProgress) {
-    onProgress('large-product-mode', 0, 0, out.length, null, combo, totalCombos);
-  }
-
+  const totalCombos = STAR_BUCKETS.length * SORT_ORDERS.length;
   let consecutiveEmpty = 0;
-  for (const [bucket, sort] of plan) {
-    combo++;
-    const label = bucket + '/' + sort;
-    try {
-      const items = await runActor(
-        ACTOR_BY_SITE.amazon,
-        inputForAmazon(url, maxReviewsPerBucket, bucket, sort, false),
-        token
-      );
-      const added = ingest(items);
-      if (added === 0 && items.length === 0) consecutiveEmpty++;
-      else consecutiveEmpty = 0;
-      if (onProgress) onProgress(label, items.length, added, out.length, null, combo, totalCombos);
-      if (consecutiveEmpty >= 4) {
-        if (onProgress) onProgress('early-exit', 0, 0, out.length, null, combo, totalCombos);
-        return out;
+
+  for (let s = 0; s < STAR_BUCKETS.length; s++) {
+    for (let o = 0; o < SORT_ORDERS.length; o++) {
+      combo++;
+      const bucket = STAR_BUCKETS[s];
+      const sort = SORT_ORDERS[o];
+      const label = bucket + '/' + sort;
+      try {
+        // Only the very first call asks for the heavy product payload —
+        // subsequent calls just add more reviews and reuse what we have.
+        const items = await runActor(
+          ACTOR_BY_SITE.amazon,
+          inputForAmazon(url, maxReviewsPerBucket, bucket, sort, combo === 1),
+          token
+        );
+        let added = 0;
+        items.forEach(it => {
+          const id = it.reviewId;
+          if (!id || seen.has(id)) return;
+          seen.add(id);
+          out.push(it);
+          added++;
+        });
+        if (added === 0 && items.length === 0) consecutiveEmpty++;
+        else consecutiveEmpty = 0;
+        if (onProgress) onProgress(label, items.length, added, out.length, null, combo, totalCombos);
+        // Heuristic early-exit: if 4 consecutive calls return absolutely
+        // nothing the product is exhausted in junglee's view — no point
+        // burning more credits.
+        if (consecutiveEmpty >= 4) {
+          if (onProgress) onProgress('early-exit', 0, 0, out.length, null, combo, totalCombos);
+          return out;
+        }
+      } catch (e) {
+        if (onProgress) onProgress(label, 0, 0, out.length, e.message, combo, totalCombos);
       }
-    } catch (e) {
-      if (onProgress) onProgress(label, 0, 0, out.length, e.message, combo, totalCombos);
     }
   }
   return out;
@@ -642,10 +606,6 @@ async function onExtract() {
         const items = await fetchAllAmazonReviews(url, maxReviews, token, (lbl, n, added, total, err, step, totalSteps) => {
           if (lbl === 'early-exit') {
             $('progressLine').textContent = 'URL ' + (i + 1) + '/' + buckets.amazon.length + ' — exhausted at step ' + step + '/' + totalSteps + '. Total reviews: ' + total;
-            return;
-          }
-          if (lbl === 'large-product-mode') {
-            $('progressLine').textContent = 'URL ' + (i + 1) + '/' + buckets.amazon.length + ' — large product (>' + LARGE_PRODUCT_THRESHOLD + ' reviews). Pulling 5★ reviews only (the marketing-gold subset).';
             return;
           }
           const tail = err ? ' FAILED: ' + err.slice(0, 80) : ' (' + n + ' raw, +' + added + ' new). Total: ' + total;
