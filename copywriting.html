@@ -67,12 +67,6 @@
   .toast.error{background:#D72C0D;}
   .key-row{display:flex;align-items:center;gap:8px;}
   .key-row input{flex:1;}
-  .counter{display:inline-flex;align-items:center;border:1px solid #DCDCDC;border-radius:8px;background:#FFFFFF;height:38px;overflow:hidden;}
-  .counter button{width:34px;height:38px;border:none;background:#FFFFFF;color:#1A1A1A;font-size:16px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;font-family:inherit;}
-  .counter button:hover:not(:disabled){background:#F1F1F1;}
-  .counter button:disabled{color:#C9CCCF;cursor:not-allowed;}
-  .counter .val{min-width:32px;text-align:center;font-size:13px;font-weight:600;color:#1A1A1A;border-left:1px solid #DCDCDC;border-right:1px solid #DCDCDC;height:38px;display:inline-flex;align-items:center;justify-content:center;font-variant-numeric:tabular-nums;}
-  .counter-label{font-size:12px;color:#6D7175;font-weight:500;margin-left:4px;}
 </style>
 <script src="topbar.js?v=1777784143"></script>
 <script src="sidebar-tools.js?v=1779100000"></script>
@@ -165,12 +159,6 @@
             </select>
           </div>
           <div style="display:flex;align-items:center;gap:10px;">
-            <div class="counter" role="group" aria-label="Number of copies">
-              <button id="countDecBtn" type="button" aria-label="Decrease">−</button>
-              <span class="val" id="countValue">3</span>
-              <button id="countIncBtn" type="button" aria-label="Increase">+</button>
-            </div>
-            <span class="counter-label">copies</span>
             <button class="btn" id="generateBtn" type="button">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
               <span id="generateLabel">Generate copy</span>
@@ -463,21 +451,6 @@ async function generate() {
     label.textContent = 'Generate copy';
   }
 }
-
-// Counter for number of copies
-const COUNT_LS = 'app.copywriting.count';
-const COUNT_MIN = 1, COUNT_MAX = 10;
-function updateCount(val) {
-  const v = Math.max(COUNT_MIN, Math.min(COUNT_MAX, val));
-  $('countValue').textContent = v;
-  $('countDecBtn').disabled = (v <= COUNT_MIN);
-  $('countIncBtn').disabled = (v >= COUNT_MAX);
-  try { localStorage.setItem(COUNT_LS, String(v)); } catch (e) {}
-}
-const savedCount = parseInt(localStorage.getItem(COUNT_LS) || '3', 10);
-updateCount(isNaN(savedCount) ? 3 : savedCount);
-$('countDecBtn').addEventListener('click', () => updateCount(parseInt($('countValue').textContent, 10) - 1));
-$('countIncBtn').addEventListener('click', () => updateCount(parseInt($('countValue').textContent, 10) + 1));
 
 $('generateBtn').addEventListener('click', generate);
 $('regenBtn').addEventListener('click', generate);
