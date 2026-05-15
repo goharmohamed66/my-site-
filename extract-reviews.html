@@ -93,7 +93,7 @@
           <div class="panel-title">Product / Book URLs</div>
           <div class="panel-desc">
             One URL per line. Auto-routes per URL:<br>
-            • <strong>Amazon</strong> → full sweep across every star bucket × both sort orders. Pulls as many reviews as the Actor can return regardless of rating (typically 30–100 unique per product depending on how diversified the rankings are; 10 calls × ~10 = 100 ceiling).<br>
+            • <strong>Amazon</strong> → tries the cookie-based scraper first (walks the "Show 10 more reviews" paginator → captures every review the logged-in user can see, free). Falls back to Apify junglee sweep if no Amazon Session cookies are saved.<br>
             • <strong>Abjjad</strong> → free server-side scraper that walks the site's paginator and returns <strong>every</strong> text review.<br>
             Mix and match in the same input.
           </div>
@@ -165,12 +165,10 @@ async function loadApifyToken() {
 
 // ── Per-site backend configuration ─────────────────────────────────────
 // Each URL routes to a different backend:
-//   Amazon  → Apify junglee/amazon-reviews-scraper, star × sort sweep.
-//             For products with > LARGE_PRODUCT_THRESHOLD reviews the
-//             sweep is automatically narrowed to 5★ only (the
-//             marketing-gold subset) since junglee can't capture the
-//             full set anyway and a focused 5★ pull is more useful for
-//             copywriting/AI prompts than a thinly-spread mix.
+//   Amazon  → Try /api/scrape-amazon.php first (cookie-authenticated,
+//             walks the /product-reviews/ paginator → every review).
+//             If no Amazon Session cookies are saved, fall back to the
+//             Apify junglee sweep (~30 reviews max).
 //   Abjjad  → our own /api/scrape-abjjad.php (free, full reviews).
 //   Generic → Apify website-content-crawler fallback.
 const ACTOR_BY_SITE = {
@@ -178,8 +176,8 @@ const ACTOR_BY_SITE = {
   generic: 'apify~website-content-crawler'
 };
 const ABJJAD_SCRAPE_API = API_BASE + '/scrape-abjjad.php';
+const AMAZON_SCRAPE_API = API_BASE + '/scrape-amazon.php';
 const IMAGE_PROXY = API_BASE + '/fetch-image.php';
-const LARGE_PRODUCT_THRESHOLD = 100;
 
 function detectSite(url) {
   try {
@@ -188,6 +186,35 @@ function detectSite(url) {
     if (/(^|\.)abjjad\./.test(host)) return 'abjjad';
     return 'generic';
   } catch (e) { return 'generic'; }
+}
+
+// Maps the /api/scrape-amazon.php response shape onto the product shape
+// renderProduct expects.
+function normalizeAmazonAuthorized(d, requestedUrl) {
+  if (!d || !d.ok) return { url: requestedUrl, title: '(no data)', details: [], reviews: [] };
+  return {
+    url:         d.url || requestedUrl,
+    title:       d.title || '(untitled)',
+    brand:       d.brand || '',
+    asin:        d.asin || '',
+    details:     Array.isArray(d.features) ? d.features : [],
+    description: d.description || '',
+    rating:      d.rating || null,
+    ratingCount: d.ratingCount || null,
+    price:       d.price || null,
+    breadcrumb:  d.breadcrumb || '',
+    thumbnail:   d.image || (d.images && d.images[0]) || '',
+    images:      Array.isArray(d.images) ? d.images : (d.image ? [d.image] : []),
+    reviews:     (d.reviews || []).map(r => ({
+      author: r.author || '',
+      rating: r.rating,
+      title:  r.title || '',
+      body:   String(r.body || '').trim(),
+      date:   r.date || '',
+      verified: !!r.verified,
+      variant:  r.variant || ''
+    }))
+  };
 }
 
 // Maps the /api/scrape-abjjad.php response shape onto the product shape
@@ -601,27 +628,55 @@ async function onExtract() {
     for (let i = 0; i < buckets.amazon.length; i++) {
       const url = buckets.amazon[i];
       label.innerHTML = '<span class="spinner"></span> Amazon (' + (i + 1) + '/' + buckets.amazon.length + ')…';
-      $('progressLine').textContent = 'URL ' + (i + 1) + '/' + buckets.amazon.length + ': starting full sweep (5★→1★ × helpful + recent)…';
+      let p = null;
+      let usedFallback = false;
+
+      // Stage 1 — try the cookie-authenticated PHP scraper. It walks the
+      // full /product-reviews/ paginator and returns every review the
+      // logged-in user can see.
+      $('progressLine').textContent = 'URL ' + (i + 1) + '/' + buckets.amazon.length + ': trying cookie-based scraper (walks Show 10 more reviews)…';
       try {
-        const items = await fetchAllAmazonReviews(url, maxReviews, token, (lbl, n, added, total, err, step, totalSteps) => {
-          if (lbl === 'early-exit') {
-            $('progressLine').textContent = 'URL ' + (i + 1) + '/' + buckets.amazon.length + ' — exhausted at step ' + step + '/' + totalSteps + '. Total reviews: ' + total;
-            return;
-          }
-          const tail = err ? ' FAILED: ' + err.slice(0, 80) : ' (' + n + ' raw, +' + added + ' new). Total: ' + total;
-          $('progressLine').textContent = 'URL ' + (i + 1) + '/' + buckets.amazon.length + ' — step ' + step + '/' + totalSteps + ' ' + lbl + tail;
+        const r = await fetch(AMAZON_SCRAPE_API + '?url=' + encodeURIComponent(url) + '&_t=' + Date.now(), {
+          headers: { 'Authorization': 'Bearer ' + API_TOKEN }
         });
-        const p = normalizeAmazon(items, url);
-        products.push(p);
-        $('results').insertAdjacentHTML('beforeend', renderProduct(p, products.length - 1));
+        const data = await r.json();
+        if (r.ok && data.ok) {
+          p = normalizeAmazonAuthorized(data, url);
+          $('progressLine').textContent = 'URL ' + (i + 1) + '/' + buckets.amazon.length + ' — cookies path captured ' + p.reviews.length + ' reviews across ' + (data.stats && data.stats.reviewPagesFetched) + ' pages.';
+        } else {
+          // Cookies missing or expired — fall back to junglee.
+          throw new Error((data && data.error) || ('HTTP ' + r.status));
+        }
       } catch (e) {
-        products.push({ url, title: '(failed)', error: e.message, details: [], reviews: [] });
-        $('results').insertAdjacentHTML('beforeend',
-          '<div class="result-block" style="background:#FEF2F2;border-color:#FECACA;">' +
-            '<a href="' + escapeHtml(url) + '" target="_blank" rel="noopener" style="font-size:11px;color:#991B1B;">' + escapeHtml(url) + '</a>' +
-            '<div class="rb-title" style="color:#991B1B;">Failed: ' + escapeHtml(e.message) + '</div>' +
-          '</div>');
+        usedFallback = true;
+        $('progressLine').textContent = 'URL ' + (i + 1) + '/' + buckets.amazon.length + ' — cookies path unavailable (' + e.message.slice(0, 80) + '). Falling back to Apify sweep…';
       }
+
+      // Stage 2 — fallback to Apify junglee sweep if cookies path failed.
+      if (!p) {
+        try {
+          const items = await fetchAllAmazonReviews(url, maxReviews, token, (lbl, n, added, total, err, step, totalSteps) => {
+            if (lbl === 'early-exit') {
+              $('progressLine').textContent = 'URL ' + (i + 1) + '/' + buckets.amazon.length + ' (Apify) — exhausted at step ' + step + '/' + totalSteps + '. Total reviews: ' + total;
+              return;
+            }
+            const tail = err ? ' FAILED: ' + err.slice(0, 80) : ' (' + n + ' raw, +' + added + ' new). Total: ' + total;
+            $('progressLine').textContent = 'URL ' + (i + 1) + '/' + buckets.amazon.length + ' (Apify) — step ' + step + '/' + totalSteps + ' ' + lbl + tail;
+          });
+          p = normalizeAmazon(items, url);
+        } catch (e2) {
+          products.push({ url, title: '(failed)', error: e2.message, details: [], reviews: [] });
+          $('results').insertAdjacentHTML('beforeend',
+            '<div class="result-block" style="background:#FEF2F2;border-color:#FECACA;">' +
+              '<a href="' + escapeHtml(url) + '" target="_blank" rel="noopener" style="font-size:11px;color:#991B1B;">' + escapeHtml(url) + '</a>' +
+              '<div class="rb-title" style="color:#991B1B;">Failed: ' + escapeHtml(e2.message) + '</div>' +
+            '</div>');
+          continue;
+        }
+      }
+
+      products.push(p);
+      $('results').insertAdjacentHTML('beforeend', renderProduct(p, products.length - 1));
     }
 
     for (let i = 0; i < buckets.generic.length; i++) {

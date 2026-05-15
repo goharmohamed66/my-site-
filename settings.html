@@ -322,6 +322,7 @@ const PROVIDERS = {
   ],
   scraping: [
     { id: 'apify', name: 'Apify', icon: '🕷️' },
+    { id: 'amazon_session', name: 'Amazon Session', icon: '🔑' },
   ],
 };
 
@@ -520,15 +521,26 @@ const PROVIDER_GUIDES = {
   },
   apify: {
     title: 'How to connect Apify',
-    note: 'Apify runs scraper "Actors" against any URL — the Extract Reviews & Details tool uses it to pull product info and reviews from Amazon and other sites. Free tier is generous (limited runs/month).',
+    note: 'Apify runs scraper "Actors" against any URL — used as a fallback when no Amazon Session cookies are saved. Free tier is generous (limited runs/month).',
     steps: [
       'Go to <a href="https://console.apify.com/sign-up" target="_blank" rel="noopener">console.apify.com/sign-up</a> and sign up (or log in if you already have an account).',
       'Open <a href="https://console.apify.com/settings/integrations" target="_blank" rel="noopener">Settings → Integrations → API tokens</a>.',
-      'Either copy the default personal token, or click <strong>Create new token</strong>, give it a name (e.g. "My site — extraction"), and copy it.',
-      'The token starts with <code>apify_api_</code>.',
-      'Paste it in the field below and Save. The Extract Reviews & Details tool will use it to call the Amazon scraper Actor.'
+      'Either copy the default personal token, or click <strong>Create new token</strong>, give it a name, and copy it. It starts with <code>apify_api_</code>.',
+      'Paste it in the field below and Save.'
     ]
   },
+  amazon_session: {
+    title: 'How to copy your Amazon session cookies',
+    note: 'These cookies let the scraper paginate the full review list of any product (the cookie-less Apify path caps at ~30 reviews per product). Risk: aggressive scraping may trigger CAPTCHAs or temporary lockouts on your Amazon account. Cookies expire every 1–2 weeks and you will have to repeat these steps. Use only on accounts where the risk is acceptable.',
+    steps: [
+      'Open <a href="https://www.amazon.eg" target="_blank" rel="noopener">amazon.eg</a> (or .com / .de / whichever region) and sign in. Tick "Keep me signed in" so the cookies last longer.',
+      'Press <strong>F12</strong> to open DevTools. Click the <strong>Network</strong> tab. Press <strong>F5</strong> to reload the page.',
+      'Click the filter button labelled <strong>Doc</strong> to hide non-document requests. Click the first row (named <code>www.amazon.eg/</code> or just <code>/</code>).',
+      'On the right panel click <strong>Headers</strong> → scroll to <strong>Request Headers</strong> → find the line starting with <code>cookie:</code> → right-click → <strong>Copy value</strong>.',
+      'Paste the value into <strong>Cookie header</strong> below. Set <strong>Amazon domain</strong> to the marketplace it belongs to (e.g. <code>amazon.eg</code>). Save.',
+      'Extract Reviews & Details will now route Amazon URLs from that domain through the cookie-based scraper — pulls every review the "Show 10 more reviews" button reveals.'
+    ]
+  }
 };
 
 // Fields specific to each provider (which inputs to show in modal)
@@ -660,7 +672,15 @@ const PROVIDER_FIELDS = {
   ],
   apify: [
     {key: 'token', label: 'API Token', placeholder: 'apify_api_...', required: true, secret: true, multiline: true,
-     help: 'Apify personal API token — used by Extract Reviews & Details to run scraper Actors against any product page.'},
+     help: 'Apify personal API token — used by Extract Reviews & Details as a fallback when no Amazon session cookies are saved.'},
+  ],
+  amazon_session: [
+    {key: 'name',   label: 'Connection name', placeholder: 'My Amazon (.eg)', required: true,
+     help: 'Display name — useful if you save cookies for more than one Amazon marketplace.'},
+    {key: 'token',  label: 'Cookie header', placeholder: 'session-id=...; session-token=...; ubid-acbeg=...; at-acbeg=...; x-acbeg=...', required: true, secret: true, multiline: true,
+     help: 'Paste the full Cookie header from your logged-in Amazon tab (DevTools → Network → first request → Request Headers → cookie value). The Extract Reviews & Details tool uses this to walk the /product-reviews/ paginator and pull every review (typically 50–500+ reviews for big products), bypassing Apify entirely.'},
+    {key: 'domain', label: 'Amazon domain', placeholder: 'amazon.eg', required: true, meta: true,
+     help: 'The Amazon marketplace this session belongs to (e.g. amazon.eg, amazon.com, amazon.de). Used to pick the right cookies when extracting from that region.'},
   ],
   // Generic for shipping / ads / confirmation
   _default: [
@@ -2893,6 +2913,7 @@ async function renderConnectorsHub(c) {
     { section: 'ai',           provider: 'gemini',       name: 'Gemini (Google)',         icon: 'logos/gemini.svg' },
     { section: 'ai',           provider: 'openrouter',   name: 'OpenRouter',              icon: 'logos/openrouter.svg' },
     { section: 'scraping',     provider: 'apify',        name: 'Apify',                   emoji: '🕷️' },
+    { section: 'scraping',     provider: 'amazon_session', name: 'Amazon Session',         emoji: '🔑' },
   ];
 
   c.innerHTML = `
