@@ -81,20 +81,15 @@
       <div class="page-grid">
        <div class="page-col-left">
         <div class="panel">
-          <div class="panel-title">Product URLs</div>
+          <div class="panel-title">Amazon product URLs <span style="display:inline-block;background:#F0FDF4;color:#0E8345;border:1px solid #BBF7D0;padding:2px 8px;border-radius:8px;font-size:11px;font-weight:700;margin-left:6px;">Free — no Apify</span></div>
           <div class="panel-desc">
-            One URL per line. Supports Amazon (any region) and Abjjad. The tool pulls product details + every available review for each URL.
+            One Amazon URL per line (any region — .com / .eg / .de / .uk / …). The tool pulls product title, brand, price, features, description, image and every review served on the product page (~8–12 per product — Amazon's full review list requires login, so anonymous scraping caps there). For book reviews use the <strong>Book Reviews</strong> tool instead.
           </div>
           <div class="field">
             <textarea class="field-textarea" id="urlsInput" placeholder="https://www.amazon.com/dp/B0XXXX
-https://www.amazon.eg/-/en/PRODUCT-PATH/dp/B0XXXX
-https://www.abjjad.com/book/123456"></textarea>
+https://www.amazon.eg/-/en/PRODUCT-PATH/dp/B0XXXX"></textarea>
           </div>
-          <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
-            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-              <label for="maxReviewsInput" style="font-size:12px;color:#6D7175;font-weight:600;">Max reviews per product:</label>
-              <input type="number" class="field-input" id="maxReviewsInput" value="50" min="5" max="500" style="width:80px;padding:7px 10px;">
-            </div>
+          <div style="display:flex;justify-content:flex-end;align-items:center;gap:12px;flex-wrap:wrap;">
             <button class="btn" id="extractBtn" type="button">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/></svg>
               <span id="extractLabel">Extract</span>
@@ -132,222 +127,57 @@ https://www.abjjad.com/book/123456"></textarea>
 <script>
 const $ = id => document.getElementById(id);
 
-// ── Apify connector (token fetched fresh from /connectors.php each run so
-//    the user can rotate the key in Settings without reloading this page).
+// ── Free Amazon scraper (no Apify) ─────────────────────────────────────
+// Calls our own /api/scrape-amazon.php server-side endpoint, which
+// fetches the Amazon product page and parses out title/brand/price/
+// features/description/image + every review served on the product page
+// (typically 8–12 — the /product-reviews/ subpage redirects to /ap/signin
+// for anonymous visitors so deeper pagination isn't possible without a
+// logged-in session).
 const API_BASE  = 'https://indigo-dog-836598.hostingersite.com/github/api';
 const API_TOKEN = 'tk_4d2b9f7a8c6e1530a4f2d9b7e8c6a1f5';
-async function loadApifyToken() {
-  const r = await fetch(API_BASE + '/connectors.php?type=scraping&_t=' + Date.now(), {
+const SCRAPE_AMAZON_API = API_BASE + '/scrape-amazon.php';
+
+function detectSite(url) {
+  try { return /(^|\.)amazon\./i.test(new URL(url).hostname) ? 'amazon' : 'other'; }
+  catch (e) { return 'other'; }
+}
+
+async function fetchAmazonProduct(url) {
+  const r = await fetch(SCRAPE_AMAZON_API + '?url=' + encodeURIComponent(url) + '&_t=' + Date.now(), {
     headers: { 'Authorization': 'Bearer ' + API_TOKEN }
   });
-  if (!r.ok) throw new Error('Failed to load connectors (HTTP ' + r.status + ').');
-  const d = await r.json();
-  const row = (d.rows || []).find(x => x.provider === 'apify' && x.token);
-  if (!row) throw new Error('No Apify token found. Open Settings → Connectors → Apify and paste your API token.');
-  return row.token;
+  const data = await r.json();
+  if (!r.ok || !data.ok) throw new Error((data && data.error) || ('HTTP ' + r.status));
+  return data;
 }
 
-// ── Apify Actor configuration ──────────────────────────────────────────
-// Picked at runtime once we know which site the URL belongs to. abjjad
-// has its own standalone tool (Book Reviews) — this page only handles
-// Amazon + generic URLs via Apify.
-const ACTOR_BY_SITE = {
-  amazon:  'junglee~amazon-reviews-scraper',
-  generic: 'apify~website-content-crawler'
-};
-function detectSite(url) {
-  try {
-    const host = new URL(url).hostname.toLowerCase();
-    if (/(^|\.)amazon\./.test(host)) return 'amazon';
-    return 'generic';
-  } catch (e) { return 'generic'; }
-}
-
-// ── Apify run helpers ──────────────────────────────────────────────────
-// run-sync-get-dataset-items: single blocking call that starts the Actor,
-// waits for it to finish, and returns the dataset items in one response.
-// Capped at 5 minutes server-side — fine for the per-URL pattern this
-// page uses (one URL per Actor run).
-//
-// Retries: Apify's free-tier proxy occasionally hiccups with TypeError:
-// fetch failed mid-sweep. We retry up to 2 times with backoff so a flaky
-// connection doesn't drop chunks of the review set.
-async function runActor(actorId, input, token) {
-  const url = 'https://api.apify.com/v2/acts/' + actorId + '/run-sync-get-dataset-items?token=' + encodeURIComponent(token);
-  let lastErr = null;
-  for (let attempt = 0; attempt < 3; attempt++) {
-    if (attempt) await new Promise(r => setTimeout(r, 1500 * attempt));
-    try {
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(input)
-      });
-      if (!res.ok) {
-        const t = await res.text();
-        let msg = 'HTTP ' + res.status;
-        try { const j = JSON.parse(t); msg = (j.error && j.error.message) || msg; } catch (e) {}
-        // Server-side errors (5xx, 408, 429) are retryable; client errors aren't.
-        if (res.status >= 500 || res.status === 408 || res.status === 429) { lastErr = new Error(msg); continue; }
-        throw new Error('Apify run failed: ' + msg);
-      }
-      return await res.json();
-    } catch (e) {
-      // Network-level failures (fetch failed, abort, etc.) — retry.
-      lastErr = e;
-    }
-  }
-  throw new Error('Apify run failed: ' + (lastErr ? lastErr.message : 'unknown'));
-}
-
-// Fetch the FULL review set for an Amazon URL. The Actor caps each filter
-// call at ~10 reviews, so we iterate the cross-product of star buckets ×
-// sort orders sequentially and merge by reviewId. That gives a practical
-// ceiling of 5 × 2 × 10 = 100 unique reviews per product. Parallel runs
-// aren't safe — each Actor run reserves 4096MB and Apify's free tier
-// caps concurrent runs at 8192MB. The first call also asks for full
-// product details; later calls skip the heavy payload.
-//
-// If the small product has fewer than 100 text reviews, the dedupe
-// converges naturally (later sorts return the same reviewIds and add 0
-// new ones). The early-exit check below cuts wasted work in that case.
-async function fetchAllAmazonReviews(url, maxReviewsPerBucket, token, onProgress) {
-  const seen = new Set();
-  const out = [];
-  let combo = 0;
-  const totalCombos = STAR_BUCKETS.length * SORT_ORDERS.length;
-  let consecutiveEmpty = 0;
-  for (let s = 0; s < STAR_BUCKETS.length; s++) {
-    for (let o = 0; o < SORT_ORDERS.length; o++) {
-      combo++;
-      const bucket = STAR_BUCKETS[s];
-      const sort = SORT_ORDERS[o];
-      const label = bucket + '/' + sort;
-      try {
-        const items = await runActor(
-          ACTOR_BY_SITE.amazon,
-          inputForAmazon(url, maxReviewsPerBucket, bucket, sort, combo === 1),
-          token
-        );
-        let added = 0;
-        items.forEach(it => {
-          const id = it.reviewId;
-          if (!id || seen.has(id)) return;
-          seen.add(id);
-          out.push(it);
-          added++;
-        });
-        if (added === 0 && items.length === 0) consecutiveEmpty++;
-        else consecutiveEmpty = 0;
-        if (onProgress) onProgress(label, items.length, added, out.length, null, combo, totalCombos);
-        // Heuristic early-exit: if 4 consecutive calls return nothing
-        // at all, the product is exhausted — no need to burn more credits.
-        if (consecutiveEmpty >= 4) {
-          if (onProgress) onProgress('early-exit', 0, 0, out.length, null, combo, totalCombos);
-          return out;
-        }
-      } catch (e) {
-        // One filter failing shouldn't kill the rest.
-        if (onProgress) onProgress(label, 0, 0, out.length, e.message, combo, totalCombos);
-      }
-    }
-  }
-  return out;
-}
-
-// ── Per-site input schemas ─────────────────────────────────────────────
-// Each Actor has its own input shape — keep the shape next to the call
-// site so it's easy to swap Actors later.
-function inputForAmazon(url, maxReviews, ratingFilter, sort, withProductDetails) {
-  // junglee/amazon-reviews-scraper input.
-  //
-  // The Actor caps each filterByRatings call at ~10 reviews regardless
-  // of `maxReviews`. To break the cap we iterate over star buckets AND
-  // both sort orders (helpful + recent), then dedupe by reviewId. That
-  // gives a practical ceiling of 5 × 2 × 10 = 100 unique reviews per
-  // product. `scrapeProductDetails` runs on the first call only so the
-  // heavy product payload travels exactly once.
+// Maps the /api/scrape-amazon.php response onto the product shape that
+// renderProduct + asPlainText expect.
+function normalizeAmazon(d, requestedUrl) {
+  if (!d) return { url: requestedUrl, title: '(no data)', details: [], reviews: [] };
+  const reviews = (d.reviews || []).map(r => ({
+    author: r.author || '',
+    rating: r.rating,
+    title:  r.title || '',
+    body:   String(r.body || '').trim(),
+    date:   r.date || '',
+    verified: !!r.verified,
+    variant: r.variant || ''
+  }));
   return {
-    productUrls: [{ url: url }],
-    maxReviews: maxReviews,
-    filterByRatings: [ratingFilter || 'allStars'],
-    sort: sort || 'helpful',
-    scrapeProductDetails: !!withProductDetails,
-    includeProductInfo: !!withProductDetails,
-    proxyConfiguration: { useApifyProxy: true }
-  };
-}
-const STAR_BUCKETS = ['fiveStar', 'fourStar', 'threeStar', 'twoStar', 'oneStar'];
-const SORT_ORDERS  = ['helpful', 'recent'];
-function inputForGenericCrawl(url) {
-  return {
-    startUrls: [{ url: url }],
-    crawlerType: 'cheerio',
-    maxCrawlPages: 1,
-    saveHtml: false,
-    saveMarkdown: true
-  };
-}
-
-// ── Normalize the Actor output into a uniform shape we can render ──────
-// Different Actors return different shapes — funnel everything through
-// this so the UI doesn't need site-specific branches.
-function normalizeAmazon(items, requestedUrl) {
-  // Items returned by junglee/amazon-reviews-scraper: each item is a single
-  // review with the full product details attached under `.product`. Pick
-  // the first item that matches the requested URL by ASIN, fall back to
-  // the first item overall.
-  if (!items || !items.length) {
-    return { url: requestedUrl, title: '(no data)', details: [], reviews: [] };
-  }
-  const requestedAsin = (requestedUrl.match(/\/dp\/([A-Z0-9]{10})/i) || [])[1] || '';
-  const matchingItems = requestedAsin
-    ? items.filter(it => (it.productAsin || (it.product && it.product.asin)) === requestedAsin)
-    : items;
-  const useItems = matchingItems.length ? matchingItems : items;
-  const product = (useItems.find(it => it.product) || {}).product || {};
-
-  const features = Array.isArray(product.features) ? product.features.slice() : [];
-  const reviews = useItems
-    .filter(it => it.reviewDescription || it.reviewTitle)
-    .map(it => ({
-      author: it.userName || (it.userId ? 'User ' + it.userId.slice(-6) : ''),
-      rating: it.ratingScore || null,
-      title: it.reviewTitle || '',
-      body: String(it.reviewDescription || '').trim(),
-      date: it.date || it.reviewedIn || '',
-      verified: !!it.isVerified,
-      variant: it.variant || ''
-    }))
-    .sort((a, b) => (b.rating || 0) - (a.rating || 0));
-
-  const price = product.price && product.price.value != null
-    ? (product.price.value + ' ' + (product.price.currency || ''))
-    : null;
-
-  return {
-    url: product.unNormalizedProductUrl || product.url || requestedUrl,
-    title: product.title || '(untitled)',
-    brand: product.brand || '',
-    asin: product.asin || requestedAsin,
-    details: features,
-    description: product.description || '',
-    rating: product.stars || null,
-    ratingCount: product.reviewsCount || null,
-    price,
-    breadcrumb: product.breadCrumbs || '',
-    thumbnail: product.thumbnailImage || (product.galleryThumbnails && product.galleryThumbnails[0]) || '',
+    url:         d.url || requestedUrl,
+    title:       d.title || '(untitled)',
+    brand:       d.brand || '',
+    asin:        d.asin || '',
+    details:     Array.isArray(d.features) ? d.features : [],
+    description: d.description || '',
+    rating:      d.rating || null,
+    ratingCount: d.ratingCount || null,
+    price:       d.price || null,
+    breadcrumb:  d.breadcrumb || '',
+    thumbnail:   d.image || '',
     reviews
-  };
-}
-
-function normalizeGeneric(items, url) {
-  const first = items[0] || {};
-  return {
-    url,
-    title: first.title || first.pageTitle || '(untitled)',
-    details: first.markdown ? [first.markdown.slice(0, 4000)] : [],
-    reviews: []
   };
 }
 
@@ -456,89 +286,52 @@ async function onExtract() {
   if (__busy) return;
   showError('');
   const text = $('urlsInput').value.trim();
-  if (!text) { showError('Paste at least one product URL.'); return; }
+  if (!text) { showError('Paste at least one Amazon URL.'); return; }
   const urls = text.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
-  if (!urls.length) { showError('Paste at least one product URL.'); return; }
+  if (!urls.length) { showError('Paste at least one Amazon URL.'); return; }
 
-  const maxReviews = Math.max(5, Math.min(500, parseInt($('maxReviewsInput').value, 10) || 50));
+  const nonAmazon = urls.filter(u => detectSite(u) !== 'amazon');
+  if (nonAmazon.length) {
+    showError('Amazon URLs only on this page. For abjjad use the Book Reviews tool.\n' + nonAmazon.join('\n'));
+    return;
+  }
 
   const btn = $('extractBtn'), label = $('extractLabel');
   __busy = true; btn.disabled = true;
-  label.innerHTML = '<span class="spinner"></span> Connecting…';
+  label.innerHTML = '<span class="spinner"></span> Working…';
   $('progressLine').style.display = 'block';
-  $('progressLine').textContent = 'Loading Apify token…';
   $('outEmpty').style.display = 'none';
   $('results').innerHTML = '';
   $('resultsToolbar').style.display = 'none';
 
-  try {
-    const token = await loadApifyToken();
-    const products = [];
-
-    // Bucket URLs by site so we can batch all Amazon URLs into one Actor
-    // run (much faster than one run per URL + cheaper Apify usage).
-    const buckets = { amazon: [], generic: [] };
-    urls.forEach(u => {
-      const site = detectSite(u);
-      (buckets[site] || buckets.generic).push(u);
-    });
-
-    for (let i = 0; i < buckets.amazon.length; i++) {
-      const url = buckets.amazon[i];
-      label.innerHTML = '<span class="spinner"></span> Amazon (' + (i + 1) + '/' + buckets.amazon.length + ')…';
-      $('progressLine').textContent = 'URL ' + (i + 1) + '/' + buckets.amazon.length + ': starting full sweep (5★→1★ × helpful + recent)…';
-      try {
-        const items = await fetchAllAmazonReviews(url, maxReviews, token, (lbl, n, added, total, err, step, totalSteps) => {
-          if (lbl === 'early-exit') {
-            $('progressLine').textContent = 'URL ' + (i + 1) + '/' + buckets.amazon.length + ' — exhausted at step ' + step + '/' + totalSteps + '. Total reviews: ' + total;
-            return;
-          }
-          const tail = err ? ' FAILED: ' + err.slice(0, 80) : ' (' + n + ' raw, +' + added + ' new). Total: ' + total;
-          $('progressLine').textContent = 'URL ' + (i + 1) + '/' + buckets.amazon.length + ' — step ' + step + '/' + totalSteps + ' ' + lbl + tail;
-        });
-        const p = normalizeAmazon(items, url);
-        products.push(p);
-        $('results').insertAdjacentHTML('beforeend', renderProduct(p, products.length - 1));
-      } catch (e) {
-        products.push({ url, title: '(failed)', error: e.message, details: [], reviews: [] });
-        $('results').insertAdjacentHTML('beforeend',
-          '<div class="result-block" style="background:#FEF2F2;border-color:#FECACA;">' +
-            '<a href="' + escapeHtml(url) + '" target="_blank" rel="noopener" style="font-size:11px;color:#991B1B;">' + escapeHtml(url) + '</a>' +
-            '<div class="rb-title" style="color:#991B1B;">Failed: ' + escapeHtml(e.message) + '</div>' +
-          '</div>');
-      }
+  const products = [];
+  for (let i = 0; i < urls.length; i++) {
+    const url = urls[i];
+    label.innerHTML = '<span class="spinner"></span> Amazon (' + (i + 1) + '/' + urls.length + ')…';
+    $('progressLine').textContent = 'URL ' + (i + 1) + '/' + urls.length + ': fetching product page + parsing reviews…';
+    try {
+      const data = await fetchAmazonProduct(url);
+      const p = normalizeAmazon(data, url);
+      products.push(p);
+      $('results').insertAdjacentHTML('beforeend', renderProduct(p, products.length - 1));
+      $('progressLine').textContent = 'URL ' + (i + 1) + '/' + urls.length + ': ' + p.reviews.length + ' reviews captured.';
+    } catch (e) {
+      products.push({ url, title: '(failed)', error: e.message, details: [], reviews: [] });
+      $('results').insertAdjacentHTML('beforeend',
+        '<div class="result-block" style="background:#FEF2F2;border-color:#FECACA;">' +
+          '<a href="' + escapeHtml(url) + '" target="_blank" rel="noopener" style="font-size:11px;color:#991B1B;">' + escapeHtml(url) + '</a>' +
+          '<div class="rb-title" style="color:#991B1B;">Failed: ' + escapeHtml(e.message) + '</div>' +
+        '</div>');
     }
-
-    for (let i = 0; i < buckets.generic.length; i++) {
-      const url = buckets.generic[i];
-      label.innerHTML = '<span class="spinner"></span> Other (' + (i + 1) + '/' + buckets.generic.length + ')…';
-      $('progressLine').textContent = 'Crawling ' + url + '…';
-      try {
-        const items = await runActor(ACTOR_BY_SITE.generic, inputForGenericCrawl(url), token);
-        const p = normalizeGeneric(items, url);
-        products.push(p);
-        $('results').insertAdjacentHTML('beforeend', renderProduct(p, products.length - 1));
-      } catch (e) {
-        products.push({ url, title: '(failed)', error: e.message, details: [], reviews: [] });
-        $('results').insertAdjacentHTML('beforeend',
-          '<div class="result-block" style="background:#FEF2F2;border-color:#FECACA;">' +
-            '<a href="' + escapeHtml(url) + '" target="_blank" rel="noopener" style="font-size:11px;color:#991B1B;">' + escapeHtml(url) + '</a>' +
-            '<div class="rb-title" style="color:#991B1B;">Failed: ' + escapeHtml(e.message) + '</div>' +
-          '</div>');
-      }
-    }
-
-    __lastProducts = products;
-    const okCount = products.filter(p => !p.error).length;
-    $('progressLine').textContent = 'Done — ' + okCount + ' of ' + products.length + ' extracted.';
-    if (okCount) $('resultsToolbar').style.display = 'block';
-  } catch (e) {
-    showError(e.message || String(e));
-    $('progressLine').style.display = 'none';
-  } finally {
-    __busy = false; btn.disabled = false;
-    label.textContent = 'Extract';
   }
+
+  __lastProducts = products;
+  const okCount = products.filter(p => !p.error).length;
+  $('progressLine').textContent = 'Done — ' + okCount + ' of ' + products.length + ' extracted.';
+  if (okCount) $('resultsToolbar').style.display = 'block';
+
+  __busy = false; btn.disabled = false;
+  label.textContent = 'Extract';
 }
 
 $('extractBtn').addEventListener('click', onExtract);
