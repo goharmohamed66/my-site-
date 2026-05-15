@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Creative Image Ads</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Almarai:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html,body{min-height:100vh;background:#F1F1F1;font-family:'Inter','Almarai',system-ui,sans-serif;color:#1A1A1A;font-size:14px;}
+  .app-shell{display:flex;min-height:100vh;}
+  .app-sidebar{width:240px;min-width:240px;background:#EBEBEB;border-right:1px solid #DCDCDC;display:flex;flex-direction:column;height:calc(100vh - 48px);position:sticky;top:48px;font-family:'Inter',system-ui,sans-serif;}
+  .app-sidebar-items{padding:10px 8px;flex:1;display:flex;flex-direction:column;gap:2px;overflow-y:auto;}
+  .app-sidebar-item{padding:7px 12px;border-radius:8px;font-size:13px;color:#303030;display:flex;align-items:center;gap:10px;cursor:pointer;text-decoration:none;font-weight:800;background:transparent;}
+  .app-sidebar-item:hover{background:#E2E2E2;}
+  .app-sidebar-item.active{background:#FFFFFF;font-weight:600;box-shadow:0 0 0 0.5px rgba(0,0,0,0.1),0 1px 1px rgba(0,0,0,0.05);}
+  .app-sidebar-footer{padding:10px 8px;border-top:1px solid #DCDCDC;}
+  .app-sidebar-divider{height:1px;background:#DCDCDC;margin:8px 4px;}
+  .app-sidebar-group-header{padding:7px 12px;border-radius:8px;font-size:12px;color:#6D7175;font-weight:800;display:flex;align-items:center;gap:10px;user-select:none;background:transparent;text-transform:uppercase;letter-spacing:0.4px;}
+  .app-sidebar-group-items{display:flex;flex-direction:column;gap:2px;padding:2px 0;}
+  .app-main{flex:1;min-width:0;display:flex;flex-direction:column;}
+  .page{padding:24px 32px;max-width:none;width:100%;}
+  .page-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);gap:24px;align-items:start;}
+  .page-col-left{position:sticky;top:72px;}
+  @media (max-width: 1100px){
+    .page-grid{grid-template-columns:1fr;}
+    .page-col-left{position:static;}
+  }
+  .page h1{font-size:22px;font-weight:700;letter-spacing:-0.3px;}
+  .page p.sub{font-size:13px;color:#6D7175;margin-bottom:20px;}
+  .panel{background:#FFFFFF;border:1px solid #E1E3E5;border-radius:12px;padding:20px;margin-bottom:16px;box-shadow:0 1px 0 rgba(0,0,0,0.05);}
+  .panel-title{font-size:14px;font-weight:600;color:#1A1A1A;margin-bottom:4px;}
+  .panel-desc{font-size:12px;color:#6D7175;margin-bottom:14px;}
+  .field{margin-bottom:14px;}
+  .field-label{display:flex;align-items:center;justify-content:space-between;font-size:13px;color:#1A1A1A;font-weight:500;margin-bottom:6px;}
+  .field-input,.field-textarea{width:100%;padding:10px 12px;border:1px solid #DCDCDC;border-radius:8px;font-size:13px;font-family:inherit;color:#1A1A1A;background:#F1F1F1;line-height:1.55;}
+  .field-input:focus,.field-textarea:focus{outline:none;border-color:#1A1A1A;box-shadow:0 0 0 1px #1A1A1A;background:#FFFFFF;}
+  .field-textarea{min-height:150px;resize:vertical;direction:rtl;text-align:right;font-family:'Almarai','Inter',system-ui,sans-serif;}
+  .btn{display:inline-flex;align-items:center;gap:8px;padding:0 18px;height:38px;border-radius:8px;border:1px solid #1A1A1A;background:#1A1A1A;color:#FFFFFF;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;}
+  .btn:hover:not(:disabled){background:#303030;}
+  .btn:disabled{opacity:0.55;cursor:not-allowed;}
+  .btn-ghost{background:#FFFFFF;color:#1A1A1A;border-color:#DCDCDC;}
+  .btn-ghost:hover:not(:disabled){background:#F5F5F5;}
+  /* Reference image dropzone */
+  .dropzone{border:1.5px dashed #C9CCCF;border-radius:10px;padding:18px;text-align:center;cursor:pointer;background:#FAFAFA;color:#6D7175;font-size:13px;transition:border-color .12s,background .12s;}
+  .dropzone:hover{border-color:#1A1A1A;background:#F5F5F5;}
+  .ref-thumbs{display:grid;grid-template-columns:repeat(auto-fill,minmax(78px,1fr));gap:8px;margin-top:12px;}
+  .ref-thumb{position:relative;border:1px solid #E1E3E5;border-radius:8px;overflow:hidden;background:#FFFFFF;aspect-ratio:1/1;}
+  .ref-thumb img{width:100%;height:100%;object-fit:cover;display:block;}
+  .ref-thumb .ref-x{position:absolute;top:3px;right:3px;width:20px;height:20px;border-radius:50%;border:none;background:rgba(26,26,26,0.88);color:#fff;cursor:pointer;font-size:11px;display:flex;align-items:center;justify-content:center;line-height:1;}
+  .out-card{background:#FFFFFF;border:1px solid #E1E3E5;border-radius:12px;padding:20px;box-shadow:0 1px 0 rgba(0,0,0,0.05);min-height:220px;}
+  .out-empty{text-align:center;padding:48px 20px;color:#8A8A8A;font-size:13px;}
+  .out-empty .ic{width:56px;height:56px;border-radius:14px;background:#F1F1F1;display:inline-flex;align-items:center;justify-content:center;margin-bottom:14px;color:#6D7175;}
+  .out-toolbar{display:flex;justify-content:flex-end;gap:8px;margin-bottom:14px;}
+  .gallery{display:flex;flex-direction:column;gap:8px;}
+  .img-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px;}
+  .img-card{border:1px solid #E1E3E5;border-radius:10px;overflow:hidden;background:#FAFAFA;display:flex;flex-direction:column;}
+  .img-card img{width:100%;display:block;aspect-ratio:1/1;object-fit:cover;background:#F1F1F1;}
+  .img-card-foot{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;border-top:1px solid #E1E3E5;}
+  .img-card-foot .tag{font-size:11px;font-weight:700;color:#1A1A1A;font-family:'Inter',system-ui,sans-serif;}
+  .img-card-foot .dl{height:28px;padding:0 10px;font-size:11px;font-weight:600;border:1px solid #DCDCDC;border-radius:6px;background:#FFFFFF;color:#1A1A1A;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:5px;font-family:'Inter',system-ui,sans-serif;}
+  .img-card-foot .dl:hover{background:#F5F5F5;border-color:#1A1A1A;}
+  .img-skeleton{aspect-ratio:1/1;background:linear-gradient(90deg,#F1F1F1 25%,#E8E8E8 50%,#F1F1F1 75%);background-size:200% 100%;animation:sk 1.2s infinite;display:flex;align-items:center;justify-content:center;color:#9AA0A6;font-size:11px;}
+  @keyframes sk{to{background-position:-200% 0;}}
+  .img-failed{aspect-ratio:1/1;background:#FEF2F2;display:flex;align-items:center;justify-content:center;color:#991B1B;font-size:11px;text-align:center;padding:10px;line-height:1.5;}
+  .progress-line{font-size:12px;color:#6D7175;margin-bottom:12px;}
+  .err{background:#FEF2F2;border:1px solid #FECACA;color:#991B1B;border-radius:8px;padding:10px 12px;font-size:13px;margin-top:10px;}
+  .spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1A1A1A;color:#FFFFFF;padding:10px 18px;border-radius:8px;font-size:13px;z-index:300;opacity:0;transition:opacity .2s;pointer-events:none;}
+  .toast.show{opacity:1;}
+  .toast.error{background:#D72C0D;}
+</style>
+<script src="topbar.js?v=1777784143"></script>
+<script src="sidebar-tools.js?v=1779100000"></script>
+<script src="ai-keys.js?v=1779100000"></script>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+</head>
+<body>
+<div class="app-shell">
+  <aside class="app-sidebar" data-render-sidebar></aside>
+  <div class="app-main">
+    <div class="page">
+      <h1 style="margin-bottom:18px;">Creative Image Ads</h1>
+      <div class="page-grid">
+       <div class="page-col-left">
+        <div class="panel">
+          <div class="panel-title">Reference product image <span style="color:#D72C0D;">*</span></div>
+          <div class="panel-desc">The model uses this image as-is — it does not redraw the product.</div>
+          <input id="refImageInput" type="file" accept="image/*" multiple style="display:none;">
+          <div class="dropzone" id="dropzone">
+            Click here to add your product photo — a clear, real shot of the product (PNG / JPG). You can add more than one.
+          </div>
+          <div style="display:flex;gap:8px;margin-top:10px;">
+            <input class="field-input" id="refUrlInput" type="url" placeholder="…or paste an image URL and press Add" style="flex:1;min-width:0;">
+            <button type="button" class="btn btn-ghost" id="refUrlAdd" style="flex-shrink:0;">Add</button>
+          </div>
+          <div class="ref-thumbs" id="refThumbs"></div>
+        </div>
+
+        <div class="panel">
+          <div class="field">
+            <div class="field-label"><span>Product details &amp; reviews <span style="color:#D72C0D;">*</span></span></div>
+            <textarea class="field-textarea" id="productInput" placeholder="Product name, material, size, use, benefit… plus customer reviews"></textarea>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+              <label for="modelSelect" style="font-size:13px;color:#1A1A1A;font-weight:500;">Model:</label>
+              <select class="field-input" id="modelSelect" style="width:auto;min-width:210px;padding:8px 12px;background:#FFFFFF;">
+                <option value="gemini-3.1-flash-image-preview">Nano Banana Pro 2</option>
+                <option value="gpt-image-1">ChatGPT Image (OpenAI)</option>
+              </select>
+            </div>
+            <button class="btn" id="generateBtn" type="button">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+              <span id="generateLabel">Generate images</span>
+            </button>
+          </div>
+          <div class="err" id="errBox" style="display:none;"></div>
+        </div>
+       </div>
+       <div class="page-col-right">
+        <div class="out-card" id="outCard">
+          <div class="out-empty" id="outEmpty">
+            <div class="ic">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+            </div>
+            <div>The creative image ads will appear here after you click Generate.</div>
+          </div>
+          <div class="out-toolbar" id="outToolbar" style="display:none;">
+            <button class="btn btn-ghost" id="downloadAllBtn" type="button">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              <span>Download all</span>
+            </button>
+          </div>
+          <div id="progressLine" class="progress-line" style="display:none;"></div>
+          <div class="gallery" id="gallery" style="display:none;"></div>
+        </div>
+       </div>
+      </div>
+    </div>
+    <div class="toast" id="toast"></div>
+
+<script>
+const $ = id => document.getElementById(id);
+const ANTHROPIC_KEY_LS = 'app.anthropicApiKey';
+const OPENAI_KEY_LS    = 'app.openaiApiKey';
+const GEMINI_KEY_LS    = 'app.geminiApiKey';
+
+// ── System prompt source — fetched fresh from the central System Prompts
+//    store (api/skills.php) on every run. Wired to "Creative Image Ads".
+const SKILLS_API      = 'https://indigo-dog-836598.hostingersite.com/github/api/skills.php';
+const FETCH_IMAGE_API = 'https://indigo-dog-836598.hostingersite.com/github/api/fetch-image.php';
+const SKILLS_TOKEN    = 'tk_4d2b9f7a8c6e1530a4f2d9b7e8c6a1f5';
+const TASK_PROMPT_SLUG = 'creative-image-ads';
+async function loadPrompt() {
+  const r = await fetch(SKILLS_API + '?slug=' + encodeURIComponent(TASK_PROMPT_SLUG) + '&_t=' + Date.now(), {
+    headers: { 'Authorization': 'Bearer ' + SKILLS_TOKEN }
+  });
+  if (!r.ok) throw new Error('Failed to load the prompt (HTTP ' + r.status + ').');
+  const d = await r.json();
+  const instr = ((d && d.instructions) || '').trim();
+  if (!instr) throw new Error('The task prompt is empty — add it in Settings → System Prompts.');
+  return instr;
+}
+
+// Unlike Landing page images, Creative Image Ads doesn't pin a fixed set
+// of types/counts — the saved system prompt is the source of truth. The
+// page just renders whatever {type, prompt} list the model returns.
+const TYPE_LABEL = {};
+
+// ── UI helpers ─────────────────────────────────────────────────────────
+function showToast(msg, isError) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (isError ? ' error' : '');
+  setTimeout(() => t.className = 'toast' + (isError ? ' error' : ''), 2400);
+}
+function showError(msg) {
+  const e = $('errBox');
+  if (msg) { e.textContent = msg; e.style.display = 'block'; }
+  else { e.style.display = 'none'; e.textContent = ''; }
+}
+
+// ── Reference images (multiple — more angles help the model) ───────────
+let refImages = [];   // { file, b64, mime, dataUrl }
+function readFileAsDataUrl(f) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload  = () => resolve(String(r.result));
+    r.onerror = () => reject(new Error('read failed'));
+    r.readAsDataURL(f);
+  });
+}
+async function addRefFiles(fileList) {
+  const files = Array.from(fileList || []).filter(f => /^image\//.test(f.type));
+  if (!files.length) { showToast('Pick image files only', true); return; }
+  for (const f of files) {
+    const dataUrl = await readFileAsDataUrl(f);
+    refImages.push({ file: f, mime: f.type, b64: dataUrl.split(',')[1] || '', dataUrl: dataUrl });
+  }
+  renderThumbs();
+}
+function renderThumbs() {
+  const box = $('refThumbs');
+  box.innerHTML = refImages.map((r, i) =>
+    '<div class="ref-thumb"><img src="' + r.dataUrl + '" alt="ref ' + (i + 1) + '">' +
+    '<button type="button" class="ref-x" data-ri="' + i + '" aria-label="Remove">✕</button></div>'
+  ).join('');
+  box.querySelectorAll('.ref-x').forEach(b => b.addEventListener('click', () => {
+    refImages.splice(+b.dataset.ri, 1);
+    renderThumbs();
+  }));
+}
+$('dropzone').addEventListener('click', () => $('refImageInput').click());
+$('refImageInput').addEventListener('change', (e) => {
+  addRefFiles(e.target.files);
+  e.target.value = '';
+});
+// Add a reference image by URL — goes through the server-side proxy so
+// image hosts that block cross-origin fetches (Amazon, etc.) still work.
+async function addRefUrl(url) {
+  url = (url || '').trim();
+  if (!/^https?:\/\//i.test(url)) { showError('Paste a valid image URL (http/https).'); return false; }
+  const btn = $('refUrlAdd');
+  btn.disabled = true; btn.textContent = '…';
+  try {
+    const res = await fetch(FETCH_IMAGE_API + '?url=' + encodeURIComponent(url), {
+      headers: { 'Authorization': 'Bearer ' + SKILLS_TOKEN }
+    });
+    if (!res.ok) {
+      let msg = 'HTTP ' + res.status;
+      try { const j = await res.json(); if (j && j.error) msg = j.error; } catch (e) {}
+      throw new Error(msg);
+    }
+    const blob = await res.blob();
+    if (!/^image\//.test(blob.type)) throw new Error('the URL is not an image');
+    const ext = (blob.type.split('/')[1] || 'png').replace('jpeg', 'jpg');
+    const file = new File([blob], 'ref-url-' + Date.now() + '.' + ext, { type: blob.type });
+    const dataUrl = await readFileAsDataUrl(file);
+    refImages.push({ file: file, mime: file.type, b64: dataUrl.split(',')[1] || '', dataUrl: dataUrl });
+    renderThumbs();
+    $('refUrlInput').value = '';
+    showError('');
+    showToast('Image added');
+    return true;
+  } catch (e) {
+    showError('Could not fetch the image URL: ' + (e.message || e));
+    return false;
+  } finally {
+    btn.disabled = false; btn.textContent = 'Add';
+  }
+}
+$('refUrlAdd').addEventListener('click', () => addRefUrl($('refUrlInput').value));
+$('refUrlInput').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') { e.preventDefault(); addRefUrl($('refUrlInput').value); }
+});
+
+// ── Stage 1: Claude turns the photographer brief + product data into a
+//    JSON list of ready image-generation prompts (sees the product image
+//    too, via vision, so the prompts describe the real product). ────────
+async function callClaude(systemPrompt, userText) {
+  if (window.aiKeysReady) { try { await window.aiKeysReady; } catch (e) {} }
+  const apiKey = localStorage.getItem(ANTHROPIC_KEY_LS) || '';
+  if (!apiKey) throw new Error('No Claude API key. Settings → Connectors → Claude.');
+  const content = [{ type: 'text', text: userText }];
+  refImages.forEach(r => content.push({ type: 'image', source: { type: 'base64', media_type: r.mime, data: r.b64 } }));
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true'
+    },
+    body: JSON.stringify({
+      model: 'claude-opus-4-7',
+      max_tokens: 3000,
+      system: systemPrompt,
+      messages: [{ role: 'user', content }]
+    })
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error((data && data.error && data.error.message) || ('HTTP ' + res.status));
+  const text = (data.content || []).map(b => b.text || '').join('').trim();
+  if (!text) throw new Error('Empty response');
+  return text;
+}
+
+// ── Stage 1 (OpenAI path): gpt-5.5-pro writes the image prompts. Used
+//    when the chosen image model is GPT Image, so the whole task stays
+//    OpenAI end-to-end. Runs on the Responses API. ──────────────────────
+async function callGptText(systemPrompt, userText) {
+  if (window.aiKeysReady) { try { await window.aiKeysReady; } catch (e) {} }
+  const apiKey = localStorage.getItem(OPENAI_KEY_LS) || '';
+  if (!apiKey) throw new Error('No OpenAI API key. Settings → Connectors → ChatGPT.');
+  const content = [{ type: 'input_text', text: userText }];
+  refImages.forEach(r => content.push({ type: 'input_image', image_url: r.dataUrl }));
+  const res = await fetch('https://api.openai.com/v1/responses', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
+    body: JSON.stringify({
+      model: 'gpt-5.5-pro',
+      instructions: systemPrompt,
+      input: [{ role: 'user', content: content }],
+      max_output_tokens: 9000
+    })
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error((data && data.error && data.error.message) || ('HTTP ' + res.status));
+  let text = '';
+  (data.output || []).forEach(item => {
+    if (item.type === 'message' && Array.isArray(item.content)) {
+      item.content.forEach(c => { if (c.type === 'output_text') text += (c.text || ''); });
+    }
+  });
+  text = text.trim();
+  if (!text) throw new Error('Empty response (status: ' + (data.status || '?') + ')');
+  return text;
+}
+
+// ── Stage 2: render one image prompt with the chosen image model ───────
+// The preview image models (Nano Banana 2 etc.) sometimes return 503 /
+// "overloaded" / UNAVAILABLE under load — retry a few times with backoff.
+async function genGemini(model, prompt) {
+  const key = localStorage.getItem(GEMINI_KEY_LS) || '';
+  if (!key) throw new Error('No Gemini API key. Settings → Connectors → Gemini.');
+  const parts = [{ text: prompt }];
+  refImages.forEach(r => parts.push({ inlineData: { mimeType: r.mime, data: r.b64 } }));
+  const url = 'https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + encodeURIComponent(key);
+  const reqBody = JSON.stringify({ contents: [{ parts }] });
+  let lastErr = 'Image generation failed';
+  for (let attempt = 0; attempt < 5; attempt++) {
+    if (attempt) await new Promise(r => setTimeout(r, attempt * 4000));
+    let res, data;
+    try {
+      res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: reqBody });
+      data = await res.json();
+    } catch (e) { lastErr = e.message || 'network error'; continue; }
+    if (res.ok) {
+      const outParts = (((data.candidates || [])[0] || {}).content || {}).parts || [];
+      const img = outParts.find(p => p.inlineData && p.inlineData.data);
+      if (img) return 'data:' + (img.inlineData.mimeType || 'image/png') + ';base64,' + img.inlineData.data;
+      throw new Error('The model returned no image');
+    }
+    lastErr = (data && data.error && data.error.message) || ('HTTP ' + res.status);
+    const retryable = res.status === 503 || res.status === 429 || res.status === 500 ||
+                      /overload|unavailable|try again|rate limit/i.test(lastErr);
+    if (!retryable) break;
+  }
+  throw new Error(lastErr);
+}
+async function genGptImage(prompt) {
+  const key = localStorage.getItem(OPENAI_KEY_LS) || '';
+  if (!key) throw new Error('No OpenAI API key. Settings → Connectors → ChatGPT.');
+  const fd = new FormData();
+  fd.append('model', 'gpt-image-1');
+  fd.append('prompt', prompt);
+  fd.append('size', '1024x1024');
+  refImages.forEach(r => fd.append('image[]', r.file));
+  const endpoint = refImages.length
+    ? 'https://api.openai.com/v1/images/edits'
+    : 'https://api.openai.com/v1/images/generations';
+  const res = await fetch(endpoint, {
+    method: 'POST',
+    headers: { 'Authorization': 'Bearer ' + key },
+    body: fd
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error((data && data.error && data.error.message) || ('HTTP ' + res.status));
+  const b64 = (((data.data || [])[0]) || {}).b64_json;
+  if (!b64) throw new Error('The model returned no image');
+  return 'data:image/png;base64,' + b64;
+}
+async function renderImage(model, prompt) {
+  if (model === 'gpt-image-1') return genGptImage(prompt);
+  return genGemini(model, prompt);
+}
+
+// ── Parse Claude's JSON list of image prompts ──────────────────────────
+function extractSpecs(text) {
+  let t = String(text || '').trim();
+  t = t.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/i, '').trim();
+  const first = t.indexOf('['), last = t.lastIndexOf(']');
+  if (first >= 0 && last > first) t = t.slice(first, last + 1);
+  const arr = JSON.parse(t);
+  if (!Array.isArray(arr)) throw new Error('Response is not a list');
+  return arr.filter(x => x && x.prompt).map(x => ({ type: x.type || 'image', prompt: String(x.prompt) }));
+}
+
+// ── Gallery rendering ──────────────────────────────────────────────────
+let __generated = [];   // { type, idx, dataUrl } for every image that succeeded
+function resetGallery(specs) {
+  __generated = [];
+  $('outToolbar').style.display = 'none';
+  const g = $('gallery');
+  g.innerHTML = '<div class="img-grid">' + specs.map((s, i) =>
+    '<div class="img-card" id="card-' + i + '">' +
+      '<div class="img-skeleton" id="slot-' + i + '">…</div>' +
+      '<div class="img-card-foot"><span class="tag">' + (TYPE_LABEL[s.type] || s.type) + '</span></div>' +
+    '</div>'
+  ).join('') + '</div>';
+  g.style.display = 'block';
+  $('outEmpty').style.display = 'none';
+}
+function fillSlot(i, type, dataUrl) {
+  const slot = $('slot-' + i);
+  if (!slot) return;
+  __generated.push({ type: type, idx: i, dataUrl: dataUrl });
+  const img = document.createElement('img');
+  img.src = dataUrl;
+  img.alt = type;
+  slot.replaceWith(img);
+  const foot = $('card-' + i).querySelector('.img-card-foot');
+  const a = document.createElement('a');
+  a.className = 'dl';
+  a.href = dataUrl;
+  a.download = type + '-' + (i + 1) + '.png';
+  a.innerHTML = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Download';
+  foot.appendChild(a);
+}
+function failSlot(i, msg) {
+  const slot = $('slot-' + i);
+  if (!slot) return;
+  const div = document.createElement('div');
+  div.className = 'img-failed';
+  div.textContent = 'Failed: ' + msg;
+  slot.replaceWith(div);
+}
+
+// ── Download all generated images as a single ZIP ──────────────────────
+function downloadAll() {
+  if (!__generated.length) return;
+  if (window.JSZip) {
+    const zip = new JSZip();
+    __generated.forEach(g => {
+      const comma = g.dataUrl.indexOf(',');
+      const b64 = g.dataUrl.slice(comma + 1);
+      const ext = /^data:image\/jpe?g/i.test(g.dataUrl) ? 'jpg' : 'png';
+      zip.file(g.type + '-' + (g.idx + 1) + '.' + ext, b64, { base64: true });
+    });
+    zip.generateAsync({ type: 'blob' }).then(blob => {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'creative-image-ads.zip';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1500);
+    }).catch(() => showToast('Could not build the ZIP', true));
+  } else {
+    // Fallback: trigger each download individually.
+    __generated.forEach((g, i) => {
+      setTimeout(() => {
+        const a = document.createElement('a');
+        a.href = g.dataUrl; a.download = g.type + '-' + (g.idx + 1) + '.png';
+        document.body.appendChild(a); a.click(); a.remove();
+      }, i * 350);
+    });
+  }
+}
+$('downloadAllBtn').addEventListener('click', downloadAll);
+
+// ── Generate ───────────────────────────────────────────────────────────
+let __busy = false;
+async function generate() {
+  if (__busy) return;
+  showError('');
+  // If a URL is sitting in the box but wasn't added with the button yet,
+  // pull it in now so the user doesn't have to click "Add" separately.
+  const pendingUrl = $('refUrlInput').value.trim();
+  if (pendingUrl) {
+    const added = await addRefUrl(pendingUrl);
+    if (!added) return;   // addRefUrl already showed the reason
+  }
+  const input = $('productInput').value.trim();
+  if (!refImages.length) { showError('Upload at least one reference product image first.'); return; }
+  if (!input)            { showError('Enter the product details and reviews.'); return; }
+
+  const model = $('modelSelect').value;
+  const btn = $('generateBtn'), label = $('generateLabel');
+  __busy = true; btn.disabled = true;
+  label.innerHTML = '<span class="spinner"></span> Reading brief…';
+  $('progressLine').style.display = 'block';
+  $('progressLine').textContent = 'Reading the prompt and preparing shot descriptions…';
+
+  try {
+    const sysPrompt = await loadPrompt();
+    const userText =
+      'تفاصيل المنتج والريفيوهات:\n' + input + '\n\n' +
+      'المطلوب: اطلعلي برومبتات توليد صور جاهزة على شكل JSON array بس — من غير أي نص قبله أو بعده.\n' +
+      'الشكل بالظبط: [{"type":"<short-tag>","prompt":"..."}, ...]\n' +
+      'الـ system prompt هو اللي بيحدد عدد الصور وأنواعها — لا تضيف ولا تنقص.\n' +
+      'كل "prompt" يكون وصف بصري تفصيلي بالإنجليزي، ويبدأ بـ: Use the provided reference product image exactly as-is.';
+
+    // Stage 1 follows the dropdown: GPT Image → gpt-5.5-pro writes the
+    // prompts (whole task OpenAI); Nano Banana 2 → Claude writes them.
+    const raw = (model === 'gpt-image-1')
+      ? await callGptText(sysPrompt, userText)
+      : await callClaude(sysPrompt, userText);
+    let specs = extractSpecs(raw);
+    if (!specs.length) throw new Error('The model did not return valid image prompts.');
+
+    resetGallery(specs);
+    let done = 0, ok = 0;
+    for (let i = 0; i < specs.length; i++) {
+      label.innerHTML = '<span class="spinner"></span> Generating ' + (i + 1) + '/' + specs.length + '…';
+      $('progressLine').textContent = 'Generating images… ' + (i + 1) + ' of ' + specs.length;
+      try {
+        const dataUrl = await renderImage(model, specs[i].prompt);
+        fillSlot(i, specs[i].type, dataUrl);
+        ok++;
+      } catch (e) {
+        failSlot(i, e.message || String(e));
+      }
+      done++;
+    }
+    $('progressLine').textContent = 'Done — ' + ok + ' of ' + done + ' images generated.';
+    if (ok > 0) $('outToolbar').style.display = 'flex';
+    else showError('All images failed — check the model key or quota.');
+  } catch (e) {
+    showError(e.message || String(e));
+    $('progressLine').style.display = 'none';
+  } finally {
+    __busy = false; btn.disabled = false;
+    label.textContent = 'Generate images';
+  }
+}
+$('generateBtn').addEventListener('click', generate);
+</script>
+  </div>
+</div>
+</body>
+</html>

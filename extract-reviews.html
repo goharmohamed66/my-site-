@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Extract Reviews &amp; Details</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Almarai:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html,body{min-height:100vh;background:#F1F1F1;font-family:'Inter','Almarai',system-ui,sans-serif;color:#1A1A1A;font-size:14px;}
+  .app-shell{display:flex;min-height:100vh;}
+  .app-sidebar{width:240px;min-width:240px;background:#EBEBEB;border-right:1px solid #DCDCDC;display:flex;flex-direction:column;height:calc(100vh - 48px);position:sticky;top:48px;font-family:'Inter',system-ui,sans-serif;}
+  .app-sidebar-items{padding:10px 8px;flex:1;display:flex;flex-direction:column;gap:2px;overflow-y:auto;}
+  .app-sidebar-item{padding:7px 12px;border-radius:8px;font-size:13px;color:#303030;display:flex;align-items:center;gap:10px;cursor:pointer;text-decoration:none;font-weight:800;background:transparent;}
+  .app-sidebar-item:hover{background:#E2E2E2;}
+  .app-sidebar-item.active{background:#FFFFFF;font-weight:600;box-shadow:0 0 0 0.5px rgba(0,0,0,0.1),0 1px 1px rgba(0,0,0,0.05);}
+  .app-sidebar-footer{padding:10px 8px;border-top:1px solid #DCDCDC;}
+  .app-sidebar-divider{height:1px;background:#DCDCDC;margin:8px 4px;}
+  .app-sidebar-group-header{padding:7px 12px;border-radius:8px;font-size:12px;color:#6D7175;font-weight:800;display:flex;align-items:center;gap:10px;user-select:none;background:transparent;text-transform:uppercase;letter-spacing:0.4px;}
+  .app-sidebar-group-items{display:flex;flex-direction:column;gap:2px;padding:2px 0;}
+  .app-main{flex:1;min-width:0;display:flex;flex-direction:column;}
+  .page{padding:24px 32px;max-width:none;width:100%;}
+  .page-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.4fr);gap:24px;align-items:start;}
+  .page-col-left{position:sticky;top:72px;}
+  @media (max-width: 1100px){
+    .page-grid{grid-template-columns:1fr;}
+    .page-col-left{position:static;}
+  }
+  .page h1{font-size:22px;font-weight:700;letter-spacing:-0.3px;}
+  .panel{background:#FFFFFF;border:1px solid #E1E3E5;border-radius:12px;padding:20px;margin-bottom:16px;box-shadow:0 1px 0 rgba(0,0,0,0.05);}
+  .panel-title{font-size:14px;font-weight:600;color:#1A1A1A;margin-bottom:4px;}
+  .panel-desc{font-size:12px;color:#6D7175;margin-bottom:14px;line-height:1.6;}
+  .field{margin-bottom:14px;}
+  .field-label{display:flex;align-items:center;justify-content:space-between;font-size:13px;color:#1A1A1A;font-weight:500;margin-bottom:6px;}
+  .field-input,.field-textarea{width:100%;padding:10px 12px;border:1px solid #DCDCDC;border-radius:8px;font-size:13px;font-family:inherit;color:#1A1A1A;background:#F1F1F1;line-height:1.55;}
+  .field-input:focus,.field-textarea:focus{outline:none;border-color:#1A1A1A;box-shadow:0 0 0 1px #1A1A1A;background:#FFFFFF;}
+  .field-textarea{min-height:160px;resize:vertical;direction:ltr;text-align:left;font-family:'Inter','Almarai',system-ui,sans-serif;font-size:12px;}
+  .btn{display:inline-flex;align-items:center;gap:8px;padding:0 18px;height:38px;border-radius:8px;border:1px solid #1A1A1A;background:#1A1A1A;color:#FFFFFF;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;}
+  .btn:hover:not(:disabled){background:#303030;}
+  .btn:disabled{opacity:0.55;cursor:not-allowed;}
+  .btn-ghost{background:#FFFFFF;color:#1A1A1A;border-color:#DCDCDC;}
+  .btn-ghost:hover:not(:disabled){background:#F5F5F5;}
+  .out-card{background:#FFFFFF;border:1px solid #E1E3E5;border-radius:12px;padding:20px;box-shadow:0 1px 0 rgba(0,0,0,0.05);min-height:220px;}
+  .out-empty{text-align:center;padding:48px 20px;color:#8A8A8A;font-size:13px;}
+  .out-empty .ic{width:56px;height:56px;border-radius:14px;background:#F1F1F1;display:inline-flex;align-items:center;justify-content:center;margin-bottom:14px;color:#6D7175;}
+  .progress-line{font-size:12px;color:#6D7175;margin-bottom:12px;}
+  .err{background:#FEF2F2;border:1px solid #FECACA;color:#991B1B;border-radius:8px;padding:10px 12px;font-size:13px;margin-top:10px;line-height:1.55;}
+  .spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1A1A1A;color:#FFFFFF;padding:10px 18px;border-radius:8px;font-size:13px;z-index:300;opacity:0;transition:opacity .2s;pointer-events:none;}
+  .toast.show{opacity:1;}
+  .toast.error{background:#D72C0D;}
+  /* Result blocks */
+  .result-block{border:1px solid #E1E3E5;border-radius:10px;padding:18px;background:#FAFAFA;margin-bottom:20px;}
+  .result-block .rb-title{font-size:16px;font-weight:700;color:#1A1A1A;line-height:1.4;margin-bottom:8px;}
+  .result-block .rb-meta{font-size:12px;color:#6D7175;margin-bottom:14px;display:flex;gap:14px;flex-wrap:wrap;}
+  .result-block .rb-meta span strong{color:#1A1A1A;font-weight:700;}
+  .result-block .rb-section-title{font-size:13px;font-weight:700;color:#1A1A1A;margin:14px 0 8px;text-transform:uppercase;letter-spacing:0.4px;}
+  .result-block .rb-bullets{display:flex;flex-direction:column;gap:8px;font-size:13px;color:#303030;line-height:1.6;}
+  .result-block .rb-bullets li{list-style:none;padding-left:18px;position:relative;}
+  .result-block .rb-bullets li::before{content:'•';position:absolute;left:6px;top:0;color:#1A1A1A;font-weight:700;}
+  .review-card{border:1px solid #E1E3E5;border-radius:8px;background:#FFFFFF;padding:12px 14px;margin-bottom:8px;}
+  .review-card .rv-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px;flex-wrap:wrap;}
+  .review-card .rv-stars{color:#F5A623;font-size:12px;letter-spacing:1px;}
+  .review-card .rv-author{font-size:12px;color:#6D7175;font-weight:600;}
+  .review-card .rv-title{font-size:13px;font-weight:700;color:#1A1A1A;margin-bottom:4px;}
+  .review-card .rv-body{font-size:13px;color:#303030;line-height:1.6;white-space:pre-wrap;}
+  .copy-btn{height:30px;padding:0 12px;font-size:12px;font-weight:600;border-radius:7px;border:1px solid #DCDCDC;background:#FFFFFF;color:#1A1A1A;cursor:pointer;display:inline-flex;align-items:center;gap:6px;font-family:inherit;}
+  .copy-btn:hover{background:#F5F5F5;border-color:#1A1A1A;}
+  .copy-btn.copied{background:#0E8345;color:#FFFFFF;border-color:#0E8345;}
+</style>
+<script src="topbar.js?v=1779200000"></script>
+<script src="sidebar-tools.js?v=1779100000"></script>
+</head>
+<body>
+<div class="app-shell">
+  <aside class="app-sidebar" data-render-sidebar></aside>
+  <div class="app-main">
+    <div class="page">
+      <h1 style="margin-bottom:18px;">Extract Reviews &amp; Details</h1>
+      <div class="page-grid">
+       <div class="page-col-left">
+        <div class="panel">
+          <div class="panel-title">Product URLs</div>
+          <div class="panel-desc">
+            One URL per line. Supports Amazon (any region) and Abjjad. The tool pulls product details + every available review for each URL.
+          </div>
+          <div class="field">
+            <textarea class="field-textarea" id="urlsInput" placeholder="https://www.amazon.com/dp/B0XXXX
+https://www.amazon.eg/-/en/PRODUCT-PATH/dp/B0XXXX
+https://www.abjjad.com/book/123456"></textarea>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+              <label for="maxReviewsInput" style="font-size:12px;color:#6D7175;font-weight:600;">Max reviews per product:</label>
+              <input type="number" class="field-input" id="maxReviewsInput" value="50" min="5" max="500" style="width:80px;padding:7px 10px;">
+            </div>
+            <button class="btn" id="extractBtn" type="button">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/></svg>
+              <span id="extractLabel">Extract</span>
+            </button>
+          </div>
+          <div class="err" id="errBox" style="display:none;"></div>
+        </div>
+       </div>
+       <div class="page-col-right">
+        <div class="out-card" id="outCard">
+          <div class="out-empty" id="outEmpty">
+            <div class="ic">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="15" y2="17"/></svg>
+            </div>
+            <div>Paste your product URLs on the left and click Extract.</div>
+          </div>
+          <div id="progressLine" class="progress-line" style="display:none;"></div>
+          <div id="results"></div>
+          <div id="resultsToolbar" style="display:none;margin-top:14px;">
+            <button class="btn btn-ghost" id="copyAllBtn" type="button">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              <span>Copy all as text</span>
+            </button>
+            <button class="btn btn-ghost" id="downloadJsonBtn" type="button" style="margin-left:8px;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              <span>Download JSON</span>
+            </button>
+          </div>
+        </div>
+       </div>
+      </div>
+    </div>
+    <div class="toast" id="toast"></div>
+
+<script>
+const $ = id => document.getElementById(id);
+
+// ── Apify connector (token fetched fresh from /connectors.php each run so
+//    the user can rotate the key in Settings without reloading this page).
+const API_BASE  = 'https://indigo-dog-836598.hostingersite.com/github/api';
+const API_TOKEN = 'tk_4d2b9f7a8c6e1530a4f2d9b7e8c6a1f5';
+async function loadApifyToken() {
+  const r = await fetch(API_BASE + '/connectors.php?type=scraping&_t=' + Date.now(), {
+    headers: { 'Authorization': 'Bearer ' + API_TOKEN }
+  });
+  if (!r.ok) throw new Error('Failed to load connectors (HTTP ' + r.status + ').');
+  const d = await r.json();
+  const row = (d.rows || []).find(x => x.provider === 'apify' && x.token);
+  if (!row) throw new Error('No Apify token found. Open Settings → Connectors → Apify and paste your API token.');
+  return row.token;
+}
+
+// ── Apify Actor configuration ──────────────────────────────────────────
+// Picked at runtime once we know which site the URL belongs to. The actor
+// IDs are public Apify-store actors that are battle-tested for each site.
+// Replace these with your own Actor ID if you have a custom one.
+const ACTOR_BY_SITE = {
+  amazon:  'junglee~amazon-reviews-scraper',
+  abjjad:  null, // generic fallback — see runActor()
+  generic: 'apify~website-content-crawler'
+};
+function detectSite(url) {
+  try {
+    const host = new URL(url).hostname.toLowerCase();
+    if (/(^|\.)amazon\./.test(host)) return 'amazon';
+    if (/(^|\.)abjjad\./.test(host)) return 'abjjad';
+    return 'generic';
+  } catch (e) { return 'generic'; }
+}
+
+// ── Apify run helpers ──────────────────────────────────────────────────
+// run-sync-get-dataset-items: single blocking call that starts the Actor,
+// waits for it to finish, and returns the dataset items in one response.
+// Capped at 5 minutes server-side — fine for the per-URL pattern this
+// page uses (one URL per Actor run).
+async function runActor(actorId, input, token) {
+  const url = 'https://api.apify.com/v2/acts/' + actorId + '/run-sync-get-dataset-items?token=' + encodeURIComponent(token);
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input)
+  });
+  if (!res.ok) {
+    const t = await res.text();
+    let msg = 'HTTP ' + res.status;
+    try { const j = JSON.parse(t); msg = (j.error && j.error.message) || msg; } catch (e) {}
+    throw new Error('Apify run failed: ' + msg);
+  }
+  return await res.json();
+}
+
+// ── Per-site input schemas ─────────────────────────────────────────────
+// Each Actor has its own input shape — keep the shape next to the call
+// site so it's easy to swap Actors later.
+function inputForAmazon(url, maxReviews) {
+  // junglee/amazon-reviews-scraper input. The undocumented (but real)
+  // `scrapeProductDetails` flag attaches a full product object to every
+  // review row — title, description, features (bullets), price, stars,
+  // variants, brand, etc. — so one call covers both halves of the page.
+  //
+  // Why one URL per run: variant ASINs of the same parent (e.g. different
+  // colors of the same product) get deduplicated when batched, returning
+  // only reviews of one variant. Running each URL solo keeps variants
+  // distinct.
+  return {
+    productUrls: [{ url: url }],
+    maxReviews: maxReviews,
+    scrapeProductDetails: true,
+    includeProductInfo: true,
+    proxyConfiguration: { useApifyProxy: true }
+  };
+}
+function inputForGenericCrawl(url) {
+  return {
+    startUrls: [{ url: url }],
+    crawlerType: 'cheerio',
+    maxCrawlPages: 1,
+    saveHtml: false,
+    saveMarkdown: true
+  };
+}
+
+// ── Normalize the Actor output into a uniform shape we can render ──────
+// Different Actors return different shapes — funnel everything through
+// this so the UI doesn't need site-specific branches.
+function normalizeAmazon(items, requestedUrl) {
+  // Items returned by junglee/amazon-reviews-scraper: each item is a single
+  // review with the full product details attached under `.product`. Pick
+  // the first item that matches the requested URL by ASIN, fall back to
+  // the first item overall.
+  if (!items || !items.length) {
+    return { url: requestedUrl, title: '(no data)', details: [], reviews: [] };
+  }
+  const requestedAsin = (requestedUrl.match(/\/dp\/([A-Z0-9]{10})/i) || [])[1] || '';
+  const matchingItems = requestedAsin
+    ? items.filter(it => (it.productAsin || (it.product && it.product.asin)) === requestedAsin)
+    : items;
+  const useItems = matchingItems.length ? matchingItems : items;
+  const product = (useItems.find(it => it.product) || {}).product || {};
+
+  const features = Array.isArray(product.features) ? product.features.slice() : [];
+  const reviews = useItems
+    .filter(it => it.reviewDescription || it.reviewTitle)
+    .map(it => ({
+      author: it.userName || (it.userId ? 'User ' + it.userId.slice(-6) : ''),
+      rating: it.ratingScore || null,
+      title: it.reviewTitle || '',
+      body: String(it.reviewDescription || '').trim(),
+      date: it.date || it.reviewedIn || '',
+      verified: !!it.isVerified,
+      variant: it.variant || ''
+    }))
+    .sort((a, b) => (b.rating || 0) - (a.rating || 0));
+
+  const price = product.price && product.price.value != null
+    ? (product.price.value + ' ' + (product.price.currency || ''))
+    : null;
+
+  return {
+    url: product.unNormalizedProductUrl || product.url || requestedUrl,
+    title: product.title || '(untitled)',
+    brand: product.brand || '',
+    asin: product.asin || requestedAsin,
+    details: features,
+    description: product.description || '',
+    rating: product.stars || null,
+    ratingCount: product.reviewsCount || null,
+    price,
+    breadcrumb: product.breadCrumbs || '',
+    thumbnail: product.thumbnailImage || (product.galleryThumbnails && product.galleryThumbnails[0]) || '',
+    reviews
+  };
+}
+
+function normalizeGeneric(items, url) {
+  const first = items[0] || {};
+  return {
+    url,
+    title: first.title || first.pageTitle || '(untitled)',
+    details: first.markdown ? [first.markdown.slice(0, 4000)] : [],
+    reviews: []
+  };
+}
+
+// ── Render one product block ───────────────────────────────────────────
+function escapeHtml(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+function starString(rating) {
+  if (!rating) return '';
+  const n = Math.round(Number(rating));
+  if (isNaN(n) || n <= 0) return '';
+  return '★'.repeat(n) + '☆'.repeat(Math.max(0, 5 - n));
+}
+function renderProduct(p, idx) {
+  const meta = [];
+  if (p.brand)        meta.push('<span><strong>Brand:</strong> ' + escapeHtml(p.brand) + '</span>');
+  if (p.rating)       meta.push('<span><strong>Rating:</strong> ' + escapeHtml(p.rating) + ' ★</span>');
+  if (p.ratingCount)  meta.push('<span><strong>Ratings:</strong> ' + escapeHtml(p.ratingCount) + '</span>');
+  if (p.price)        meta.push('<span><strong>Price:</strong> ' + escapeHtml(p.price) + '</span>');
+  if (p.asin)         meta.push('<span><strong>ASIN:</strong> ' + escapeHtml(p.asin) + '</span>');
+  meta.push('<span><strong>Reviews fetched:</strong> ' + p.reviews.length + '</span>');
+
+  const bullets = p.details && p.details.length
+    ? '<ul class="rb-bullets">' + p.details.map(d => '<li>' + escapeHtml(d) + '</li>').join('') + '</ul>'
+    : '<div style="font-size:12px;color:#6D7175;">No bullet details found.</div>';
+
+  const descHtml = p.description
+    ? '<div class="rb-section-title">Description</div><div style="font-size:13px;color:#303030;line-height:1.7;white-space:pre-wrap;">' + escapeHtml(p.description) + '</div>'
+    : '';
+
+  const thumbHtml = p.thumbnail
+    ? '<img src="' + escapeHtml(p.thumbnail) + '" alt="" style="width:90px;height:90px;object-fit:contain;border:1px solid #E1E3E5;border-radius:8px;background:#FFFFFF;float:right;margin:0 0 10px 14px;">'
+    : '';
+
+  const reviewsHtml = p.reviews && p.reviews.length
+    ? p.reviews.map(r => `
+        <div class="review-card">
+          <div class="rv-head">
+            <span class="rv-author">${escapeHtml(r.author || 'Anonymous')}${r.verified ? ' • <span style="color:#0E8345;font-weight:700;">Verified</span>' : ''}${r.date ? ' • ' + escapeHtml(r.date) : ''}${r.variant ? ' • ' + escapeHtml(r.variant) : ''}</span>
+            <span class="rv-stars" title="${escapeHtml(String(r.rating || ''))}">${starString(r.rating)}</span>
+          </div>
+          ${r.title ? '<div class="rv-title">' + escapeHtml(r.title) + '</div>' : ''}
+          <div class="rv-body">${escapeHtml(r.body)}</div>
+        </div>`).join('')
+    : '<div style="font-size:12px;color:#6D7175;">No reviews returned by the Actor.</div>';
+
+  return `
+    <div class="result-block" data-result-idx="${idx}">
+      ${thumbHtml}
+      <a href="${escapeHtml(p.url)}" target="_blank" rel="noopener" style="font-size:11px;color:#6D7175;text-decoration:none;display:block;margin-bottom:6px;">${escapeHtml(p.url)}</a>
+      <div class="rb-title">${escapeHtml(p.title)}</div>
+      <div class="rb-meta">${meta.join('')}</div>
+      ${p.breadcrumb ? '<div style="font-size:11px;color:#6D7175;margin-bottom:10px;">' + escapeHtml(p.breadcrumb) + '</div>' : ''}
+      <div class="rb-section-title">About this item</div>
+      ${bullets}
+      ${descHtml}
+      <div class="rb-section-title">Reviews (${p.reviews ? p.reviews.length : 0})</div>
+      <div class="rb-reviews">${reviewsHtml}</div>
+    </div>`;
+}
+
+// ── Plain-text export of all results (for copying to a doc) ────────────
+function asPlainText(products) {
+  return products.map(p => {
+    const lines = [];
+    lines.push(p.title);
+    lines.push(p.url);
+    if (p.rating)      lines.push('Rating: ' + p.rating + (p.ratingCount ? ' (' + p.ratingCount + ' ratings)' : ''));
+    if (p.price)       lines.push('Price: ' + p.price);
+    lines.push('');
+    lines.push('ABOUT THIS ITEM');
+    if (p.details.length) p.details.forEach(d => lines.push('• ' + d));
+    else lines.push('(no bullets)');
+    lines.push('');
+    lines.push('REVIEWS (' + p.reviews.length + ')');
+    if (p.reviews.length) p.reviews.forEach((r, i) => {
+      lines.push('— ' + (r.author || 'Anonymous') + (r.rating ? ' • ' + r.rating + '★' : '') + (r.date ? ' • ' + r.date : ''));
+      if (r.title) lines.push(r.title);
+      lines.push(r.body);
+      lines.push('');
+    });
+    else lines.push('(none)');
+    return lines.join('\n');
+  }).join('\n\n' + '='.repeat(60) + '\n\n');
+}
+
+// ── UI ─────────────────────────────────────────────────────────────────
+function showToast(msg, isError) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (isError ? ' error' : '');
+  setTimeout(() => t.className = 'toast' + (isError ? ' error' : ''), 2400);
+}
+function showError(msg) {
+  const e = $('errBox');
+  if (msg) { e.textContent = msg; e.style.display = 'block'; }
+  else { e.style.display = 'none'; e.textContent = ''; }
+}
+
+let __busy = false;
+let __lastProducts = [];
+
+async function onExtract() {
+  if (__busy) return;
+  showError('');
+  const text = $('urlsInput').value.trim();
+  if (!text) { showError('Paste at least one product URL.'); return; }
+  const urls = text.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+  if (!urls.length) { showError('Paste at least one product URL.'); return; }
+
+  const maxReviews = Math.max(5, Math.min(500, parseInt($('maxReviewsInput').value, 10) || 50));
+
+  const btn = $('extractBtn'), label = $('extractLabel');
+  __busy = true; btn.disabled = true;
+  label.innerHTML = '<span class="spinner"></span> Connecting…';
+  $('progressLine').style.display = 'block';
+  $('progressLine').textContent = 'Loading Apify token…';
+  $('outEmpty').style.display = 'none';
+  $('results').innerHTML = '';
+  $('resultsToolbar').style.display = 'none';
+
+  try {
+    const token = await loadApifyToken();
+    const products = [];
+
+    // Bucket URLs by site so we can batch all Amazon URLs into one Actor
+    // run (much faster than one run per URL + cheaper Apify usage).
+    const buckets = { amazon: [], generic: [] };
+    urls.forEach(u => {
+      const site = detectSite(u);
+      (buckets[site] || buckets.generic).push(u);
+    });
+
+    for (let i = 0; i < buckets.amazon.length; i++) {
+      const url = buckets.amazon[i];
+      label.innerHTML = '<span class="spinner"></span> Amazon (' + (i + 1) + '/' + buckets.amazon.length + ')…';
+      $('progressLine').textContent = 'Running Amazon Actor for URL ' + (i + 1) + ' of ' + buckets.amazon.length + '. Usually 15s–2min depending on review count…';
+      try {
+        const items = await runActor(ACTOR_BY_SITE.amazon, inputForAmazon(url, maxReviews), token);
+        const p = normalizeAmazon(items, url);
+        products.push(p);
+        $('results').insertAdjacentHTML('beforeend', renderProduct(p, products.length - 1));
+      } catch (e) {
+        products.push({ url, title: '(failed)', error: e.message, details: [], reviews: [] });
+        $('results').insertAdjacentHTML('beforeend',
+          '<div class="result-block" style="background:#FEF2F2;border-color:#FECACA;">' +
+            '<a href="' + escapeHtml(url) + '" target="_blank" rel="noopener" style="font-size:11px;color:#991B1B;">' + escapeHtml(url) + '</a>' +
+            '<div class="rb-title" style="color:#991B1B;">Failed: ' + escapeHtml(e.message) + '</div>' +
+          '</div>');
+      }
+    }
+
+    for (let i = 0; i < buckets.generic.length; i++) {
+      const url = buckets.generic[i];
+      label.innerHTML = '<span class="spinner"></span> Other (' + (i + 1) + '/' + buckets.generic.length + ')…';
+      $('progressLine').textContent = 'Crawling ' + url + '…';
+      try {
+        const items = await runActor(ACTOR_BY_SITE.generic, inputForGenericCrawl(url), token);
+        const p = normalizeGeneric(items, url);
+        products.push(p);
+        $('results').insertAdjacentHTML('beforeend', renderProduct(p, products.length - 1));
+      } catch (e) {
+        products.push({ url, title: '(failed)', error: e.message, details: [], reviews: [] });
+        $('results').insertAdjacentHTML('beforeend',
+          '<div class="result-block" style="background:#FEF2F2;border-color:#FECACA;">' +
+            '<a href="' + escapeHtml(url) + '" target="_blank" rel="noopener" style="font-size:11px;color:#991B1B;">' + escapeHtml(url) + '</a>' +
+            '<div class="rb-title" style="color:#991B1B;">Failed: ' + escapeHtml(e.message) + '</div>' +
+          '</div>');
+      }
+    }
+
+    __lastProducts = products;
+    const okCount = products.filter(p => !p.error).length;
+    $('progressLine').textContent = 'Done — ' + okCount + ' of ' + products.length + ' extracted.';
+    if (okCount) $('resultsToolbar').style.display = 'block';
+  } catch (e) {
+    showError(e.message || String(e));
+    $('progressLine').style.display = 'none';
+  } finally {
+    __busy = false; btn.disabled = false;
+    label.textContent = 'Extract';
+  }
+}
+
+$('extractBtn').addEventListener('click', onExtract);
+$('copyAllBtn').addEventListener('click', async () => {
+  if (!__lastProducts.length) return;
+  const txt = asPlainText(__lastProducts);
+  try {
+    await navigator.clipboard.writeText(txt);
+    showToast('Copied ' + txt.length + ' characters');
+  } catch (e) { showToast('Copy failed: ' + e.message, true); }
+});
+$('downloadJsonBtn').addEventListener('click', () => {
+  if (!__lastProducts.length) return;
+  const blob = new Blob([JSON.stringify(__lastProducts, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'extracted-products-' + Date.now() + '.json';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+});
+</script>
+</body>
+</html>

@@ -320,6 +320,9 @@ const PROVIDERS = {
     { id: 'gemini',     name: 'Gemini (Google)',     logo: 'logos/gemini.svg' },
     { id: 'openrouter', name: 'OpenRouter (unified)', logo: 'logos/openrouter.svg' },
   ],
+  scraping: [
+    { id: 'apify', name: 'Apify', icon: '🕷️' },
+  ],
 };
 
 // Step-by-step connection guide per provider (only providers we've actually
@@ -514,6 +517,17 @@ const PROVIDER_GUIDES = {
       'In <a href="https://console.cloud.google.com/billing" target="_blank" rel="noopener">Google Cloud → Billing</a>, enable billing on that project — image models return a quota error without it.',
       'Paste the key in the field below and Save. The Landing page images tool uses it for Nano Banana Pro.'
     ]
+  },
+  apify: {
+    title: 'How to connect Apify',
+    note: 'Apify runs scraper "Actors" against any URL — the Extract Reviews & Details tool uses it to pull product info and reviews from Amazon and other sites. Free tier is generous (limited runs/month).',
+    steps: [
+      'Go to <a href="https://console.apify.com/sign-up" target="_blank" rel="noopener">console.apify.com/sign-up</a> and sign up (or log in if you already have an account).',
+      'Open <a href="https://console.apify.com/settings/integrations" target="_blank" rel="noopener">Settings → Integrations → API tokens</a>.',
+      'Either copy the default personal token, or click <strong>Create new token</strong>, give it a name (e.g. "My site — extraction"), and copy it.',
+      'The token starts with <code>apify_api_</code>.',
+      'Paste it in the field below and Save. The Extract Reviews & Details tool will use it to call the Amazon scraper Actor.'
+    ]
   }
 };
 
@@ -643,6 +657,10 @@ const PROVIDER_FIELDS = {
   gemini: [
     {key: 'token', label: 'API Key', placeholder: 'AIza...', required: true, secret: true, multiline: true,
      help: 'Saved in this browser (localStorage). Powers the image models (Nano Banana) — needs billing enabled on the Google Cloud project.'},
+  ],
+  apify: [
+    {key: 'token', label: 'API Token', placeholder: 'apify_api_...', required: true, secret: true, multiline: true,
+     help: 'Apify personal API token — used by Extract Reviews & Details to run scraper Actors against any product page.'},
   ],
   // Generic for shipping / ads / confirmation
   _default: [
@@ -1852,6 +1870,7 @@ const titleMap = {
   ads: ['Ad accounts', 'Connect ad platforms (Meta, TikTok, Google, …)'],
   confirmation: ['Confirmation system', 'Connect call-center / confirmation systems'],
   ai: ['Connect AI Tools', 'Plug in API keys for Claude (Anthropic) and ChatGPT (OpenAI)'],
+  scraping: ['Scraping & Data Extraction', 'Connect scraping platforms (Apify, …) used by Extract Reviews & Details'],
 };
 
 async function renderConnectorSection(c, section) {
@@ -2873,6 +2892,7 @@ async function renderConnectorsHub(c) {
     { section: 'ai',           provider: 'chatgpt',      name: 'ChatGPT (OpenAI)',        icon: 'logos/chatgpt.svg' },
     { section: 'ai',           provider: 'gemini',       name: 'Gemini (Google)',         icon: 'logos/gemini.svg' },
     { section: 'ai',           provider: 'openrouter',   name: 'OpenRouter',              icon: 'logos/openrouter.svg' },
+    { section: 'scraping',     provider: 'apify',        name: 'Apify',                   emoji: '🕷️' },
   ];
 
   c.innerHTML = `
@@ -2887,7 +2907,7 @@ async function renderConnectorsHub(c) {
     </div>
   `;
   // Fetch all connectors in parallel and bucket by (type, provider)
-  const types = ['cms','shipping','ads','confirmation','ai','storage'];
+  const types = ['cms','shipping','ads','confirmation','ai','storage','scraping'];
   const counts = {};
   await Promise.all(types.map(async t => {
     try {
