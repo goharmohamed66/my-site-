@@ -54,7 +54,6 @@
   .copy-card-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;background:#F1F1F1;border-bottom:1px solid #E1E3E5;}
   .copy-card-head .label{display:inline-flex;align-items:center;gap:8px;font-family:'Inter',system-ui,sans-serif;font-size:12px;font-weight:600;color:#1A1A1A;}
   .copy-card-head .num{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:#1A1A1A;color:#FFFFFF;font-size:11px;font-weight:700;font-variant-numeric:tabular-nums;}
-  .copy-card-head .angle{padding:3px 9px;background:#FFFFFF;border:1px solid #DCDCDC;border-radius:6px;font-size:11px;color:#6D7175;font-weight:500;}
   .copy-card-head .copy-one{flex-shrink:0;height:30px;padding:0 12px;font-size:12px;font-weight:500;border-radius:6px;border:1px solid #DCDCDC;background:#FFFFFF;color:#1A1A1A;cursor:pointer;display:inline-flex;align-items:center;gap:5px;font-family:'Inter',system-ui,sans-serif;}
   .copy-card-head .copy-one:hover{background:#F5F5F5;border-color:#1A1A1A;}
   .copy-card-head .copy-one.copied{background:#0E8345;color:#FFFFFF;border-color:#0E8345;}
@@ -368,38 +367,18 @@ async function callChatGPT(systemPrompt, userMessage, maxTokens) {
 }
 
 
-function buildUserMessage(input, count) {
-  const lines = ['INPUT DATA', input, ''];
-  if (count > 1) {
-    lines.push(`اكتب ${count} نسخ منفصلة.`);
-    lines.push('قبل كل نسخة اكتب سطر فيه: ANGLE: <اسم الزاوية>');
-    lines.push('وافصل النسخ عن بعض بسطر فيه === فقط.');
-  } else {
-    lines.push('قبل النسخة اكتب سطر فيه: ANGLE: <اسم الزاوية>');
-  }
-  return lines.join('\n');
+function buildUserMessage(input) {
+  // The system prompt decides how many copies and which frameworks; the
+  // page only adds the === separator so the output splits into cards.
+  return 'INPUT DATA\n' + input + '\n\nافصل كل نسخة عن اللي بعدها بسطر فيه === فقط.';
 }
 
-// Parse the model output into [{angle, copy}, ...]
+// Split the model output into individual copies on the === separator.
 function parseCopies(text) {
-  // Split by separator line consisting of "===" (allow trailing whitespace)
-  const chunks = text.split(/^\s*={3,}\s*$/m).map(c => c.trim()).filter(Boolean);
-  return chunks.map((chunk, i) => {
-    const lines = chunk.split(/\r?\n/);
-    let angle = '';
-    // Look for ANGLE: marker on the first non-empty line
-    const firstNonEmpty = lines.findIndex(l => l.trim());
-    if (firstNonEmpty >= 0) {
-      const m = lines[firstNonEmpty].match(/^\s*ANGLE\s*[:：]\s*(.+?)\s*$/i);
-      if (m) {
-        angle = m[1].trim();
-        lines.splice(firstNonEmpty, 1);
-        // Trim leading blank lines after removing angle marker
-        while (lines.length && !lines[0].trim()) lines.shift();
-      }
-    }
-    return { angle, copy: lines.join('\n').trim() };
-  }).filter(c => c.copy);
+  return text.split(/^\s*={3,}\s*$/m)
+    .map(c => c.trim())
+    .filter(Boolean)
+    .map(copy => ({ copy }));
 }
 
 function escapeHtml(s) {
@@ -423,7 +402,6 @@ function renderCopies(text) {
         <div class="label">
           <span class="num">${i + 1}</span>
           <span>Copy ${i + 1}</span>
-          ${c.angle ? `<span class="angle">${escapeHtml(c.angle)}</span>` : ''}
         </div>
         <button class="copy-one" data-idx="${i}" type="button">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
@@ -457,12 +435,11 @@ async function generate() {
   showError('');
   const input = $('productInput').value.trim();
   const provider = $('modelSelect').value;
-  const count = parseInt($('countValue').textContent, 10) || 1;
 
   if (!input) { showToast('Enter product details first', true); return; }
 
-  const userMessage = buildUserMessage(input, count);
-  const maxTokens = Math.max(2000, count * 700);
+  const userMessage = buildUserMessage(input);
+  const maxTokens = 6000;
 
   const btn = $('generateBtn');
   const label = $('generateLabel');
