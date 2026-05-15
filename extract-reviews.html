@@ -186,27 +186,61 @@ async function runActor(actorId, input, token) {
   return await res.json();
 }
 
+// Fetch the FULL review set for an Amazon URL. The Actor caps each filter
+// call at ~10 reviews, so we iterate the five star buckets sequentially
+// and merge by reviewId. Parallel runs aren't safe — each Actor run
+// reserves 4096MB, and Apify's free tier caps concurrent runs at 8192MB.
+// The first call also asks for full product details; later calls skip
+// the heavy payload to save bandwidth and dataset size.
+async function fetchAllAmazonReviews(url, maxReviewsPerBucket, token, onProgress) {
+  const seen = new Set();
+  const out = [];
+  for (let i = 0; i < STAR_BUCKETS.length; i++) {
+    const bucket = STAR_BUCKETS[i];
+    try {
+      const items = await runActor(
+        ACTOR_BY_SITE.amazon,
+        inputForAmazon(url, maxReviewsPerBucket, bucket, i === 0),
+        token
+      );
+      let added = 0;
+      items.forEach(it => {
+        const id = it.reviewId;
+        if (!id || seen.has(id)) return;
+        seen.add(id);
+        out.push(it);
+        added++;
+      });
+      if (onProgress) onProgress(bucket, items.length, added, out.length);
+    } catch (e) {
+      // One bucket failing shouldn't kill the rest — fall through.
+      if (onProgress) onProgress(bucket, 0, 0, out.length, e.message);
+    }
+  }
+  return out;
+}
+
 // ── Per-site input schemas ─────────────────────────────────────────────
 // Each Actor has its own input shape — keep the shape next to the call
 // site so it's easy to swap Actors later.
-function inputForAmazon(url, maxReviews) {
-  // junglee/amazon-reviews-scraper input. The undocumented (but real)
-  // `scrapeProductDetails` flag attaches a full product object to every
-  // review row — title, description, features (bullets), price, stars,
-  // variants, brand, etc. — so one call covers both halves of the page.
+function inputForAmazon(url, maxReviews, ratingFilter, withProductDetails) {
+  // junglee/amazon-reviews-scraper input.
   //
-  // Why one URL per run: variant ASINs of the same parent (e.g. different
-  // colors of the same product) get deduplicated when batched, returning
-  // only reviews of one variant. Running each URL solo keeps variants
-  // distinct.
+  // The Actor caps each filterByRatings bucket at ~10 reviews per call,
+  // so to get the FULL review set the caller iterates over star buckets
+  // (fiveStar..oneStar) and dedupes by reviewId. `scrapeProductDetails`
+  // is enabled only on the first call so we attach the heavy product
+  // payload exactly once.
   return {
     productUrls: [{ url: url }],
     maxReviews: maxReviews,
-    scrapeProductDetails: true,
-    includeProductInfo: true,
+    filterByRatings: [ratingFilter || 'allStars'],
+    scrapeProductDetails: !!withProductDetails,
+    includeProductInfo: !!withProductDetails,
     proxyConfiguration: { useApifyProxy: true }
   };
 }
+const STAR_BUCKETS = ['fiveStar', 'fourStar', 'threeStar', 'twoStar', 'oneStar'];
 function inputForGenericCrawl(url) {
   return {
     startUrls: [{ url: url }],
@@ -414,9 +448,14 @@ async function onExtract() {
     for (let i = 0; i < buckets.amazon.length; i++) {
       const url = buckets.amazon[i];
       label.innerHTML = '<span class="spinner"></span> Amazon (' + (i + 1) + '/' + buckets.amazon.length + ')…';
-      $('progressLine').textContent = 'Running Amazon Actor for URL ' + (i + 1) + ' of ' + buckets.amazon.length + '. Usually 15s–2min depending on review count…';
+      $('progressLine').textContent = 'URL ' + (i + 1) + '/' + buckets.amazon.length + ': starting 5★ → 1★ fetch…';
       try {
-        const items = await runActor(ACTOR_BY_SITE.amazon, inputForAmazon(url, maxReviews), token);
+        let stepDone = 0;
+        const items = await fetchAllAmazonReviews(url, maxReviews, token, (bucket, n, added, total, err) => {
+          stepDone++;
+          const tail = err ? ' FAILED: ' + err.slice(0, 80) : ' (' + n + ' raw, ' + added + ' new). Running total: ' + total;
+          $('progressLine').textContent = 'URL ' + (i + 1) + '/' + buckets.amazon.length + ' — ' + bucket + ' ' + stepDone + '/' + STAR_BUCKETS.length + tail;
+        });
         const p = normalizeAmazon(items, url);
         products.push(p);
         $('results').insertAdjacentHTML('beforeend', renderProduct(p, products.length - 1));
