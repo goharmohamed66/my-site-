@@ -37,12 +37,12 @@
         svg:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>' },
       { name:'Copywriting', href:'copywriting.html', matchPaths:['copywriting.html'],
         svg:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>' },
+      { name:'Headlines Generator', href:'headlines.html', matchPaths:['headlines.html'],
+        svg:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4v16"/><path d="M18 4v16"/><path d="M6 12h12"/></svg>' },
       { name:'Landing page content', href:'landing-page.html', matchPaths:['landing-page.html'],
         svg:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>' },
       { name:'Landing page images', href:'landing-page-images.html', matchPaths:['landing-page-images.html'],
-        svg:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>' },
-      { name:'Headlines Generator', href:'headlines.html', matchPaths:['headlines.html'],
-        svg:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4v16"/><path d="M18 4v16"/><path d="M6 12h12"/></svg>' }
+        svg:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>' }
     ]
   };
   const AUTOMATION_TOOLS_GROUP = {
@@ -84,6 +84,23 @@
       }
     ]
   };
+
+  // ── Top-level sidebar items (Orders / Shipping / Confirmation / Ads) ─
+  // Single source of truth for the items above the first divider. Pages
+  // that opt into full rendering via <aside data-render-sidebar> get
+  // these built from this list — adding a new top-level item is one
+  // entry here, no need to edit every HTML file.
+  const TOP_ITEMS = [
+    { name: 'Orders', href: 'index.html', matchPaths: ['index.html', ''],
+      svg: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>' },
+    { name: 'Shipping Analytics', href: 'shipping.html', matchPaths: ['shipping.html'],
+      svg: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>' },
+    { name: 'Confirmation', href: 'confirmation.html', matchPaths: ['confirmation.html'], extraActiveSearch: /[?&]mode=confirmation\b/,
+      svg: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>' },
+    { name: 'Ads Analysis', href: 'ads.html', matchPaths: ['ads.html'],
+      svg: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>' }
+  ];
+  const FOOTER_SETTINGS_SVG = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>';
 
   // ── Inject global Almarai @font-face + Arabic font + nav weight ─────
   if (!document.getElementById('app-global-font-css')) {
@@ -488,9 +505,9 @@
     // ── All tools children ──
     'buyer-persona.html'       : ALL_TOOLS_GROUP.children[0].svg,
     'copywriting.html'         : ALL_TOOLS_GROUP.children[1].svg,
-    'landing-page.html'        : ALL_TOOLS_GROUP.children[2].svg,
-    'landing-page-images.html' : ALL_TOOLS_GROUP.children[3].svg,
-    'headlines.html'           : ALL_TOOLS_GROUP.children[4].svg,
+    'headlines.html'           : ALL_TOOLS_GROUP.children[2].svg,
+    'landing-page.html'        : ALL_TOOLS_GROUP.children[3].svg,
+    'landing-page-images.html' : ALL_TOOLS_GROUP.children[4].svg,
     // ── Automation Tools children ──
     'landing-auto.html'         : AUTOMATION_TOOLS_GROUP.children[0].svg,
     'automation-fm-update.html' : AUTOMATION_TOOLS_GROUP.children[1].svg,
@@ -651,7 +668,114 @@
     }
   }
 
+  // ── Full sidebar renderer ───────────────────────────────────────────
+  // Pages that opt in via <aside class="app-sidebar" data-render-sidebar>
+  // get their ENTIRE sidebar (top-level items + all groups + footer)
+  // built here from the JS config. Adding/removing/renaming items is a
+  // one-file change. Pages that DON'T have the attribute keep their
+  // hardcoded inline sidebar and rely on the inject/augment fallbacks
+  // — so this is fully backwards-compatible during the migration.
+  function isActive(matchPaths, here, extraActive) {
+    if (extraActive) return true;
+    if (!matchPaths) return false;
+    return matchPaths.some(function (p) {
+      if (p === '') return here === '' || here === 'index.html';
+      return here === p;
+    });
+  }
+  function itemLink(c, here, prefix, opts) {
+    opts = opts || {};
+    var active = opts.forceInactive ? false : isActive(c.matchPaths, here, opts.extraActive);
+    var extraAttrs = opts.extraAttrs || '';
+    return '<a href="' + prefix + c.href + '" class="app-sidebar-item' + (active ? ' active' : '') + '"' + extraAttrs + '>'
+         + c.svg + '<span>' + c.name + '</span></a>';
+  }
+  function groupBlock(group, here, prefix, marker) {
+    var children = group.children.map(function (c) { return itemLink(c, here, prefix); }).join('');
+    return '<div class="app-sidebar-group"' + (marker ? ' data-' + marker + '="group"' : '') + '>'
+         +   '<div class="app-sidebar-group-header">' + group.svg + '<span>' + group.name + '</span></div>'
+         +   '<div class="app-sidebar-group-items">' + children + '</div>'
+         + '</div>';
+  }
+  function renderSidebar(aside) {
+    var here = (location.pathname.split('/').pop() || '').toLowerCase();
+    var prefix = getPathPrefix();
+    var search = location.search;
+
+    // Reports group is built from REPORTS_LIST so /loop / /init flows can
+    // add a new report by editing only this file.
+    var reportsGroup = {
+      name: 'Reports',
+      svg: REPORTS_GROUP_SVG,
+      children: REPORTS_LIST.map(function (r) {
+        return { name: r.name, href: r.href, svg: r.svg, matchPaths: [r.slug + '.html'] };
+      })
+    };
+
+    // If ANY top item has a matching extraActiveSearch, treat that as the
+    // winner — path-based matches on other items lose their active state.
+    // Real case: /shipping.html?mode=confirmation should highlight
+    // Confirmation only, not Shipping Analytics too.
+    var searchActiveItem = null;
+    TOP_ITEMS.forEach(function (it) {
+      if (it.extraActiveSearch && it.extraActiveSearch.test(search)) searchActiveItem = it;
+    });
+
+    var html = '<nav class="app-sidebar-items">';
+    TOP_ITEMS.forEach(function (it) {
+      var attrs = it.name === 'Confirmation' ? ' data-confirmation-item="1"' : '';
+      var extra, forceInactive;
+      if (searchActiveItem) {
+        // Only the search-matched item is active; everyone else inactive.
+        extra = (it === searchActiveItem);
+        forceInactive = (it !== searchActiveItem);
+      } else {
+        extra = false;
+        forceInactive = false;
+      }
+      html += itemLink(it, here, prefix, { extraActive: extra, forceInactive: forceInactive, extraAttrs: attrs });
+    });
+    html += '<div class="app-sidebar-divider"></div>';
+    html += groupBlock(PRODUCTS_GROUP, here, prefix, 'products-group');
+    html += '<div class="app-sidebar-divider"></div>';
+    html += groupBlock(ALL_TOOLS_GROUP, here, prefix, 'all-tools-group');
+    html += '<div class="app-sidebar-divider"></div>';
+    html += groupBlock(AUTOMATION_TOOLS_GROUP, here, prefix, 'auto-tools-group');
+    html += '<div class="app-sidebar-divider" data-reports-group="divider"></div>';
+    html += groupBlock(reportsGroup, here, prefix, 'reports-group');
+    html += '</nav>';
+    html += '<div class="app-sidebar-footer">'
+          +   '<a href="' + prefix + 'settings.html" class="app-sidebar-item" style="text-decoration:none;">'
+          +     FOOTER_SETTINGS_SVG + '<span>Settings</span>'
+          +   '</a>'
+          + '</div>';
+
+    aside.innerHTML = html;
+    aside.setAttribute('data-sidebar-rendered', '1');
+    // Expand the group that contains the active page so the user lands
+    // looking at the right tool without waiting for init() to run.
+    applyCollapsedState();
+  }
+  function renderAnyPendingSidebar() {
+    var aside = document.querySelector('aside.app-sidebar[data-render-sidebar]:not([data-sidebar-rendered])');
+    if (aside) renderSidebar(aside);
+  }
+  // Early-render: try once now (script may run before <aside> is parsed),
+  // then watch <html> so we render the moment the aside appears in the DOM.
+  // Catching it pre-DOMContentLoaded keeps the sidebar visible immediately
+  // — no flash of an empty rail before init() fires.
+  renderAnyPendingSidebar();
+  if (window.MutationObserver && document.documentElement) {
+    var earlyObs = new MutationObserver(function () {
+      renderAnyPendingSidebar();
+    });
+    earlyObs.observe(document.documentElement, { childList: true, subtree: true });
+  }
+
   function init() {
+    // If the page opted into full rendering, do it now (safety net in case
+    // the early observer hasn't fired yet for any reason).
+    renderAnyPendingSidebar();
     // Reports first — so Products can anchor BEFORE the Reports divider and
     // land below All tools / Automation Tools.
     injectReportsGroup();
