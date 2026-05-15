@@ -212,8 +212,15 @@ for ($cpage = 2; $cpage <= $maxPages; $cpage++) {
   else { $emptyStreak = 0; }
 }
 
+// Drop rating-only entries — abjjad treats every star tap as a "review",
+// but they're just numbers without any text content. The caller wants
+// substantive reviews only. Keep both counts on the envelope so the UI
+// can still show "X text reviews out of Y total ratings".
+$totalCollected = count($reviewsById);
+$reviews = array_values(array_filter($reviewsById, function ($r) {
+  return isset($r['body']) && trim((string)$r['body']) !== '';
+}));
 // Newest first.
-$reviews = array_values($reviewsById);
 usort($reviews, function ($a, $b) {
   return strcmp((string)($b['date'] ?? ''), (string)($a['date'] ?? ''));
 });
@@ -242,6 +249,7 @@ send_json([
   'stats'        => [
     'initialReviewsFromMainPage' => $initialCount,
     'paginatedPagesFetched'      => $pagesFetched,
-    'totalUniqueReviews'         => count($reviews),
+    'totalEntriesCollected'      => $totalCollected,
+    'textReviewsReturned'        => count($reviews),
   ],
 ]);
