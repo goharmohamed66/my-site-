@@ -384,6 +384,32 @@ function renderSections(container, text) {
     head.appendChild(makeCopyBtn(() => body || part));
     card.appendChild(head);
 
+    // Section 5 (Headlines & Subheadlines) gets a custom render: each pair
+    // is its own card with TWO copy buttons — one for the headline text, one
+    // for the subheadline text — without the "Headline N:" / "Subheadline N:"
+    // labels (which we strip so the copied value is the raw text only).
+    if (sectionNum === 5) {
+      const pairs = parseHeadlinePairs(body);
+      if (pairs.length) {
+        const list = document.createElement('div');
+        list.style.cssText = 'display:flex;flex-direction:column;gap:8px;';
+        pairs.forEach(p => {
+          const pairCard = document.createElement('div');
+          pairCard.style.cssText = 'padding:10px 12px;border:1px solid #E1E3E5;border-radius:8px;background:#FFFFFF;';
+          if (p.headline) pairCard.appendChild(buildLineRow(p.headline, '#1A1A1A', 14, 600));
+          if (p.subheadline) {
+            const sub = buildLineRow(p.subheadline, '#6D7175', 13, 400);
+            sub.style.marginTop = '6px';
+            pairCard.appendChild(sub);
+          }
+          list.appendChild(pairCard);
+        });
+        card.appendChild(list);
+        container.appendChild(card);
+        return;
+      }
+    }
+
     const items = splitSectionItems(sectionNum, body);
     if (items.length > 1) {
       const list = document.createElement('div');
@@ -407,6 +433,43 @@ function renderSections(container, text) {
     }
     container.appendChild(card);
   });
+}
+
+// One line of text + its own Copy button, laid out as a grid row.
+function buildLineRow(text, color, fontSize, weight) {
+  const row = document.createElement('div');
+  row.style.cssText = 'display:grid;grid-template-columns:1fr auto;gap:10px;align-items:start;';
+  const t = document.createElement('div');
+  t.style.cssText = 'white-space:pre-wrap;line-height:1.6;font-size:' + fontSize + 'px;color:' + color + ';font-weight:' + weight + ';';
+  t.textContent = text;
+  row.appendChild(t);
+  row.appendChild(makeCopyBtn(() => text, { small: true }));
+  return row;
+}
+
+// Parse Section 5 body into pairs of { headline, subheadline } with the
+// "Headline N:" / "Subheadline N:" labels stripped. Tolerates markdown
+// asterisks (e.g. **Headline 1:**), arbitrary numbering, and arbitrary
+// whitespace between the two lines.
+function parseHeadlinePairs(body) {
+  const blocks = body.split(/\n\s*\n/).map(b => b.trim()).filter(Boolean);
+  const headlineRe    = /^\s*\**\s*Headline[^:\n]*:\s*([\s\S]*?)\s*\**\s*$/im;
+  const subheadlineRe = /^\s*\**\s*Sub[\s-]?headline[^:\n]*:\s*([\s\S]*?)\s*\**\s*$/im;
+  const pairs = [];
+  blocks.forEach(blk => {
+    const lines = blk.split(/\r?\n/);
+    let headline = '', subheadline = '';
+    lines.forEach(line => {
+      let m;
+      if ((m = line.match(headlineRe)))    { if (!headline)    headline    = clean(m[1]); }
+      else if ((m = line.match(subheadlineRe))) { if (!subheadline) subheadline = clean(m[1]); }
+    });
+    if (headline || subheadline) pairs.push({ headline, subheadline });
+  });
+  function clean(s) {
+    return String(s || '').replace(/^\**|\**$/g, '').replace(/^["'""]|["'""]$/g, '').trim();
+  }
+  return pairs;
 }
 
 // ── Parse the AI landing output into structured sections ─────────────
