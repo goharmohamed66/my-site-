@@ -63,6 +63,18 @@
 
   .res-summary{font-size:12px;color:#6D7175;margin-bottom:12px;}
   .res-summary strong{color:#1A1A1A;}
+
+  .lens-step{padding:14px 16px;border:1px solid #E1E3E5;border-radius:10px;background:#FAFAFA;margin-bottom:14px;}
+  .lens-step-title{font-size:11px;font-weight:700;color:#6D7175;text-transform:uppercase;letter-spacing:0.4px;margin-bottom:8px;}
+  .lens-img-row{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;padding:8px 10px;border:1px solid #E1E3E5;border-radius:8px;background:#FFFFFF;margin-bottom:6px;}
+  .lens-img-row img{width:40px;height:40px;object-fit:contain;border-radius:6px;background:#F1F1F1;}
+  .lens-img-row .nm{font-size:12px;color:#1A1A1A;word-break:break-all;font-family:'Inter',system-ui,sans-serif;}
+  .lens-img-row .lens-go{height:30px;padding:0 12px;font-size:11px;font-weight:600;border-radius:6px;border:1px solid #1A1A1A;background:#1A1A1A;color:#FFFFFF;cursor:pointer;display:inline-flex;align-items:center;gap:5px;font-family:'Inter',system-ui,sans-serif;text-decoration:none;}
+  .lens-img-row .lens-go:hover{background:#303030;}
+  .lens-img-row .lens-go.visited{background:#FFFFFF;color:#1A1A1A;border-color:#0E8345;color:#0E8345;}
+
+  .paste-box{width:100%;min-height:120px;padding:10px 12px;border:1px solid #DCDCDC;border-radius:8px;font-size:12px;font-family:'Inter',monospace,system-ui,sans-serif;color:#1A1A1A;background:#FFFFFF;line-height:1.6;resize:vertical;direction:ltr;}
+  .paste-box:focus{outline:none;border-color:#1A1A1A;box-shadow:0 0 0 1px #1A1A1A;}
 </style>
 <script src="topbar.js?v=1777784143"></script>
 <script src="sidebar-tools.js?v=1779200000"></script>
@@ -112,17 +124,18 @@
           <div style="display:flex;justify-content:flex-end;align-items:center;gap:12px;">
             <button class="btn" id="searchBtn" type="button" disabled>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-              <span id="searchLabel">Find Amazon links</span>
+              <span id="searchLabel">Prepare Lens search</span>
             </button>
           </div>
           <div class="err" id="errBox" style="display:none;"></div>
         </div>
 
         <div style="font-size:11px;color:#8A8A8A;line-height:1.6;padding:0 4px;">
-          Reverse-image search runs on <strong>Google Lens</strong> only. Each uploaded image is sent
-          to <code>lens.google.com</code> independently — every <code>amazon.*</code> product page Lens
-          finds is collected, then merged and de-duplicated by ASIN+country across all your shots.
-          Uploading multiple angles dramatically improves the chance Lens locks onto the right listing.
+          Google blocks server-side reading of Lens results, so this tool does the next-best thing:
+          uploads each image to a temp URL and gives you a one-click <strong>Open in Lens</strong>
+          button per shot. Browse the visual matches in Lens, copy any <code>amazon.*</code> URL you see
+          (Ctrl+C on the link), paste them all into the box on the right, and click <strong>Parse</strong>.
+          We'll group them by country and de-dup by ASIN.
         </div>
        </div>
 
@@ -132,8 +145,36 @@
             <div class="ic">
               <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
             </div>
-            <div>Upload one or more product images and click <strong>Find Amazon links</strong>.</div>
+            <div>Upload one or more product images and click <strong>Prepare Lens search</strong>.</div>
           </div>
+
+          <div id="lensWorkflow" style="display:none;">
+            <div class="lens-step">
+              <div class="lens-step-title">Step 1 · Open Lens for each image</div>
+              <div id="lensImgList"></div>
+              <button type="button" id="openAllLensBtn" class="btn btn-ghost" style="height:32px;padding:0 12px;font-size:12px;margin-top:6px;">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                Open all in new tabs
+              </button>
+            </div>
+            <div class="lens-step">
+              <div class="lens-step-title">Step 2 · Paste anything you copied from Lens</div>
+              <textarea id="pasteBox" class="paste-box" placeholder="Paste here. Anything goes — full Lens page copy, a list of links, mixed text. We'll find every amazon.* product URL and ignore the rest.
+
+Examples that work:
+  https://www.amazon.com/dp/B0DEFGH456
+  https://amazon.eg/-/en/dp/B0ABCDE123
+  Some random text https://www.amazon.de/dp/B0XXXXXXXX with junk after"></textarea>
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:8px;">
+                <span style="font-size:11px;color:#8A8A8A;">Tip: paste from multiple Lens tabs in a row — we de-dup by ASIN.</span>
+                <button type="button" id="parseBtn" class="btn" style="height:34px;padding:0 14px;font-size:12px;">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                  Parse pasted text
+                </button>
+              </div>
+            </div>
+          </div>
+
           <div id="outResults" style="display:none;"></div>
         </div>
        </div>
@@ -282,14 +323,21 @@ $('driveBtn').addEventListener('click', () => {
   );
 });
 
-// ── Search ──────────────────────────────────────────────────────────
-async function runSearch() {
+// ── Prepare Lens search ─────────────────────────────────────────────
+// Uploads each image to /api/temp-image.php (via the search endpoint, which
+// already builds the public URLs), then surfaces a per-image "Open in Lens"
+// button so the user can browse matches in their own browser and paste
+// amazon URLs back into the box. Server-side Lens scraping is blocked by
+// Google, so we don't pretend to do it for them.
+let __lensImages = []; // [{ name, verifyUrl, publicUrl, visited }]
+
+async function prepareLensSearch() {
   if (!__images.length) { showToast('Upload at least one image first', true); return; }
   showError('');
   const btn = $('searchBtn');
   const label = $('searchLabel');
   btn.disabled = true;
-  label.innerHTML = '<span class="spinner"></span> Running Google Lens × ' + __images.length + '…';
+  label.innerHTML = '<span class="spinner"></span> Uploading × ' + __images.length + '…';
 
   try {
     const res = await fetch(SEARCH_API, {
@@ -302,23 +350,157 @@ async function runSearch() {
     });
     const data = await res.json();
     if (!res.ok) throw new Error((data && data.error) || ('HTTP ' + res.status));
-    renderResults(data);
+    __lensImages = (data.images || []).map((e, idx) => ({
+      name: (__images[idx] && __images[idx].name) || ('image ' + (idx + 1)),
+      dataUrl: __images[idx] ? __images[idx].dataUrl : '',
+      verifyUrl: e.verifyUrl,
+      publicUrl: e.publicUrl,
+      visited: false,
+    }));
+    renderWorkflow(data);
   } catch (err) {
     showError('Failed: ' + err.message);
   } finally {
     btn.disabled = false;
-    label.textContent = 'Find Amazon links';
+    label.textContent = 'Prepare Lens search';
   }
 }
-$('searchBtn').addEventListener('click', runSearch);
+$('searchBtn').addEventListener('click', prepareLensSearch);
+
+function renderWorkflow(data) {
+  $('outEmpty').style.display = 'none';
+  $('lensWorkflow').style.display = 'block';
+  $('outResults').style.display = 'none';
+
+  const list = $('lensImgList');
+  list.innerHTML = __lensImages.map((im, i) => `
+    <div class="lens-img-row" data-i="${i}">
+      <img src="${im.dataUrl || im.publicUrl || ''}" alt="">
+      <div class="nm">${escapeHtml(im.name)}</div>
+      <a class="lens-go" href="${escapeHtml(im.verifyUrl || '#')}" target="_blank" rel="noopener" data-i="${i}">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+        Open in Lens
+      </a>
+    </div>
+  `).join('');
+
+  // Mark each link as "visited" once the user has clicked it — visual nudge
+  // so they know which images they've already pulled matches from.
+  list.querySelectorAll('.lens-go').forEach(a => {
+    a.addEventListener('click', () => {
+      const i = +a.dataset.i;
+      if (__lensImages[i]) __lensImages[i].visited = true;
+      a.classList.add('visited');
+    });
+  });
+
+  // Auto-focus the paste box so the user lands on Step 2 quickly after
+  // copying from Lens.
+  setTimeout(() => $('pasteBox').focus(), 50);
+}
+
+$('openAllLensBtn').addEventListener('click', () => {
+  // Open every Lens tab in sequence with a small stagger — keeps the popup
+  // blocker happy and gives each tab a chance to mount before the next
+  // window.open() steals focus.
+  let delay = 0;
+  __lensImages.forEach((im, i) => {
+    if (!im.verifyUrl) return;
+    setTimeout(() => {
+      window.open(im.verifyUrl, '_blank', 'noopener');
+      const a = document.querySelector(`.lens-go[data-i="${i}"]`);
+      if (a) { a.classList.add('visited'); __lensImages[i].visited = true; }
+    }, delay);
+    delay += 250;
+  });
+});
+
+// ── Parse pasted text → amazon links ────────────────────────────────
+// Pure client-side. Sweeps the textarea for every amazon.<tld> URL, strips
+// tracking params, de-dups by ASIN+host, and feeds the same renderer the
+// (legacy) server-side path used. Works on plain links, mixed text, and
+// full Lens page copies alike.
+const AMAZON_HOST_RE = /amazon\.(?:com|eg|ae|sa|de|co\.uk|fr|it|es|nl|pl|se|com\.tr|com\.au|com\.mx|com\.br|ca|in|sg|co\.jp|cn)/i;
+const AMAZON_URL_RE  = /https?:\/\/(?:www\.|m\.|smile\.)?amazon\.(?:com|eg|ae|sa|de|co\.uk|fr|it|es|nl|pl|se|com\.tr|com\.au|com\.mx|com\.br|ca|in|sg|co\.jp|cn)\/[^\s<>"'()\]\[]+/gi;
+
+const COUNTRY_MAP = {
+  'amazon.com': 'US', 'amazon.eg': 'EG', 'amazon.ae': 'AE', 'amazon.sa': 'SA',
+  'amazon.de': 'DE', 'amazon.co.uk': 'GB', 'amazon.fr': 'FR', 'amazon.it': 'IT',
+  'amazon.es': 'ES', 'amazon.nl': 'NL', 'amazon.pl': 'PL', 'amazon.se': 'SE',
+  'amazon.com.tr': 'TR', 'amazon.com.au': 'AU', 'amazon.com.mx': 'MX',
+  'amazon.com.br': 'BR', 'amazon.ca': 'CA', 'amazon.in': 'IN', 'amazon.sg': 'SG',
+  'amazon.co.jp': 'JP', 'amazon.cn': 'CN',
+};
+
+function stripTracking(u) {
+  const m = u.match(/^(https?:\/\/[^/]+\/(?:[^/?#]+\/)?(?:dp|gp\/product|gp\/aw\/d)\/[A-Z0-9]{10})/i);
+  if (m) return m[1];
+  return u.replace(/[?&](?:ref|ref_|tag|psc|th|linkCode|linkId)[^&]*/gi, '').replace(/[?&]$/, '');
+}
+
+function hostToCountry(host) {
+  const h = host.toLowerCase().replace(/^www\./, '');
+  return COUNTRY_MAP[h] || h.replace(/^amazon\./, '').toUpperCase();
+}
+
+function parseAmazonLinks(text) {
+  if (!text) return [];
+  // Decode common JSON / URL escapes so URLs hidden inside copy-pasted blobs
+  // still match the regex.
+  const clean = text
+    .replace(/\\\//g, '/')
+    .replace(/\\u002F/gi, '/')
+    .replace(/&amp;/gi, '&');
+
+  const raw = (clean.match(AMAZON_URL_RE) || []).map(u => u.replace(/[.,;:)\]'"]+$/, ''));
+  const seen = {};
+  const out = [];
+  raw.forEach(u => {
+    const u2 = stripTracking(u);
+    const am = u2.match(/\/(?:dp|gp\/product|gp\/aw\/d)\/([A-Z0-9]{10})/i);
+    if (!am) return;
+    let host = '';
+    try { host = new URL(u2).hostname.replace(/^www\./, '').toLowerCase(); } catch (e) { return; }
+    const key = host + '|' + am[1].toUpperCase();
+    if (seen[key]) return;
+    seen[key] = true;
+    out.push({
+      url: u2,
+      host: host,
+      country: hostToCountry(host),
+      asin: am[1].toUpperCase(),
+    });
+  });
+  out.sort((a, b) => {
+    if (a.country === 'EG' && b.country !== 'EG') return -1;
+    if (b.country === 'EG' && a.country !== 'EG') return 1;
+    return a.country.localeCompare(b.country);
+  });
+  return out;
+}
+
+$('parseBtn').addEventListener('click', () => {
+  const text = $('pasteBox').value;
+  if (!text.trim()) { showToast('Paste some text first', true); return; }
+  const results = parseAmazonLinks(text);
+  renderResults({ count: results.length, results, manual: true });
+  if (!results.length) showToast('No amazon links found in the pasted text', true);
+});
 
 function renderResults(data) {
   const wrap = $('outResults');
   const empty = $('outEmpty');
   const results = (data && data.results) || [];
+  const isManual = !!(data && data.manual);
 
   empty.style.display = 'none';
   wrap.style.display = 'block';
+  // Keep the workflow card visible after parsing so the user can paste more
+  // links and re-parse without re-running step 1.
+  if (isManual && !results.length) {
+    wrap.innerHTML = '<div style="padding:20px;color:#6D7175;font-size:13px;text-align:center;">No <code>amazon.*</code> URLs found in the pasted text. Make sure you copied at least one full URL (the regex matches <code>https://www.amazon.*/...</code>).</div>';
+    return;
+  }
 
   if (!results.length) {
     const perImage = (data && data.images) || [];
@@ -394,8 +576,9 @@ function renderResults(data) {
   });
 
   // Per-image Lens diagnostics footer — each image links to its own Lens
-  // verify URL so the user can confirm exactly what Lens saw.
-  const perImage = (data && data.images) || [];
+  // verify URL so the user can confirm exactly what Lens saw. Skipped in
+  // manual paste mode (no per-image data available there).
+  const perImage = !isManual ? ((data && data.images) || []) : [];
   if (perImage.length) {
     const rows = perImage.map((e, idx) => {
       const colour = e.status === 'ok' ? '#0E8345'
