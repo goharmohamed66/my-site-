@@ -1,7 +1,7 @@
 <?php
 // POST /api/google-lens-search.php
 // Body:
-//   { image:  "data:image/...;base64,..."  }                     (single image)
+//   { image:  "data:image/...;base64,..." }                      (single image)
 //   { images: ["data:...", "data:...", ...] }                    (batch — runs
 //                                                                 Lens once per
 //                                                                 image, merges
@@ -9,17 +9,19 @@
 //                                                                 link found)
 //   optional: { debug: 1 }
 //
-// Reverse-image search via Google Lens — and ONLY Google Lens. We hit
-// lens.google.com/v3/upload (not the legacy /searchbyimage/upload that
-// modern Google now bounces to a no-results shell), then parse the rendered
-// HTML for every amazon.<tld> URL it contains.
+// Reverse-image search via Google Lens — and ONLY Google Lens. Flow:
+//   1. Save each uploaded image to /api/temp-image.php — gives us a stable
+//      public URL Google can fetch.
+//   2. Hit https://lens.google.com/uploadbyurl?url=<public-url>. Lens
+//      downloads the image and runs the visual-matches search.
+//   3. Parse the rendered Lens HTML for every amazon.<tld> URL it contains.
 //
-// Lens renders its visual-matches list into the initial HTML via
-// AF_initDataCallback({...}) blocks — large JSON-escaped arrays that hold
-// every match's page URL, thumbnail, and title. We strip the JSON escapes
-// from the entire response and then sweep the whole document with a single
-// amazon-URL regex, so we catch links whether they sit in an <a href>, an
-// AF_initDataCallback blob, or any other inline JSON.
+// Why uploadbyurl instead of POST multipart: Google's modern Lens upload
+// endpoint frequently returns a JS-only shell when posted to from a server
+// IP, but uploadbyurl works reliably. As a bonus, the same uploadbyurl
+// link is opaque + reusable, so we return it as `verifyUrl` and the user
+// can click it to confirm in their own browser that the image really did
+// reach Lens.
 
 require_once __DIR__ . '/_db.php';
 require_token();
@@ -33,7 +35,6 @@ if (!is_array($body)) send_json(['error' => 'JSON body required'], 400);
 
 $debug = !empty($body['debug']);
 
-// Accept either single "image" or "images" array. Normalize to a list.
 $images = [];
 if (!empty($body['images']) && is_array($body['images'])) {
   foreach ($body['images'] as $img) {
@@ -44,33 +45,48 @@ if (empty($images) && !empty($body['image']) && is_string($body['image'])) {
   $images[] = $body['image'];
 }
 if (empty($images)) send_json(['error' => 'Provide "image" or "images".'], 400);
-
-// Hard cap — running Lens 10+ times in a single request would burn the
-// 30-second PHP timeout and rate-limit our IP. Eight is plenty.
 if (count($images) > 8) $images = array_slice($images, 0, 8);
 
 $UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36';
 
-// ── Run Lens for every uploaded image, merge raw amazon hits ─────────
+// Resolve our own public base URL so we can build temp-image links Lens can
+// fetch. This mirrors how temp-image.php builds its own URL.
+$scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+$host   = $_SERVER['HTTP_HOST'] ?? 'localhost';
+$selfDir = dirname($_SERVER['SCRIPT_NAME'] ?? '/api/google-lens-search.php');
+$tempImageBase = $scheme . '://' . $host . $selfDir . '/temp-image.php';
+
+// ── Run Lens for every uploaded image ────────────────────────────────
 $perImage = [];
-$allHits  = []; // url => true (pre-filter de-dup)
+$allHits  = [];
 
 foreach ($images as $idx => $dataUrl) {
-  list($bytes, $mime, $filename, $err) = decode_image($dataUrl);
+  list($bytes, $mime, $ext, $err) = decode_image($dataUrl);
   if ($err) {
-    $perImage[] = ['index' => $idx, 'status' => 'error', 'note' => $err, 'found' => 0];
+    $perImage[] = ['index' => $idx, 'status' => 'error', 'note' => $err, 'found' => 0,
+                   'verifyUrl' => '', 'publicUrl' => ''];
     continue;
   }
-  $meta = run_google_lens($bytes, $mime, $filename, $UA);
-  $perImage[] = [
-    'index'     => $idx,
-    'status'    => $meta['status'],
-    'note'      => $meta['note'],
-    'location'  => $meta['location'],
-    'bytes'     => $meta['bytes'] ?? 0,
-    'found'     => $meta['found'],
-  ];
+
+  // 1. Stash the image where Lens can pull it from.
+  $publicUrl = save_temp_image($bytes, $ext);
+  if (!$publicUrl) {
+    $perImage[] = ['index' => $idx, 'status' => 'error', 'note' => 'temp-image save failed',
+                   'found' => 0, 'verifyUrl' => '', 'publicUrl' => ''];
+    continue;
+  }
+
+  // 2. The Lens link the human can click to verify. Works in any browser.
+  $verifyUrl = 'https://lens.google.com/uploadbyurl?url=' . rawurlencode($publicUrl) . '&hl=en-US';
+
+  // 3. Run Lens server-side via the same uploadbyurl flow.
+  $meta = run_lens_by_url($publicUrl, $UA);
+  $meta['index']     = $idx;
+  $meta['verifyUrl'] = $verifyUrl;
+  $meta['publicUrl'] = $publicUrl;
+  $perImage[] = $meta;
   foreach ($meta['links'] as $u) $allHits[$u] = true;
+  unset($perImage[count($perImage)-1]['links']);  // don't ship raw hits
 }
 
 // ── Filter to product pages + de-dup by ASIN+host ────────────────────
@@ -79,15 +95,15 @@ $unique = [];
 foreach (array_keys($allHits) as $u) {
   $u2 = strip_amazon_tracking($u);
   if (!preg_match('#/(?:dp|gp/product|gp/aw/d)/([A-Z0-9]{10})#i', $u2, $am)) continue;
-  $host = parse_url($u2, PHP_URL_HOST) ?: '';
-  if ($host === '') continue;
-  $key = strtolower($host) . '|' . strtoupper($am[1]);
+  $hst = parse_url($u2, PHP_URL_HOST) ?: '';
+  if ($hst === '') continue;
+  $key = strtolower($hst) . '|' . strtoupper($am[1]);
   if (isset($seen[$key])) continue;
   $seen[$key] = true;
   $unique[] = [
     'url'     => $u2,
-    'host'    => preg_replace('/^www\./', '', strtolower($host)),
-    'country' => host_to_country($host),
+    'host'    => preg_replace('/^www\./', '', strtolower($hst)),
+    'country' => host_to_country($hst),
     'asin'    => strtoupper($am[1]),
     'engine'  => 'google-lens',
   ];
@@ -102,93 +118,45 @@ usort($unique, function ($a, $b) {
 $out = [
   'count'   => count($unique),
   'results' => $unique,
-  'images'  => $perImage,        // per-image Lens diagnostics
+  'images'  => $perImage,
 ];
 if ($debug) $out['rawHitCount'] = count($allHits);
 send_json($out);
 
 // ══════════════════════════════════════════════════════════════════════
-// Google Lens
+// Helpers
 // ══════════════════════════════════════════════════════════════════════
 
-function run_google_lens($bytes, $mime, $filename, $UA) {
+function save_temp_image($bytes, $ext) {
+  global $tempImageBase;
+  $dir = __DIR__ . '/tmp-images';
+  if (!is_dir($dir)) @mkdir($dir, 0775, true);
+
+  // Sweep stale (>1h) files so the folder stays bounded.
+  $expiry = time() - 3600;
+  foreach (glob($dir . '/*') as $f) {
+    if (is_file($f) && filemtime($f) < $expiry) @unlink($f);
+  }
+
+  $id = bin2hex(random_bytes(10)) . '_' . time() . '.' . $ext;
+  if (file_put_contents($dir . '/' . $id, $bytes) === false) return '';
+  return $tempImageBase . '?id=' . $id;
+}
+
+function run_lens_by_url($publicUrl, $UA) {
   $meta = ['status' => 'ok', 'note' => '', 'location' => '', 'bytes' => 0,
            'found' => 0, 'links' => []];
 
-  $tmp = tempnam(sys_get_temp_dir(), 'glens_');
-  file_put_contents($tmp, $bytes);
-  $cfile = new CURLFile($tmp, $mime, $filename);
-
-  // CONSENT + SOCS skip the EU consent interstitial. NID is the long-lived
-  // anonymous identifier — without it Lens occasionally responds with a
-  // sign-in wall on the first hit.
   $cookie = 'CONSENT=YES+cb; SOCS=CAESHAgBEhJnd3NfMjAyNDA2MDQtMF9SQzIaAmVuIAEaBgiAyMq6Bg';
 
-  // The current Lens upload endpoint. stcs is just a millisecond timestamp;
-  // re=df asks Lens to treat the request as a "drop image" upload, which is
-  // what gives us the full visual-matches page (vs the cropped re-search
-  // sidebar). hl=en-US forces English results — easier for our regex sweep.
-  $uploadUrl = 'https://lens.google.com/v3/upload'
-             . '?hl=en-US'
-             . '&re=df'
-             . '&stcs=' . (int) (microtime(true) * 1000)
-             . '&ep=gisbubu';
+  // Lens's uploadbyurl endpoint. 302 → /search?p=<token> which renders the
+  // visual-matches page. Following redirects is fine here — we don't need
+  // the intermediate URL, only the final HTML.
+  $url = 'https://lens.google.com/uploadbyurl'
+       . '?url=' . rawurlencode($publicUrl)
+       . '&hl=en-US';
 
-  $ch = curl_init($uploadUrl);
-  curl_setopt_array($ch, [
-    CURLOPT_RETURNTRANSFER => true,
-    CURLOPT_FOLLOWLOCATION => false,         // capture the redirect first
-    CURLOPT_HEADER         => true,
-    CURLOPT_POST           => true,
-    CURLOPT_POSTFIELDS     => ['encoded_image' => $cfile],
-    CURLOPT_CONNECTTIMEOUT => 10,
-    CURLOPT_TIMEOUT        => 30,
-    CURLOPT_USERAGENT      => $UA,
-    CURLOPT_HTTPHEADER     => [
-      'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-      'Accept-Language: en-US,en;q=0.9,ar;q=0.8',
-      'Origin: https://lens.google.com',
-      'Referer: https://lens.google.com/',
-      'Cookie: ' . $cookie,
-    ],
-  ]);
-  $res  = curl_exec($ch);
-  $info = curl_getinfo($ch);
-  curl_close($ch);
-  @unlink($tmp);
-
-  if (!$res) {
-    $meta['status'] = 'error'; $meta['note'] = 'lens upload network failed';
-    return $meta;
-  }
-
-  $headerSize = $info['header_size'] ?? 0;
-  $headers    = substr($res, 0, $headerSize);
-  $location   = '';
-  if (preg_match('/^Location:\s*(.+)$/mi', $headers, $m)) $location = trim($m[1]);
-
-  // Lens normally responds with 302 → /search?p=...  occasionally with 303.
-  // If we got the search page in the body directly, use that.
-  if ($location === '' && ($info['http_code'] ?? 0) === 200) {
-    $body = substr($res, $headerSize);
-    $meta['location'] = $uploadUrl;
-    $meta['bytes']    = strlen($body);
-    $meta['links']    = extract_amazon_urls($body);
-    $meta['found']    = count($meta['links']);
-    return $meta;
-  }
-  if ($location === '') {
-    $meta['status'] = 'error';
-    $meta['note']   = 'no redirect from lens upload (http ' . ($info['http_code'] ?? 0) . ')';
-    return $meta;
-  }
-  if (strpos($location, 'http') !== 0) {
-    $location = 'https://lens.google.com' . (strpos($location, '/') === 0 ? '' : '/') . $location;
-  }
-  $meta['location'] = $location;
-
-  // ── Fetch the rendered Lens results page ────────────────────────────
-  $ch = curl_init($location);
+  $ch = curl_init($url);
   curl_setopt_array($ch, [
     CURLOPT_RETURNTRANSFER => true,
     CURLOPT_FOLLOWLOCATION => true,
@@ -206,57 +174,50 @@ function run_google_lens($bytes, $mime, $filename, $UA) {
   ]);
   $html = curl_exec($ch);
   $http = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+  $finalUrl = (string) curl_getinfo($ch, CURLINFO_EFFECTIVE_URL);
   curl_close($ch);
 
-  $meta['bytes'] = strlen($html ?? '');
+  $meta['location'] = $finalUrl;
+  $meta['bytes']    = strlen($html ?? '');
+
   if (!$html || $http >= 400) {
     $meta['status'] = 'error';
-    $meta['note']   = 'results fetch failed (http ' . $http . ')';
+    $meta['note']   = 'lens fetch failed (http ' . $http . ')';
     return $meta;
   }
   if (stripos($html, 'detected unusual traffic') !== false
       || stripos($html, 'recaptcha') !== false
       || stripos($html, 'sorry/index') !== false) {
     $meta['status'] = 'blocked';
-    $meta['note']   = 'captcha / unusual-traffic — try again later';
+    $meta['note']   = 'captcha / unusual-traffic';
     return $meta;
+  }
+  // Lens UI is bootstrapped via AF_initDataCallback blobs. If they're missing,
+  // the response is a no-results shell or an error page.
+  if (stripos($html, 'AF_initDataCallback') === false) {
+    $meta['status'] = 'empty';
+    $meta['note']   = 'Lens served a shell page (no AF_initDataCallback) — image may have failed to fetch';
   }
 
   $meta['links'] = extract_amazon_urls($html);
   $meta['found'] = count($meta['links']);
-  // Distinguish "Lens ran but matched nothing" from "Lens didn't run at all"
-  if ($meta['found'] === 0 && stripos($html, 'AF_initDataCallback') === false) {
-    $meta['status'] = 'empty';
-    $meta['note']   = 'Lens served a non-results page (no AF_initDataCallback found)';
-  }
   return $meta;
 }
-
-// ══════════════════════════════════════════════════════════════════════
-// Helpers
-// ══════════════════════════════════════════════════════════════════════
 
 function decode_image($dataUrl) {
   if (!is_string($dataUrl) || $dataUrl === '') return [null, null, null, 'empty image'];
   $mime = 'image/jpeg';
-  $bytes = null;
   if (preg_match('#^data:([^;]+);base64,(.+)$#', $dataUrl, $m)) {
     $mime  = $m[1];
     $bytes = base64_decode($m[2], true);
   } else {
     $bytes = base64_decode($dataUrl, true);
   }
-  if ($bytes === false || $bytes === '' || strlen($bytes) < 200) {
-    return [null, null, null, 'could not decode image bytes'];
-  }
+  if ($bytes === false || strlen($bytes) < 200) return [null, null, null, 'could not decode image bytes'];
   $ext = ($mime === 'image/png') ? 'png' : (($mime === 'image/webp') ? 'webp' : 'jpg');
-  return [$bytes, $mime, 'image.' . $ext, null];
+  return [$bytes, $mime, $ext, null];
 }
 
-// Pull every amazon.<tld> URL out of arbitrary HTML — including the
-// AF_initDataCallback JSON blobs Lens uses to ship visual-match data into
-// the page. We strip the three common escape forms first so the regex
-// stays simple and the same pattern matches every variant.
 function extract_amazon_urls($html) {
   $clean = $html;
   $clean = str_replace(['\\/', '\\u002F', '\\u003D'], ['/', '/', '='], $clean);
@@ -272,7 +233,6 @@ function extract_amazon_urls($html) {
       $out[$u] = true;
     }
   }
-  // Wrapped form: /url?q=<encoded amazon URL>
   if (preg_match_all('#/url\?q=([^"&]+' . $hostRe . '[^"&]*)#i', $clean, $m)) {
     foreach ($m[1] as $raw) $out[urldecode($raw)] = true;
   }

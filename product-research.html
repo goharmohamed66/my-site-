@@ -328,20 +328,25 @@ function renderResults(data) {
                    : e.status === 'blocked' ? '#D7A50D'
                    : '#D72C0D';
       const note = e.note ? ' — ' + escapeHtml(e.note) : '';
-      const linkOut = e.location ? ` · <a href="${escapeHtml(e.location)}" target="_blank" rel="noopener" style="color:#1A6FE0;">open Lens page</a>` : '';
       const imgName = (__images[idx] && __images[idx].name) || ('image ' + (idx + 1));
-      return `<div style="margin:3px 0;">
-        <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${colour};margin-right:8px;vertical-align:middle;"></span>
-        <strong>${escapeHtml(imgName)}</strong>
-        <span style="color:#6D7175;">· ${escapeHtml(e.status || '?')} · ${e.found || 0} amazon hits${note}${linkOut}</span>
+      const verifyLink = e.verifyUrl
+        ? ` <a href="${escapeHtml(e.verifyUrl)}" target="_blank" rel="noopener" style="color:#1A6FE0;font-weight:600;">→ verify in Lens</a>`
+        : '';
+      return `<div style="margin:6px 0;padding:6px 0;border-bottom:1px solid #EEEEEE;">
+        <div>
+          <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${colour};margin-right:8px;vertical-align:middle;"></span>
+          <strong>${escapeHtml(imgName)}</strong>
+          <span style="color:#6D7175;">· ${escapeHtml(e.status || '?')} · ${e.found || 0} amazon hits${note}</span>
+        </div>
+        <div style="margin-left:18px;margin-top:2px;font-size:11px;color:#8A8A8A;">${verifyLink}</div>
       </div>`;
     }).join('');
 
     wrap.innerHTML = `
       <div style="padding:30px 20px;color:#6D7175;font-size:13px;text-align:center;">
         <div style="font-size:14px;color:#1A1A1A;font-weight:600;margin-bottom:8px;">Google Lens didn't return any Amazon product pages.</div>
-        <div style="margin-bottom:18px;">Try a different angle, a packaging shot, or a close-up — or upload extra images and re-run. Per-image diagnostics:</div>
-        <div style="text-align:left;display:inline-block;background:#FAFAFA;border:1px solid #E1E3E5;border-radius:8px;padding:12px 16px;font-size:12px;font-family:'Inter',system-ui,sans-serif;max-width:560px;">
+        <div style="margin-bottom:18px;">Click <strong>verify in Lens</strong> next to any image to open Lens in a new tab with that exact image — if your product shows up there but no Amazon link is in the matches, then Lens really doesn't have it indexed for that shot. Try another angle.</div>
+        <div style="text-align:left;display:inline-block;background:#FAFAFA;border:1px solid #E1E3E5;border-radius:8px;padding:12px 16px;font-size:12px;font-family:'Inter',system-ui,sans-serif;max-width:600px;">
           ${imageRows || '<em style="color:#8A8A8A;">No diagnostics returned.</em>'}
         </div>
       </div>`;
@@ -388,7 +393,8 @@ function renderResults(data) {
     });
   });
 
-  // Per-image Lens diagnostics footer.
+  // Per-image Lens diagnostics footer — each image links to its own Lens
+  // verify URL so the user can confirm exactly what Lens saw.
   const perImage = (data && data.images) || [];
   if (perImage.length) {
     const rows = perImage.map((e, idx) => {
@@ -396,12 +402,12 @@ function renderResults(data) {
                    : e.status === 'empty' ? '#D7A50D'
                    : e.status === 'blocked' ? '#D7A50D'
                    : '#D72C0D';
-      const linkOut = e.location ? ` · <a href="${escapeHtml(e.location)}" target="_blank" rel="noopener" style="color:#1A6FE0;">Lens</a>` : '';
+      const verifyLink = e.verifyUrl ? ` · <a href="${escapeHtml(e.verifyUrl)}" target="_blank" rel="noopener" style="color:#1A6FE0;">verify</a>` : '';
       const imgName = (__images[idx] && __images[idx].name) || ('img ' + (idx + 1));
       return `<span style="display:inline-flex;align-items:center;gap:4px;margin-right:14px;">
         <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${colour};"></span>
         <strong>${escapeHtml(imgName)}</strong>
-        <span style="color:#8A8A8A;">· ${e.found || 0}${linkOut}</span>
+        <span style="color:#8A8A8A;">· ${e.found || 0}${verifyLink}</span>
       </span>`;
     }).join('');
     html += `<div style="margin-top:14px;padding-top:12px;border-top:1px solid #E1E3E5;font-size:11px;color:#6D7175;">${rows}</div>`;
