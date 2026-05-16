@@ -255,7 +255,7 @@ async function runSearch() {
   const btn = $('searchBtn');
   const label = $('searchLabel');
   btn.disabled = true;
-  label.innerHTML = '<span class="spinner"></span> Searching Google…';
+  label.innerHTML = '<span class="spinner"></span> Searching Google + Yandex + Bing…';
 
   try {
     const res = await fetch(SEARCH_API, {
@@ -264,7 +264,7 @@ async function runSearch() {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer ' + API_TOKEN
       },
-      body: JSON.stringify({ image: __currentImage.dataUrl })
+      body: JSON.stringify({ image: __currentImage.dataUrl, debug: 1 })
     });
     const data = await res.json();
     if (!res.ok) throw new Error((data && data.error) || ('HTTP ' + res.status));
@@ -291,11 +291,28 @@ function renderResults(data) {
   wrap.style.display = 'block';
 
   if (!results.length) {
+    const engines = (data && data.engines) || {};
+    const engineRows = Object.keys(engines).map(name => {
+      const e = engines[name];
+      const colour = e.status === 'ok' ? '#0E8345'
+                   : e.status === 'blocked' ? '#D7A50D'
+                   : '#D72C0D';
+      const note = e.note ? ' — ' + escapeHtml(e.note) : '';
+      const linkOut = e.location ? ` · <a href="${escapeHtml(e.location)}" target="_blank" rel="noopener" style="color:#1A6FE0;">open</a>` : '';
+      return `<div style="margin:2px 0;">
+        <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${colour};margin-right:8px;vertical-align:middle;"></span>
+        <strong style="text-transform:capitalize;">${escapeHtml(name)}</strong>
+        <span style="color:#6D7175;">· ${escapeHtml(e.status || '?')} · ${e.found || 0} amazon hits${note}${linkOut}</span>
+      </div>`;
+    }).join('');
+
     wrap.innerHTML = `
-      <div style="text-align:center;padding:40px 20px;color:#8A8A8A;font-size:13px;">
-        Google didn't return any amazon.* product pages for this image.<br>
-        Try a sharper / front-facing shot of the product.
-        ${data.searchUrl ? '<div style="margin-top:14px;"><a href="' + escapeHtml(data.searchUrl) + '" target="_blank" rel="noopener" style="color:#1A6FE0;font-size:12px;">Open the Google search page →</a></div>' : ''}
+      <div style="padding:30px 20px;color:#6D7175;font-size:13px;text-align:center;">
+        <div style="font-size:14px;color:#1A1A1A;font-weight:600;margin-bottom:8px;">No Amazon product pages matched this image.</div>
+        <div style="margin-bottom:18px;">Try a sharper / front-facing shot, or check the per-engine diagnostics below — if all three are blocked, the server IP is being rate-limited.</div>
+        <div style="text-align:left;display:inline-block;background:#FAFAFA;border:1px solid #E1E3E5;border-radius:8px;padding:12px 16px;font-size:12px;font-family:'Inter',system-ui,sans-serif;">
+          ${engineRows || '<em style="color:#8A8A8A;">No engine diagnostics returned.</em>'}
+        </div>
       </div>`;
     return;
   }
@@ -322,7 +339,7 @@ function renderResults(data) {
         <div class="res-row">
           <div class="res-flag">${escapeHtml(r.country)}</div>
           <div class="res-body">
-            <div class="res-host">${escapeHtml(r.host)}</div>
+            <div class="res-host">${escapeHtml(r.host)}${r.engine ? ' · <span style="color:#8A8A8A;text-transform:none;">via ' + escapeHtml(r.engine) + '</span>' : ''}</div>
             <a class="res-url" href="${escapeHtml(r.url)}" target="_blank" rel="noopener">${escapeHtml(r.url)}</a>
             ${r.asin ? `<div class="res-asin">ASIN ${escapeHtml(r.asin)}</div>` : ''}
           </div>
@@ -340,8 +357,24 @@ function renderResults(data) {
     });
   });
 
-  if (data.searchUrl) {
-    html += `<div style="margin-top:14px;font-size:11px;color:#8A8A8A;"><a href="${escapeHtml(data.searchUrl)}" target="_blank" rel="noopener" style="color:#1A6FE0;">Open the raw Google search page →</a></div>`;
+  // Per-engine diagnostics footer (small, collapsed by default — useful when
+  // some engines fail silently).
+  const engines = (data && data.engines) || {};
+  const engineKeys = Object.keys(engines);
+  if (engineKeys.length) {
+    const rows = engineKeys.map(name => {
+      const e = engines[name];
+      const colour = e.status === 'ok' ? '#0E8345'
+                   : e.status === 'blocked' ? '#D7A50D'
+                   : '#D72C0D';
+      const linkOut = e.location ? ` · <a href="${escapeHtml(e.location)}" target="_blank" rel="noopener" style="color:#1A6FE0;">open</a>` : '';
+      return `<span style="display:inline-flex;align-items:center;gap:4px;margin-right:14px;">
+        <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${colour};"></span>
+        <strong style="text-transform:capitalize;">${escapeHtml(name)}</strong>
+        <span style="color:#8A8A8A;">· ${e.found || 0}${linkOut}</span>
+      </span>`;
+    }).join('');
+    html += `<div style="margin-top:14px;padding-top:12px;border-top:1px solid #E1E3E5;font-size:11px;color:#6D7175;">${rows}</div>`;
   }
   wrap.innerHTML = html;
 
