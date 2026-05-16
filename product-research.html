@@ -41,10 +41,12 @@
   .drop-zone:hover{border-color:#1A1A1A;background:#FFFFFF;}
   .drop-zone.dragover{border-color:#1A1A1A;background:#F0F8FF;}
   .drop-zone .ic{width:48px;height:48px;border-radius:12px;background:#F1F1F1;display:inline-flex;align-items:center;justify-content:center;margin-bottom:10px;color:#6D7175;}
-  .preview-wrap{display:flex;align-items:center;gap:14px;padding:12px;border:1px solid #E1E3E5;border-radius:10px;background:#FAFAFA;}
-  .preview-wrap img{width:96px;height:96px;object-fit:contain;border:1px solid #E1E3E5;border-radius:8px;background:#FFFFFF;}
-  .preview-meta{flex:1;min-width:0;font-size:12px;color:#6D7175;line-height:1.5;}
-  .preview-meta strong{display:block;color:#1A1A1A;font-size:13px;margin-bottom:2px;word-break:break-all;}
+  .preview-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;}
+  .preview-tile{position:relative;border:1px solid #E1E3E5;border-radius:10px;background:#FAFAFA;overflow:hidden;aspect-ratio:1;}
+  .preview-tile img{width:100%;height:100%;object-fit:contain;background:#FFFFFF;}
+  .preview-tile .rm{position:absolute;top:4px;right:4px;width:22px;height:22px;border-radius:50%;border:none;background:rgba(0,0,0,0.7);color:#FFFFFF;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;padding:0;font-family:inherit;}
+  .preview-tile .rm:hover{background:rgba(215,44,13,0.9);}
+  .preview-tile .name{position:absolute;left:0;right:0;bottom:0;padding:4px 6px;background:rgba(0,0,0,0.6);color:#FFFFFF;font-size:10px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:'Inter',system-ui,sans-serif;}
 
   .res-row{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;padding:12px 14px;border:1px solid #E1E3E5;border-radius:10px;background:#FFFFFF;margin-bottom:8px;transition:border-color .12s;}
   .res-row:hover{border-color:#C9CCCF;}
@@ -78,13 +80,13 @@
         <div class="panel">
           <div class="field">
             <div class="field-label" style="flex-wrap:wrap;gap:6px;">
-              <span>Product image <span style="color:#D72C0D;">*</span></span>
+              <span>Product images <span style="color:#D72C0D;">*</span> <span style="font-weight:400;color:#8A8A8A;">(up to 8 — angles, packaging shots, close-ups)</span></span>
               <span style="display:inline-flex;gap:6px;flex-wrap:wrap;">
                 <label for="fileInput" style="display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border:1px solid #DCDCDC;border-radius:6px;background:#FFFFFF;cursor:pointer;font-size:11px;font-weight:600;color:#1A1A1A;">
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
                   Upload from device
                 </label>
-                <input id="fileInput" type="file" accept="image/*" style="display:none;">
+                <input id="fileInput" type="file" accept="image/*" multiple style="display:none;">
                 <button type="button" id="driveBtn" style="display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border:1px solid #DCDCDC;border-radius:6px;background:#FFFFFF;cursor:pointer;font-size:11px;font-weight:600;color:#1A1A1A;font-family:inherit;">
                   <img src="logos/google-drive.svg" width="14" height="14" alt="" style="display:block;">
                   Upload from Drive
@@ -96,17 +98,14 @@
               <div class="ic">
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
               </div>
-              <div style="font-size:13px;color:#1A1A1A;font-weight:600;margin-bottom:4px;">Drop the product image here</div>
-              <div style="font-size:12px;color:#6D7175;">or click to choose · JPG / PNG / WebP</div>
+              <div style="font-size:13px;color:#1A1A1A;font-weight:600;margin-bottom:4px;">Drop product images here</div>
+              <div style="font-size:12px;color:#6D7175;">or click to choose · JPG / PNG / WebP · multiple files OK</div>
             </div>
 
-            <div id="previewWrap" class="preview-wrap" style="display:none;margin-top:10px;">
-              <img id="previewImg" alt="">
-              <div class="preview-meta">
-                <strong id="previewName">—</strong>
-                <span id="previewSize">—</span>
-              </div>
-              <button type="button" id="clearBtn" class="btn btn-ghost" style="height:32px;padding:0 12px;font-size:12px;">Remove</button>
+            <div id="previewGrid" class="preview-grid" style="display:none;margin-top:10px;"></div>
+            <div id="previewMeta" style="display:none;margin-top:8px;font-size:11px;color:#6D7175;display:flex;justify-content:space-between;align-items:center;gap:8px;">
+              <span id="previewCount">—</span>
+              <button type="button" id="clearAllBtn" style="background:none;border:none;color:#D72C0D;cursor:pointer;font-size:11px;font-weight:600;padding:2px 6px;font-family:inherit;">Clear all</button>
             </div>
           </div>
 
@@ -120,9 +119,10 @@
         </div>
 
         <div style="font-size:11px;color:#8A8A8A;line-height:1.6;padding:0 4px;">
-          Reverse-image search runs on Google. We pull every <code>amazon.*</code> product page Google
-          finds for this exact image — Amazon Egypt and every foreign Amazon store (US, UK, DE, AE, SA…),
-          filtered to product pages (<code>/dp/ASIN</code>) and de-duplicated by ASIN per country.
+          Reverse-image search runs on <strong>Google Lens</strong> only. Each uploaded image is sent
+          to <code>lens.google.com</code> independently — every <code>amazon.*</code> product page Lens
+          finds is collected, then merged and de-duplicated by ASIN+country across all your shots.
+          Uploading multiple angles dramatically improves the chance Lens locks onto the right listing.
         </div>
        </div>
 
@@ -132,7 +132,7 @@
             <div class="ic">
               <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
             </div>
-            <div>Upload a product image and click <strong>Find Amazon links</strong>.</div>
+            <div>Upload one or more product images and click <strong>Find Amazon links</strong>.</div>
           </div>
           <div id="outResults" style="display:none;"></div>
         </div>
@@ -151,7 +151,8 @@ const API_BASE  = 'https://indigo-dog-836598.hostingersite.com/github/api';
 const API_TOKEN = 'tk_4d2b9f7a8c6e1530a4f2d9b7e8c6a1f5';
 const SEARCH_API = API_BASE + '/google-lens-search.php';
 
-let __currentImage = null; // { name, size, dataUrl }
+const MAX_IMAGES = 8;
+let __images = []; // [{ name, size, dataUrl }]
 
 function showToast(msg, isError) {
   const t = $('toast');
@@ -174,68 +175,101 @@ function fileToDataUrl(file) {
   });
 }
 
-async function setImage(file) {
-  if (!file || !/^image\//.test(file.type)) {
-    showToast('File must be an image', true); return;
+function renderPreviews() {
+  const grid = $('previewGrid');
+  const meta = $('previewMeta');
+  if (!__images.length) {
+    grid.style.display = 'none';
+    meta.style.display = 'none';
+    $('dropZone').style.display = 'block';
+    $('searchBtn').disabled = true;
+    return;
   }
-  const dataUrl = await fileToDataUrl(file);
-  __currentImage = { name: file.name, size: file.size, dataUrl };
-  $('previewImg').src = dataUrl;
-  $('previewName').textContent = file.name;
-  $('previewSize').textContent = (file.size / 1024).toFixed(0) + ' KB · ' + (file.type || 'image');
-  $('previewWrap').style.display = 'flex';
-  $('dropZone').style.display = 'none';
+  grid.style.display = 'grid';
+  meta.style.display = 'flex';
+  $('dropZone').style.display = 'block'; // keep visible so the user can add more
   $('searchBtn').disabled = false;
-  showError('');
+
+  grid.innerHTML = __images.map((img, i) => `
+    <div class="preview-tile">
+      <img src="${img.dataUrl}" alt="">
+      <button type="button" class="rm" data-i="${i}" title="Remove">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+      <div class="name">${escapeHtml(img.name)}</div>
+    </div>
+  `).join('');
+
+  $('previewCount').textContent = __images.length + ' image' + (__images.length === 1 ? '' : 's') + ' · max ' + MAX_IMAGES;
+
+  grid.querySelectorAll('.rm').forEach(b => {
+    b.addEventListener('click', () => {
+      const i = +b.dataset.i;
+      __images.splice(i, 1);
+      renderPreviews();
+    });
+  });
 }
 
-function clearImage() {
-  __currentImage = null;
-  $('previewWrap').style.display = 'none';
-  $('dropZone').style.display = 'block';
-  $('searchBtn').disabled = true;
+async function addFiles(fileList) {
+  const files = Array.from(fileList || []).filter(f => /^image\//.test(f.type));
+  if (!files.length) { showToast('No image files', true); return; }
+  showError('');
+  for (const f of files) {
+    if (__images.length >= MAX_IMAGES) {
+      showToast('Max ' + MAX_IMAGES + ' images reached', true); break;
+    }
+    try {
+      const dataUrl = await fileToDataUrl(f);
+      __images.push({ name: f.name, size: f.size, dataUrl });
+    } catch (e) { /* skip */ }
+  }
+  renderPreviews();
+}
+
+function clearAll() {
+  __images = [];
   $('fileInput').value = '';
+  renderPreviews();
+}
+
+function escapeHtml(s) {
+  return String(s ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 }
 
 // ── Wire upload sources ─────────────────────────────────────────────
-$('fileInput').addEventListener('change', e => {
-  const f = e.target.files && e.target.files[0];
-  if (f) setImage(f);
-});
-$('clearBtn').addEventListener('click', clearImage);
+$('fileInput').addEventListener('change', e => addFiles(e.target.files));
+$('clearAllBtn').addEventListener('click', clearAll);
 
 const dz = $('dropZone');
 dz.addEventListener('click', () => $('fileInput').click());
 ['dragenter', 'dragover'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.add('dragover'); }));
 ['dragleave', 'drop'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.remove('dragover'); }));
-dz.addEventListener('drop', e => {
-  const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
-  if (f) setImage(f);
-});
+dz.addEventListener('drop', e => addFiles(e.dataTransfer && e.dataTransfer.files));
 
-// Paste-to-upload (Ctrl+V on the page when no image is loaded)
+// Paste-to-upload — appends to the current set instead of replacing it.
 document.addEventListener('paste', e => {
-  if (__currentImage) return;
   const items = (e.clipboardData && e.clipboardData.items) || [];
+  const files = [];
   for (const it of items) {
     if (it.type && it.type.startsWith('image/')) {
       const f = it.getAsFile();
-      if (f) { setImage(f); break; }
+      if (f) files.push(f);
     }
   }
+  if (files.length) addFiles(files);
 });
 
-// Drive picker (reuses the shared google-picker.js used elsewhere)
+// Drive picker — pulls every image in the picked folder up to MAX_IMAGES.
 $('driveBtn').addEventListener('click', () => {
   const btn = $('driveBtn');
   const orig = btn.innerHTML;
   btn.disabled = true; btn.innerHTML = 'Loading…';
-  // pickGoogleDriveFolder returns a File[] — we take the first image.
   pickGoogleDriveFolder(
     (files) => {
       btn.disabled = false; btn.innerHTML = orig;
-      const img = (files || []).find(f => /^image\//.test(f.type) || /\.(jpe?g|png|webp)$/i.test(f.name));
-      if (img) setImage(img);
+      const imgs = (files || []).filter(f => /^image\//.test(f.type) || /\.(jpe?g|png|webp)$/i.test(f.name));
+      if (imgs.length) addFiles(imgs);
       else showToast('No image found in the picked folder', true);
     },
     {
@@ -250,12 +284,12 @@ $('driveBtn').addEventListener('click', () => {
 
 // ── Search ──────────────────────────────────────────────────────────
 async function runSearch() {
-  if (!__currentImage) { showToast('Upload an image first', true); return; }
+  if (!__images.length) { showToast('Upload at least one image first', true); return; }
   showError('');
   const btn = $('searchBtn');
   const label = $('searchLabel');
   btn.disabled = true;
-  label.innerHTML = '<span class="spinner"></span> Searching Google + Yandex + Bing…';
+  label.innerHTML = '<span class="spinner"></span> Running Google Lens × ' + __images.length + '…';
 
   try {
     const res = await fetch(SEARCH_API, {
@@ -264,7 +298,7 @@ async function runSearch() {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer ' + API_TOKEN
       },
-      body: JSON.stringify({ image: __currentImage.dataUrl, debug: 1 })
+      body: JSON.stringify({ images: __images.map(i => i.dataUrl), debug: 1 })
     });
     const data = await res.json();
     if (!res.ok) throw new Error((data && data.error) || ('HTTP ' + res.status));
@@ -278,10 +312,6 @@ async function runSearch() {
 }
 $('searchBtn').addEventListener('click', runSearch);
 
-function escapeHtml(s) {
-  return String(s ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-}
-
 function renderResults(data) {
   const wrap = $('outResults');
   const empty = $('outEmpty');
@@ -291,27 +321,28 @@ function renderResults(data) {
   wrap.style.display = 'block';
 
   if (!results.length) {
-    const engines = (data && data.engines) || {};
-    const engineRows = Object.keys(engines).map(name => {
-      const e = engines[name];
+    const perImage = (data && data.images) || [];
+    const imageRows = perImage.map((e, idx) => {
       const colour = e.status === 'ok' ? '#0E8345'
+                   : e.status === 'empty' ? '#D7A50D'
                    : e.status === 'blocked' ? '#D7A50D'
                    : '#D72C0D';
       const note = e.note ? ' — ' + escapeHtml(e.note) : '';
-      const linkOut = e.location ? ` · <a href="${escapeHtml(e.location)}" target="_blank" rel="noopener" style="color:#1A6FE0;">open</a>` : '';
-      return `<div style="margin:2px 0;">
+      const linkOut = e.location ? ` · <a href="${escapeHtml(e.location)}" target="_blank" rel="noopener" style="color:#1A6FE0;">open Lens page</a>` : '';
+      const imgName = (__images[idx] && __images[idx].name) || ('image ' + (idx + 1));
+      return `<div style="margin:3px 0;">
         <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${colour};margin-right:8px;vertical-align:middle;"></span>
-        <strong style="text-transform:capitalize;">${escapeHtml(name)}</strong>
+        <strong>${escapeHtml(imgName)}</strong>
         <span style="color:#6D7175;">· ${escapeHtml(e.status || '?')} · ${e.found || 0} amazon hits${note}${linkOut}</span>
       </div>`;
     }).join('');
 
     wrap.innerHTML = `
       <div style="padding:30px 20px;color:#6D7175;font-size:13px;text-align:center;">
-        <div style="font-size:14px;color:#1A1A1A;font-weight:600;margin-bottom:8px;">No Amazon product pages matched this image.</div>
-        <div style="margin-bottom:18px;">Try a sharper / front-facing shot, or check the per-engine diagnostics below — if all three are blocked, the server IP is being rate-limited.</div>
-        <div style="text-align:left;display:inline-block;background:#FAFAFA;border:1px solid #E1E3E5;border-radius:8px;padding:12px 16px;font-size:12px;font-family:'Inter',system-ui,sans-serif;">
-          ${engineRows || '<em style="color:#8A8A8A;">No engine diagnostics returned.</em>'}
+        <div style="font-size:14px;color:#1A1A1A;font-weight:600;margin-bottom:8px;">Google Lens didn't return any Amazon product pages.</div>
+        <div style="margin-bottom:18px;">Try a different angle, a packaging shot, or a close-up — or upload extra images and re-run. Per-image diagnostics:</div>
+        <div style="text-align:left;display:inline-block;background:#FAFAFA;border:1px solid #E1E3E5;border-radius:8px;padding:12px 16px;font-size:12px;font-family:'Inter',system-ui,sans-serif;max-width:560px;">
+          ${imageRows || '<em style="color:#8A8A8A;">No diagnostics returned.</em>'}
         </div>
       </div>`;
     return;
@@ -357,20 +388,19 @@ function renderResults(data) {
     });
   });
 
-  // Per-engine diagnostics footer (small, collapsed by default — useful when
-  // some engines fail silently).
-  const engines = (data && data.engines) || {};
-  const engineKeys = Object.keys(engines);
-  if (engineKeys.length) {
-    const rows = engineKeys.map(name => {
-      const e = engines[name];
+  // Per-image Lens diagnostics footer.
+  const perImage = (data && data.images) || [];
+  if (perImage.length) {
+    const rows = perImage.map((e, idx) => {
       const colour = e.status === 'ok' ? '#0E8345'
+                   : e.status === 'empty' ? '#D7A50D'
                    : e.status === 'blocked' ? '#D7A50D'
                    : '#D72C0D';
-      const linkOut = e.location ? ` · <a href="${escapeHtml(e.location)}" target="_blank" rel="noopener" style="color:#1A6FE0;">open</a>` : '';
+      const linkOut = e.location ? ` · <a href="${escapeHtml(e.location)}" target="_blank" rel="noopener" style="color:#1A6FE0;">Lens</a>` : '';
+      const imgName = (__images[idx] && __images[idx].name) || ('img ' + (idx + 1));
       return `<span style="display:inline-flex;align-items:center;gap:4px;margin-right:14px;">
         <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${colour};"></span>
-        <strong style="text-transform:capitalize;">${escapeHtml(name)}</strong>
+        <strong>${escapeHtml(imgName)}</strong>
         <span style="color:#8A8A8A;">· ${e.found || 0}${linkOut}</span>
       </span>`;
     }).join('');
