@@ -322,10 +322,17 @@ function makeCopyBtn(getText, opts) {
 
 // Split a section body into items based on the section number.
 // 4 (benefits) → one per line · 5/6/7 (headlines/faq/reviews) → paragraph blocks.
+// For benefits we also strip leading bullets / numbering / markdown asterisks
+// so each row shows a clean line of text.
 function splitSectionItems(sectionNum, body) {
   if (!body) return [];
   if (sectionNum === 4) {
-    return body.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+    return body
+      .split(/\r?\n/)
+      .map(l => l.trim())
+      .map(l => l.replace(/^[\s\-•·✅✓★◆▪▫\*]+/, '').replace(/^\d+\s*[-.):]\s*/, '').trim())
+      .map(l => l.replace(/^\*+|\*+$/g, '').trim())
+      .filter(Boolean);
   }
   if (sectionNum === 5 || sectionNum === 6 || sectionNum === 7) {
     return body.split(/\n\s*\n/).map(b => b.trim()).filter(Boolean);
@@ -335,17 +342,32 @@ function splitSectionItems(sectionNum, body) {
 
 // Render the AI output as a stack of per-section cards. List-style sections
 // (benefits, headlines, faq, reviews) get a Copy button on every item.
+//
+// Section headers from the model arrive in several shapes:
+//   Section 4 (Emotional Benefits)
+//   **Section 4 (Emotional Benefits)**
+//   ## Section 4: Emotional Benefits
+//   - Section 4 —
+// so the split regex tolerates leading markdown punctuation (* # > - whitespace)
+// before the literal word "Section".
 function renderSections(container, text) {
   __lastFullText = text;
   container.innerHTML = '';
-  const parts = text.split(/(?=^Section\s+\d+)/m).map(p => p.trim()).filter(Boolean);
-  if (parts.length <= 1) {
+  const sectionStart = /^[\s>*#\-]*\**\s*Section\s+\d+/im;
+  // Use a capturing lookbehind via split with a sticky regex — JS supports
+  // lookahead so split with (?=...) works and keeps the header on the next
+  // chunk.
+  const splitRe = /(?=^[\s>*#\-]*\**\s*Section\s+\d+)/m;
+  const parts = text.split(splitRe).map(p => p.trim()).filter(Boolean);
+  if (parts.length <= 1 || !sectionStart.test(text)) {
     container.textContent = text;
     return;
   }
   parts.forEach(part => {
     const nl = part.indexOf('\n');
-    const headerLine = nl === -1 ? part : part.slice(0, nl).trim();
+    const headerLineRaw = nl === -1 ? part : part.slice(0, nl).trim();
+    // Strip markdown asterisks/hashes from the displayed header.
+    const headerLine = headerLineRaw.replace(/^[\s>*#\-]+|[\s*]+$/g, '').trim();
     const body = nl === -1 ? '' : part.slice(nl + 1).trim();
     const numMatch = headerLine.match(/Section\s+(\d+)/i);
     const sectionNum = numMatch ? +numMatch[1] : 0;
