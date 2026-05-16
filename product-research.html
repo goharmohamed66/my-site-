@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Product Research</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Almarai:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html,body{min-height:100vh;background:#F1F1F1;font-family:'Inter','Almarai',system-ui,sans-serif;color:#1A1A1A;font-size:14px;}
+  .app-shell{display:flex;min-height:100vh;}
+  .app-sidebar{width:240px;min-width:240px;background:#EBEBEB;border-right:1px solid #DCDCDC;display:flex;flex-direction:column;height:calc(100vh - 48px);position:sticky;top:48px;font-family:'Inter',system-ui,sans-serif;}
+  .app-main{flex:1;min-width:0;display:flex;flex-direction:column;}
+  .page{padding:24px 32px;max-width:none;width:100%;}
+  .page-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);gap:24px;align-items:start;}
+  .page-col-left{position:sticky;top:72px;}
+  @media (max-width: 1100px){
+    .page-grid{grid-template-columns:1fr;}
+    .page-col-left{position:static;}
+  }
+  .page h1{font-size:22px;font-weight:700;letter-spacing:-0.3px;margin-bottom:18px;}
+  .panel{background:#FFFFFF;border:1px solid #E1E3E5;border-radius:12px;padding:20px;margin-bottom:16px;box-shadow:0 1px 0 rgba(0,0,0,0.05);}
+  .field{margin-bottom:14px;}
+  .field-label{display:flex;align-items:center;justify-content:space-between;font-size:13px;color:#1A1A1A;font-weight:500;margin-bottom:6px;}
+  .btn{display:inline-flex;align-items:center;gap:8px;padding:0 18px;height:38px;border-radius:8px;border:1px solid #1A1A1A;background:#1A1A1A;color:#FFFFFF;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;}
+  .btn:hover:not(:disabled){background:#303030;}
+  .btn:disabled{opacity:0.55;cursor:not-allowed;}
+  .btn-ghost{background:#FFFFFF;color:#1A1A1A;border-color:#DCDCDC;}
+  .btn-ghost:hover:not(:disabled){background:#F5F5F5;}
+  .out-card{background:#FFFFFF;border:1px solid #E1E3E5;border-radius:12px;padding:20px;box-shadow:0 1px 0 rgba(0,0,0,0.05);min-height:220px;}
+  .out-empty{text-align:center;padding:40px 20px;color:#8A8A8A;font-size:13px;}
+  .out-empty .ic{width:56px;height:56px;border-radius:14px;background:#F1F1F1;display:inline-flex;align-items:center;justify-content:center;margin-bottom:14px;color:#6D7175;}
+  .err{background:#FEF2F2;border:1px solid #FECACA;color:#991B1B;border-radius:8px;padding:10px 12px;font-size:13px;margin-top:10px;}
+  .spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1A1A1A;color:#FFFFFF;padding:10px 18px;border-radius:8px;font-size:13px;z-index:300;opacity:0;transition:opacity .2s;pointer-events:none;}
+  .toast.show{opacity:1;}
+  .toast.error{background:#D72C0D;}
+
+  .drop-zone{border:2px dashed #DCDCDC;border-radius:10px;padding:24px 20px;text-align:center;background:#FAFAFA;cursor:pointer;transition:border-color .15s, background .15s;}
+  .drop-zone:hover{border-color:#1A1A1A;background:#FFFFFF;}
+  .drop-zone.dragover{border-color:#1A1A1A;background:#F0F8FF;}
+  .drop-zone .ic{width:48px;height:48px;border-radius:12px;background:#F1F1F1;display:inline-flex;align-items:center;justify-content:center;margin-bottom:10px;color:#6D7175;}
+  .preview-wrap{display:flex;align-items:center;gap:14px;padding:12px;border:1px solid #E1E3E5;border-radius:10px;background:#FAFAFA;}
+  .preview-wrap img{width:96px;height:96px;object-fit:contain;border:1px solid #E1E3E5;border-radius:8px;background:#FFFFFF;}
+  .preview-meta{flex:1;min-width:0;font-size:12px;color:#6D7175;line-height:1.5;}
+  .preview-meta strong{display:block;color:#1A1A1A;font-size:13px;margin-bottom:2px;word-break:break-all;}
+
+  .res-row{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;padding:12px 14px;border:1px solid #E1E3E5;border-radius:10px;background:#FFFFFF;margin-bottom:8px;transition:border-color .12s;}
+  .res-row:hover{border-color:#C9CCCF;}
+  .res-flag{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:8px;background:#F1F1F1;color:#1A1A1A;font-size:12px;font-weight:700;font-family:'Inter',system-ui,sans-serif;letter-spacing:0.3px;}
+  .res-body{min-width:0;}
+  .res-host{font-size:12px;color:#6D7175;font-weight:600;text-transform:lowercase;}
+  .res-url{font-size:13px;color:#1A1A1A;word-break:break-all;text-decoration:none;display:block;margin-top:2px;font-family:'Inter',system-ui,sans-serif;}
+  .res-url:hover{color:#1A6FE0;text-decoration:underline;}
+  .res-asin{font-size:11px;color:#8A8A8A;margin-top:2px;font-family:'Inter',system-ui,sans-serif;}
+  .res-actions{display:flex;gap:6px;flex-shrink:0;}
+  .res-actions .copy-one,.res-actions .open-one{height:30px;padding:0 10px;font-size:11px;font-weight:600;border-radius:6px;border:1px solid #DCDCDC;background:#FFFFFF;color:#1A1A1A;cursor:pointer;display:inline-flex;align-items:center;gap:5px;font-family:'Inter',system-ui,sans-serif;text-decoration:none;}
+  .res-actions .copy-one:hover,.res-actions .open-one:hover{background:#F5F5F5;border-color:#1A1A1A;}
+  .res-actions .copy-one.copied{background:#0E8345;color:#FFFFFF;border-color:#0E8345;}
+
+  .res-summary{font-size:12px;color:#6D7175;margin-bottom:12px;}
+  .res-summary strong{color:#1A1A1A;}
+</style>
+<script src="topbar.js?v=1777784143"></script>
+<script src="sidebar-tools.js?v=1779200000"></script>
+<script src="ai-keys.js?v=1779100000"></script>
+<script src="google-picker.js?v=1777784143"></script>
+</head>
+<body>
+<div class="app-shell">
+  <aside class="app-sidebar" data-render-sidebar></aside>
+  <div class="app-main">
+    <div class="page">
+      <h1 style="margin-bottom:18px;">Product Research</h1>
+      <div class="page-grid">
+       <div class="page-col-left">
+        <div class="panel">
+          <div class="field">
+            <div class="field-label" style="flex-wrap:wrap;gap:6px;">
+              <span>Product image <span style="color:#D72C0D;">*</span></span>
+              <span style="display:inline-flex;gap:6px;flex-wrap:wrap;">
+                <label for="fileInput" style="display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border:1px solid #DCDCDC;border-radius:6px;background:#FFFFFF;cursor:pointer;font-size:11px;font-weight:600;color:#1A1A1A;">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                  Upload from device
+                </label>
+                <input id="fileInput" type="file" accept="image/*" style="display:none;">
+                <button type="button" id="driveBtn" style="display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border:1px solid #DCDCDC;border-radius:6px;background:#FFFFFF;cursor:pointer;font-size:11px;font-weight:600;color:#1A1A1A;font-family:inherit;">
+                  <img src="logos/google-drive.svg" width="14" height="14" alt="" style="display:block;">
+                  Upload from Drive
+                </button>
+              </span>
+            </div>
+
+            <div id="dropZone" class="drop-zone" style="display:block;">
+              <div class="ic">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+              </div>
+              <div style="font-size:13px;color:#1A1A1A;font-weight:600;margin-bottom:4px;">Drop the product image here</div>
+              <div style="font-size:12px;color:#6D7175;">or click to choose · JPG / PNG / WebP</div>
+            </div>
+
+            <div id="previewWrap" class="preview-wrap" style="display:none;margin-top:10px;">
+              <img id="previewImg" alt="">
+              <div class="preview-meta">
+                <strong id="previewName">—</strong>
+                <span id="previewSize">—</span>
+              </div>
+              <button type="button" id="clearBtn" class="btn btn-ghost" style="height:32px;padding:0 12px;font-size:12px;">Remove</button>
+            </div>
+          </div>
+
+          <div style="display:flex;justify-content:flex-end;align-items:center;gap:12px;">
+            <button class="btn" id="searchBtn" type="button" disabled>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <span id="searchLabel">Find Amazon links</span>
+            </button>
+          </div>
+          <div class="err" id="errBox" style="display:none;"></div>
+        </div>
+
+        <div style="font-size:11px;color:#8A8A8A;line-height:1.6;padding:0 4px;">
+          Reverse-image search runs on Google. We pull every <code>amazon.*</code> product page Google
+          finds for this exact image — Amazon Egypt and every foreign Amazon store (US, UK, DE, AE, SA…),
+          filtered to product pages (<code>/dp/ASIN</code>) and de-duplicated by ASIN per country.
+        </div>
+       </div>
+
+       <div class="page-col-right">
+        <div class="out-card" id="outCard">
+          <div class="out-empty" id="outEmpty">
+            <div class="ic">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            </div>
+            <div>Upload a product image and click <strong>Find Amazon links</strong>.</div>
+          </div>
+          <div id="outResults" style="display:none;"></div>
+        </div>
+       </div>
+      </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+
+const API_BASE  = 'https://indigo-dog-836598.hostingersite.com/github/api';
+const API_TOKEN = 'tk_4d2b9f7a8c6e1530a4f2d9b7e8c6a1f5';
+const SEARCH_API = API_BASE + '/google-lens-search.php';
+
+let __currentImage = null; // { name, size, dataUrl }
+
+function showToast(msg, isError) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (isError ? ' error' : '');
+  setTimeout(() => t.className = 'toast' + (isError ? ' error' : ''), 2400);
+}
+function showError(msg) {
+  const e = $('errBox');
+  if (msg) { e.textContent = msg; e.style.display = 'block'; }
+  else { e.style.display = 'none'; e.textContent = ''; }
+}
+
+function fileToDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result);
+    r.onerror = reject;
+    r.readAsDataURL(file);
+  });
+}
+
+async function setImage(file) {
+  if (!file || !/^image\//.test(file.type)) {
+    showToast('File must be an image', true); return;
+  }
+  const dataUrl = await fileToDataUrl(file);
+  __currentImage = { name: file.name, size: file.size, dataUrl };
+  $('previewImg').src = dataUrl;
+  $('previewName').textContent = file.name;
+  $('previewSize').textContent = (file.size / 1024).toFixed(0) + ' KB · ' + (file.type || 'image');
+  $('previewWrap').style.display = 'flex';
+  $('dropZone').style.display = 'none';
+  $('searchBtn').disabled = false;
+  showError('');
+}
+
+function clearImage() {
+  __currentImage = null;
+  $('previewWrap').style.display = 'none';
+  $('dropZone').style.display = 'block';
+  $('searchBtn').disabled = true;
+  $('fileInput').value = '';
+}
+
+// ── Wire upload sources ─────────────────────────────────────────────
+$('fileInput').addEventListener('change', e => {
+  const f = e.target.files && e.target.files[0];
+  if (f) setImage(f);
+});
+$('clearBtn').addEventListener('click', clearImage);
+
+const dz = $('dropZone');
+dz.addEventListener('click', () => $('fileInput').click());
+['dragenter', 'dragover'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.add('dragover'); }));
+['dragleave', 'drop'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.remove('dragover'); }));
+dz.addEventListener('drop', e => {
+  const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+  if (f) setImage(f);
+});
+
+// Paste-to-upload (Ctrl+V on the page when no image is loaded)
+document.addEventListener('paste', e => {
+  if (__currentImage) return;
+  const items = (e.clipboardData && e.clipboardData.items) || [];
+  for (const it of items) {
+    if (it.type && it.type.startsWith('image/')) {
+      const f = it.getAsFile();
+      if (f) { setImage(f); break; }
+    }
+  }
+});
+
+// Drive picker (reuses the shared google-picker.js used elsewhere)
+$('driveBtn').addEventListener('click', () => {
+  const btn = $('driveBtn');
+  const orig = btn.innerHTML;
+  btn.disabled = true; btn.innerHTML = 'Loading…';
+  // pickGoogleDriveFolder returns a File[] — we take the first image.
+  pickGoogleDriveFolder(
+    (files) => {
+      btn.disabled = false; btn.innerHTML = orig;
+      const img = (files || []).find(f => /^image\//.test(f.type) || /\.(jpe?g|png|webp)$/i.test(f.name));
+      if (img) setImage(img);
+      else showToast('No image found in the picked folder', true);
+    },
+    {
+      onProgress: (p) => {
+        if (p.phase === 'listing') btn.innerHTML = 'Listing…';
+        else if (p.phase === 'downloading') btn.innerHTML = 'Downloading ' + p.current + '/' + p.total;
+      },
+      onError: (e) => { btn.disabled = false; btn.innerHTML = orig; alert('Drive: ' + e.message); }
+    }
+  );
+});
+
+// ── Search ──────────────────────────────────────────────────────────
+async function runSearch() {
+  if (!__currentImage) { showToast('Upload an image first', true); return; }
+  showError('');
+  const btn = $('searchBtn');
+  const label = $('searchLabel');
+  btn.disabled = true;
+  label.innerHTML = '<span class="spinner"></span> Searching Google…';
+
+  try {
+    const res = await fetch(SEARCH_API, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + API_TOKEN
+      },
+      body: JSON.stringify({ image: __currentImage.dataUrl })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error((data && data.error) || ('HTTP ' + res.status));
+    renderResults(data);
+  } catch (err) {
+    showError('Failed: ' + err.message);
+  } finally {
+    btn.disabled = false;
+    label.textContent = 'Find Amazon links';
+  }
+}
+$('searchBtn').addEventListener('click', runSearch);
+
+function escapeHtml(s) {
+  return String(s ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+
+function renderResults(data) {
+  const wrap = $('outResults');
+  const empty = $('outEmpty');
+  const results = (data && data.results) || [];
+
+  empty.style.display = 'none';
+  wrap.style.display = 'block';
+
+  if (!results.length) {
+    wrap.innerHTML = `
+      <div style="text-align:center;padding:40px 20px;color:#8A8A8A;font-size:13px;">
+        Google didn't return any amazon.* product pages for this image.<br>
+        Try a sharper / front-facing shot of the product.
+        ${data.searchUrl ? '<div style="margin-top:14px;"><a href="' + escapeHtml(data.searchUrl) + '" target="_blank" rel="noopener" style="color:#1A6FE0;font-size:12px;">Open the Google search page →</a></div>' : ''}
+      </div>`;
+    return;
+  }
+
+  // Group by country
+  const groups = {};
+  results.forEach(r => {
+    const k = r.country || '??';
+    (groups[k] = groups[k] || []).push(r);
+  });
+  // EG always first, then alphabetical
+  const order = Object.keys(groups).sort((a, b) => {
+    if (a === 'EG') return -1; if (b === 'EG') return 1;
+    return a.localeCompare(b);
+  });
+
+  let html = `<div class="res-summary"><strong>${results.length}</strong> product page${results.length === 1 ? '' : 's'} found across <strong>${order.length}</strong> Amazon store${order.length === 1 ? '' : 's'}.</div>`;
+
+  order.forEach(country => {
+    const items = groups[country];
+    html += `<div style="font-size:12px;font-weight:700;color:#6D7175;text-transform:uppercase;letter-spacing:0.4px;margin:14px 0 6px;">Amazon ${escapeHtml(country)} · ${items.length}</div>`;
+    items.forEach(r => {
+      html += `
+        <div class="res-row">
+          <div class="res-flag">${escapeHtml(r.country)}</div>
+          <div class="res-body">
+            <div class="res-host">${escapeHtml(r.host)}</div>
+            <a class="res-url" href="${escapeHtml(r.url)}" target="_blank" rel="noopener">${escapeHtml(r.url)}</a>
+            ${r.asin ? `<div class="res-asin">ASIN ${escapeHtml(r.asin)}</div>` : ''}
+          </div>
+          <div class="res-actions">
+            <button class="copy-one" type="button" data-url="${escapeHtml(r.url)}">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              Copy
+            </button>
+            <a class="open-one" href="${escapeHtml(r.url)}" target="_blank" rel="noopener">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+              Open
+            </a>
+          </div>
+        </div>`;
+    });
+  });
+
+  if (data.searchUrl) {
+    html += `<div style="margin-top:14px;font-size:11px;color:#8A8A8A;"><a href="${escapeHtml(data.searchUrl)}" target="_blank" rel="noopener" style="color:#1A6FE0;">Open the raw Google search page →</a></div>`;
+  }
+  wrap.innerHTML = html;
+
+  // Wire per-row copy buttons
+  wrap.querySelectorAll('.copy-one').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const u = btn.dataset.url;
+      try { await navigator.clipboard.writeText(u); }
+      catch (e) {
+        const ta = document.createElement('textarea');
+        ta.value = u; document.body.appendChild(ta); ta.select();
+        document.execCommand('copy'); document.body.removeChild(ta);
+      }
+      const orig = btn.innerHTML;
+      btn.classList.add('copied');
+      btn.innerHTML = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Copied';
+      setTimeout(() => { btn.classList.remove('copied'); btn.innerHTML = orig; }, 1400);
+    });
+  });
+}
+</script>
+</body>
+</html>

@@ -54,7 +54,7 @@
   .key-row input{flex:1;}
 </style>
 <script src="topbar.js?v=1777784143"></script>
-<script src="sidebar-tools.js?v=1779100000"></script>
+<script src="sidebar-tools.js?v=1779200000"></script>
 <script src="ai-keys.js?v=1779100000"></script>
 <script src="google-picker.js?v=1777784143"></script>
 <script src="https://cdn.jsdelivr.net/npm/mammoth@1.6.0/mammoth.browser.min.js"></script>
@@ -258,7 +258,7 @@ ${input}`;
     $('outEmpty').style.display = 'none';
     const out = $('outText');
     out.style.display = 'block';
-    out.textContent = text;
+    renderSections(out, text);
     $('outToolbar').style.display = 'flex';
   } catch (err) {
     showError('Failed: ' + err.message);
@@ -271,8 +271,7 @@ ${input}`;
 $('generateBtn').addEventListener('click', generate);
 $('regenBtn').addEventListener('click', generate);
 
-$('copyBtn').addEventListener('click', async () => {
-  const txt = $('outText').textContent;
+async function copyText(txt) {
   try {
     await navigator.clipboard.writeText(txt);
     showToast('Copied');
@@ -282,7 +281,111 @@ $('copyBtn').addEventListener('click', async () => {
     document.execCommand('copy'); document.body.removeChild(ta);
     showToast('Copied');
   }
-});
+}
+
+// Cache the full raw output so the toolbar "Copy" button still copies everything
+let __lastFullText = '';
+$('copyBtn').addEventListener('click', () => copyText(__lastFullText));
+
+// Build a small "Copy" button matching the headlines-page style.
+function makeCopyBtn(getText, opts) {
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'btn btn-ghost';
+  const small = opts && opts.small;
+  btn.style.cssText = 'height:' + (small ? '28' : '30') + 'px;padding:0 10px;font-size:11px;font-weight:600;direction:ltr;flex-shrink:0;';
+  const iconSvg = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
+  const checkSvg = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+  btn.innerHTML = iconSvg + '<span style="margin-inline-start:4px;">Copy</span>';
+  btn.addEventListener('click', async () => {
+    const t = getText();
+    try { await navigator.clipboard.writeText(t); }
+    catch (e) {
+      const ta = document.createElement('textarea');
+      ta.value = t; document.body.appendChild(ta); ta.select();
+      document.execCommand('copy'); document.body.removeChild(ta);
+    }
+    const orig = btn.innerHTML;
+    btn.style.background = '#0E8345';
+    btn.style.color = '#FFFFFF';
+    btn.style.borderColor = '#0E8345';
+    btn.innerHTML = checkSvg + '<span style="margin-inline-start:4px;">Copied</span>';
+    setTimeout(() => {
+      btn.style.background = '';
+      btn.style.color = '';
+      btn.style.borderColor = '';
+      btn.innerHTML = orig;
+    }, 1400);
+  });
+  return btn;
+}
+
+// Split a section body into items based on the section number.
+// 4 (benefits) → one per line · 5/6/7 (headlines/faq/reviews) → paragraph blocks.
+function splitSectionItems(sectionNum, body) {
+  if (!body) return [];
+  if (sectionNum === 4) {
+    return body.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  }
+  if (sectionNum === 5 || sectionNum === 6 || sectionNum === 7) {
+    return body.split(/\n\s*\n/).map(b => b.trim()).filter(Boolean);
+  }
+  return [];
+}
+
+// Render the AI output as a stack of per-section cards. List-style sections
+// (benefits, headlines, faq, reviews) get a Copy button on every item.
+function renderSections(container, text) {
+  __lastFullText = text;
+  container.innerHTML = '';
+  const parts = text.split(/(?=^Section\s+\d+)/m).map(p => p.trim()).filter(Boolean);
+  if (parts.length <= 1) {
+    container.textContent = text;
+    return;
+  }
+  parts.forEach(part => {
+    const nl = part.indexOf('\n');
+    const headerLine = nl === -1 ? part : part.slice(0, nl).trim();
+    const body = nl === -1 ? '' : part.slice(nl + 1).trim();
+    const numMatch = headerLine.match(/Section\s+(\d+)/i);
+    const sectionNum = numMatch ? +numMatch[1] : 0;
+
+    const card = document.createElement('div');
+    card.style.cssText = 'position:relative;margin-bottom:14px;padding:12px 14px;border:1px solid #E1E3E5;border-radius:10px;background:#FAFAFA;';
+
+    const head = document.createElement('div');
+    head.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;direction:ltr;';
+    const title = document.createElement('div');
+    title.style.cssText = 'font-size:12px;font-weight:700;color:#6D7175;text-transform:uppercase;letter-spacing:0.4px;';
+    title.textContent = headerLine;
+    head.appendChild(title);
+    head.appendChild(makeCopyBtn(() => body || part));
+    card.appendChild(head);
+
+    const items = splitSectionItems(sectionNum, body);
+    if (items.length > 1) {
+      const list = document.createElement('div');
+      list.style.cssText = 'display:flex;flex-direction:column;gap:8px;';
+      items.forEach(item => {
+        const row = document.createElement('div');
+        row.style.cssText = 'display:grid;grid-template-columns:1fr auto;gap:10px;align-items:start;padding:10px 12px;border:1px solid #E1E3E5;border-radius:8px;background:#FFFFFF;';
+        const itemText = document.createElement('div');
+        itemText.style.cssText = 'white-space:pre-wrap;line-height:1.7;font-size:14px;';
+        itemText.textContent = item;
+        row.appendChild(itemText);
+        row.appendChild(makeCopyBtn(() => item, { small: true }));
+        list.appendChild(row);
+      });
+      card.appendChild(list);
+    } else {
+      const pre = document.createElement('div');
+      pre.style.cssText = 'white-space:pre-wrap;line-height:1.85;font-size:15px;';
+      pre.textContent = body;
+      card.appendChild(pre);
+    }
+    container.appendChild(card);
+  });
+}
 
 // ── Parse the AI landing output into structured sections ─────────────
 function parseLandingSections(text) {
