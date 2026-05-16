@@ -28,7 +28,9 @@ foreach (glob($DIR . '/*') as $f) {
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 
 if ($method === 'GET') {
-  $id = isset($_GET['id']) ? preg_replace('/[^a-z0-9_]/i', '', $_GET['id']) : '';
+  // Sanitize but keep the file extension dot — the saved filename is
+  // <hex>_<timestamp>.<ext> so the regex needs to allow '.' as well.
+  $id = isset($_GET['id']) ? preg_replace('/[^a-z0-9_.]/i', '', $_GET['id']) : '';
   if ($id === '') { http_response_code(400); echo 'id required'; exit; }
   $path = $DIR . '/' . $id;
   if (!is_file($path)) { http_response_code(404); echo 'not found'; exit; }
