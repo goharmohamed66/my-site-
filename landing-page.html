@@ -345,24 +345,28 @@ function splitSectionItems(sectionNum, body) {
   return [];
 }
 
+// Convert Eastern Arabic digits (٠-٩) to ASCII so we can do numeric work
+// on section numbers regardless of which script the model chose.
+function toWesternDigits(s) {
+  return String(s == null ? '' : s).replace(/[٠-٩]/g, d =>
+    String.fromCharCode(d.charCodeAt(0) - 0x0660 + 0x30));
+}
+
 // Render the AI output as a stack of per-section cards. List-style sections
 // (benefits, headlines, faq, reviews) get a Copy button on every item.
 //
-// Section headers from the model arrive in several shapes:
-//   Section 4 (Emotional Benefits)
-//   **Section 4 (Emotional Benefits)**
-//   ## Section 4: Emotional Benefits
-//   - Section 4 —
-// so the split regex tolerates leading markdown punctuation (* # > - whitespace)
-// before the literal word "Section".
+// Section headers from the model arrive in several shapes and in either
+// English (Section N) or Arabic (سيكشن N / القسم N). The split regex
+// tolerates leading markdown punctuation (* # > - whitespace) and both
+// digit scripts (ASCII 0-9 and Eastern Arabic ٠-٩).
 function renderSections(container, text) {
   __lastFullText = text;
   container.innerHTML = '';
-  const sectionStart = /^[\s>*#\-]*\**\s*Section\s+\d+/im;
+  const sectionStart = /^[\s>*#\-]*\**\s*(?:Section|سيكشن|القسم)\s+[\d٠-٩]+/im;
   // Use a capturing lookbehind via split with a sticky regex — JS supports
   // lookahead so split with (?=...) works and keeps the header on the next
   // chunk.
-  const splitRe = /(?=^[\s>*#\-]*\**\s*Section\s+\d+)/m;
+  const splitRe = /(?=^[\s>*#\-]*\**\s*(?:Section|سيكشن|القسم)\s+[\d٠-٩]+)/m;
   const parts = text.split(splitRe).map(p => p.trim()).filter(Boolean);
   if (parts.length <= 1 || !sectionStart.test(text)) {
     container.textContent = text;
@@ -374,8 +378,8 @@ function renderSections(container, text) {
     // Strip markdown asterisks/hashes from the displayed header.
     const headerLine = headerLineRaw.replace(/^[\s>*#\-]+|[\s*]+$/g, '').trim();
     const body = nl === -1 ? '' : part.slice(nl + 1).trim();
-    const numMatch = headerLine.match(/Section\s+(\d+)/i);
-    const sectionNum = numMatch ? +numMatch[1] : 0;
+    const numMatch = headerLine.match(/(?:Section|سيكشن|القسم)\s+([\d٠-٩]+)/i);
+    const sectionNum = numMatch ? +toWesternDigits(numMatch[1]) : 0;
 
     const card = document.createElement('div');
     card.style.cssText = 'position:relative;margin-bottom:14px;padding:12px 14px;border:1px solid #E1E3E5;border-radius:10px;background:#FAFAFA;';
@@ -460,15 +464,27 @@ function parseHeadlinePairs(body) {
   const blocks = body.split(/\n\s*\n/).map(b => b.trim()).filter(Boolean);
   const headlineRe    = /^\s*\**\s*Headline[^:\n]*:\s*([\s\S]*?)\s*\**\s*$/im;
   const subheadlineRe = /^\s*\**\s*Sub[\s-]?headline[^:\n]*:\s*([\s\S]*?)\s*\**\s*$/im;
+  // Fallback when the model writes a numbered list (e.g. Arabic prompts):
+  //   1. هدلاين هنا
+  //   سب-هدلاين هنا
+  // The first line is the headline, remaining lines join as the subheadline.
+  const numberedRe = /^\s*[\d٠-٩]+\s*[-.):]\s*(.+?)\s*$/;
   const pairs = [];
   blocks.forEach(blk => {
-    const lines = blk.split(/\r?\n/);
+    const lines = blk.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
     let headline = '', subheadline = '';
     lines.forEach(line => {
       let m;
       if ((m = line.match(headlineRe)))    { if (!headline)    headline    = clean(m[1]); }
       else if ((m = line.match(subheadlineRe))) { if (!subheadline) subheadline = clean(m[1]); }
     });
+    if (!headline && !subheadline && lines.length) {
+      const m = lines[0].match(numberedRe);
+      if (m) {
+        headline = clean(m[1]);
+        if (lines.length > 1) subheadline = clean(lines.slice(1).join(' '));
+      }
+    }
     if (headline || subheadline) pairs.push({ headline, subheadline });
   });
   function clean(s) {
@@ -514,10 +530,10 @@ function parseLandingSections(text) {
     buf = [];
   }
   for (const line of lines) {
-    const m = line.match(/^Section\s+(\d+)/i);
+    const m = line.match(/^\s*(?:Section|سيكشن|القسم)\s+([\d٠-٩]+)/i);
     if (m) {
       flush();
-      const n = +m[1];
+      const n = +toWesternDigits(m[1]);
       cur = ['', 'title', 'hook', 'pain', 'benefits', 'headlines', 'faq', 'reviews'][n] || null;
       continue;
     }
