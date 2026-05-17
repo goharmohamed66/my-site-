@@ -16,6 +16,7 @@
 //   DELETE ?id=N
 require_once __DIR__ . '/_db.php';
 require_once __DIR__ . '/google-config.php';
+require_once __DIR__ . '/_gd_share.php';
 // gd_* helpers are inlined here so this file is self-contained.
 function gd_connector_b(PDO $pdo): ?array {
     $st = $pdo->prepare("SELECT id, name, token, meta FROM connectors
@@ -268,13 +269,23 @@ if ($method === 'POST') {
         json_encode($sheets, JSON_UNESCAPED_UNICODE),
         $meta ? json_encode($meta, JSON_UNESCAPED_UNICODE) : null,
     ]);
+    $newBrandId = (int)$pdo->lastInsertId();
+
+    // Share the new brand folder with every active app_user so they can
+    // open its sheets without hitting "You need access" in the embedded
+    // viewer. Failures are swallowed — the manual sync action can backfill.
+    $drive = ['skipped' => true];
+    try { $drive = gd_share_folder_with_all_users($pdo, $brandFolder, 'writer'); }
+    catch (Throwable $e) { $drive = ['ok' => false, 'error' => $e->getMessage()]; }
+
     send_json([
         'ok' => true,
-        'id' => (int)$pdo->lastInsertId(),
+        'id' => $newBrandId,
         'drive_folder_id' => $brandFolder,
         'sheets_folder_id' => $sheetsFolder,
         'sheets' => $sheets,
         'meta' => $meta,
+        'drive_share' => $drive,
     ]);
 }
 

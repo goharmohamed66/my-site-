@@ -11,6 +11,7 @@
 //        → Streams a file's bytes (used for images / text the user picked).
 require_once __DIR__ . '/_db.php';
 require_once __DIR__ . '/google-config.php';
+require_once __DIR__ . '/_gd_share.php';
 require_token();
 
 $action = $_GET['action'] ?? '';
@@ -664,6 +665,19 @@ if ($action === 'download') {
     header('Content-Length: ' . strlen($body));
     echo $body;
     exit;
+}
+
+// ── BACKFILL DRIVE SHARING ───────────────────────────────────────────
+// GET ?action=sync_drive_access[&role=writer]
+// Iterates every brand folder × every active app_user email and grants
+// `role` (default writer). Idempotent — Google's "already shared" errors
+// are treated as success. Use this after adding multiple users at once,
+// or after fixing the connector to backfill access retroactively.
+if ($action === 'sync_drive_access') {
+    $role = trim($_GET['role'] ?? 'writer');
+    if (!in_array($role, ['reader', 'commenter', 'writer'], true)) $role = 'writer';
+    $summary = gd_share_sync_all($pdo, $role);
+    send_json($summary);
 }
 
 send_json(['error' => 'Unknown action: ' . $action], 400);
