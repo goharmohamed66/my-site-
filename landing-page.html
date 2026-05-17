@@ -218,7 +218,12 @@ async function callChatGPT(systemPrompt, userMessage, maxTokens) {
       model: 'gpt-5.5-pro',
       instructions: systemPrompt,
       input: userMessage,
-      max_output_tokens: (maxTokens || 4000) + 6000
+      // OpenAI counts (input + max_output_tokens) against the per-minute TPM
+      // limit (50k on Tier 1). Reasoning models like gpt-5.5-pro need some
+      // output budget for internal reasoning, but 6000 was tipping long
+      // landing-page prompts over the 50k ceiling — 2000 still leaves room
+      // for reasoning + the requested completion.
+      max_output_tokens: (maxTokens || 4000) + 2000
     })
   });
   const data = await res.json();
