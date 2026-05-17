@@ -219,11 +219,13 @@ async function callChatGPT(systemPrompt, userMessage, maxTokens) {
       instructions: systemPrompt,
       input: userMessage,
       // OpenAI counts (input + max_output_tokens) against the per-minute TPM
-      // limit (50k on Tier 1). Reasoning models like gpt-5.5-pro need some
-      // output budget for internal reasoning, but 6000 was tipping long
-      // landing-page prompts over the 50k ceiling — 2000 still leaves room
-      // for reasoning + the requested completion.
-      max_output_tokens: (maxTokens || 4000) + 2000
+      // limit (50k on Tier 1). For a ~43k-token input + reasoning we have
+      // ~6k headroom — give the model 6000 output tokens and force minimal
+      // reasoning so the budget actually produces visible output instead of
+      // being swallowed by internal chain-of-thought (was returning
+      // status=incomplete with empty text).
+      max_output_tokens: (maxTokens || 4000) + 2000,
+      reasoning: { effort: 'low' }
     })
   });
   const data = await res.json();
@@ -235,7 +237,13 @@ async function callChatGPT(systemPrompt, userMessage, maxTokens) {
     }
   });
   text = text.trim();
-  if (!text) throw new Error('Empty response (status: ' + (data.status || '?') + ')');
+  if (!text) {
+    // Surface the precise reason so we can tune the output budget or
+    // shorten the system prompt instead of guessing.
+    const reason = (data.incomplete_details && data.incomplete_details.reason) || '';
+    const usage  = data.usage ? ` (used ${data.usage.output_tokens || '?'} / ${data.usage.total_tokens || '?'} tokens)` : '';
+    throw new Error('Empty response (status: ' + (data.status || '?') + (reason ? ', reason: ' + reason : '') + ')' + usage);
+  }
   return text;
 }
 
