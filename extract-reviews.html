@@ -308,6 +308,11 @@ function asPlainText(products) {
     if (p.details.length) p.details.forEach(d => lines.push('• ' + d));
     else lines.push('(no bullets)');
     lines.push('');
+    if (p.description) {
+      lines.push('DESCRIPTION');
+      lines.push(p.description);
+      lines.push('');
+    }
     lines.push('REVIEWS (' + p.reviews.length + ')');
     if (p.reviews.length) p.reviews.forEach((r, i) => {
       lines.push('— ' + (r.author || 'Anonymous') + (r.rating ? ' • ' + r.rating + '★' : '') + (r.date ? ' • ' + r.date : ''));
